@@ -1,0 +1,46 @@
+[MASTER]
+# Add "<path to your project's directory>" to the python path,
+# e.g., src if your code is inside a src directory.
+# init-hook='import sys; sys.path.append("src")'
+
+# List of plugins (as comma separated values of python modules names) to load,
+# usually to add new checkers.
+load-plugins=
+
+[MESSAGES CONTROL]
+# Only show these messages. Leave this list empty to show all messages.
+enable=
+
+# Disable the messages, reports, categories or checkers with the given ids.
+disable=
+    missing-module-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    duplicate-code
+
+[REPORTS]
+# Set the output format. Available formats: text, parseable, colorized, msvs (visual studio) and html
+output-format=text
+
+# Tells whether to display a full report or only the messages
+reports=no
+
+[DESIGN]
+# Maximum number of parents for a class (see R0901).
+max-parents=7
+
+# Maximum number of attributes for a class (see R0902).
+max-attributes=7
+
+# Minimum number of public methods for a class (see R0903).
+min-public-methods=0
+
+# Maximum number of public methods for a class (see R0904).
+max-public-methods=20
+
+[TYPECHECK]
+# Tells whether missing members accessed in mixin class should be considered a warning.
+ignore-mixin-members=yes
+
+# List of member names, which should be considered directives.
+generated-members=
