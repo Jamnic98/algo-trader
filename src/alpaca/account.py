@@ -1,3 +1,3 @@
-from src.alpaca.client import trading_client
+from src.alpaca.client import trading_client as tc
 
-account = trading_client.get_account()
+account = tc.get_account()

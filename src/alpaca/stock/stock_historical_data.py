@@ -1,5 +1,3 @@
-""" fetches alpaca historical stock data """
-
 import pandas as pd
 import plotly.graph_objects as go
 from alpaca.data.historical.stock import StockHistoricalDataClient
