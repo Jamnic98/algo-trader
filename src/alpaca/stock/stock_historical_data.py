@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 from alpaca.data.historical.stock import StockHistoricalDataClient
 from alpaca.data.requests import StockBarsRequest
 from alpaca.data.timeframe import TimeFrame
-from src.settings import config
+from src.utils.settings import config
 
 stock_data_client = StockHistoricalDataClient(config['ALPACA_KEY'], config['ALPACA_SECRET'])
 

@@ -15,8 +15,10 @@ enable=
 disable=
     missing-module-docstring,
     missing-function-docstring,
+    missing-class-docstring,
     too-few-public-methods,
-    duplicate-code
+    duplicate-code,
+
 
 [REPORTS]
 # Set the output format. Available formats: text, parseable, colorized, msvs (visual studio) and html
