@@ -25,6 +25,17 @@ pip install uv
 uv sync --dev
 ```
 
+### Git hooks (pre-commit)
+Install pre-commit hooks locally (run once per machine):
+```bash
+  uv run pre-commit install
+```
+
+You can run all hooks on demand:
+```bash
+  uv run pre-commit run --all-files
+```
+
 ---
 
 ## **Running Locally**
