@@ -92,25 +92,6 @@ DEBUG=true
 
 ---
 
-## **Project Structure**
-
-```
-algo-trader/
-├── app/
-│   ├── core/
-│   │   ├── logging_config.py
-│   │   └── settings.py
-│   └── ...
-├── scripts/
-│   └── dev-check.sh
-├── tests/
-├── main.py
-├── pyproject.toml
-└── README.md
-```
-
----
-
 ## **Development Utilities**
 
 The `dev-check.sh` script runs code formatting, linting, and type checks.  
