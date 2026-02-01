@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: dev-check
+        name: Dev Check
+        entry: scripts/dev-check.sh
+        language: system
+        pass_filenames: false
