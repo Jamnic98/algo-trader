@@ -1,0 +1,25 @@
+# name: CI
+
+# on:
+#   push:
+#     branches: [dev]
+
+# jobs:
+#   test:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - uses: actions/setup-python@v5
+#         with:
+#           python-version: "3.13"
+
+#       - name: Install uv
+#         run: pip install uv
+
+#       - name: Sync dependencies (with dev tools)
+#         run: uv sync --dev
+
+#       - name: Run dev checks
+#         run: bash scripts/dev-check.sh

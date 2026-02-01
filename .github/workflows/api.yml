@@ -1,0 +1,14 @@
+on:
+  push:
+    paths:
+      - "api/**"
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests
+        working-directory: api
+        run: go test ./...
