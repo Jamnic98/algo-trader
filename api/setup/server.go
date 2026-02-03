@@ -10,6 +10,7 @@ func initRouters(cfg Config) {
   router := gin.Default()
   api := router.Group("/api")
   {
+    handlers.RegisterBotRoutes(api.Group("/bots"))
     handlers.RegisterCandleRoutes(api.Group("/candles"))
     handlers.RegisterTradeRoutes(api.Group("/trades"))
   }

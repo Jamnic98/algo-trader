@@ -11,6 +11,7 @@ func initDatabase(cfg Config) {
   db.ConnectPostgres(cfg.Dsn)
 
   // Auto-migrate tables
+  db.Migrate(&models.Bot{})
   db.Migrate(&models.Candle{})
   db.Migrate(&models.Trade{})
 }
