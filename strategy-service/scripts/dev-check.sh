@@ -7,19 +7,19 @@ echo "====================================="
 
 echo ""
 echo "Formatting code with Black..."
-uv run black .
+black .
 
 echo ""
 echo "Linting with Ruff..."
-uv run ruff check --fix .
+ruff check --fix .
 
 echo ""
 echo "Type checking with mypy..."
-uv run mypy .
+mypy .
 
 echo ""
 echo "Running tests with pytest..."
-uv run pytest
+pytest
 
 echo ""
 echo "All checks passed successfully!"

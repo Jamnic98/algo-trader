@@ -1,0 +1,34 @@
+services:
+  api:
+    container_name: algo-trader-api-prod
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+    env_file:
+      - .env.prod
+
+  strategy-service:
+    container_name: algo-trader-strategy-service-prod
+    build:
+      context: ./strategy-service
+      dockerfile: Dockerfile
+    expose:
+      - "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - api
+    networks:
+      - app-network
+    env_file:
+      - .env.prod
+
+networks:
+  app-network:
+    # external: true
