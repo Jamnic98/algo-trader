@@ -1,6 +1,12 @@
 package setup
 
-import "os"
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
 
 type Config struct {
     Env  string
@@ -14,11 +20,17 @@ func GetConfig() Config {
         env = "local"
     }
 
-    dsn := os.Getenv("DB_DSN")
-    if dsn == "" {
-        dsn = "host=host.docker.internal user=postgres password=dbpassword123 dbname=algo_trader_dev port=5432 sslmode=disable"
+    fmt.Println("ENV:", env)
+
+    // Try to load .env file, but don’t fail if it doesn’t exist
+    envFile := fmt.Sprintf(".env.%s", env)
+    if err := godotenv.Load(envFile); err != nil {
+        log.Println("No env file found, using system env:", envFile)
+    } else {
+        fmt.Println("Loaded env file:", envFile)
     }
 
+    dsn := os.Getenv("DB_DSN")
     port := os.Getenv("PORT")
     if port == "" {
         port = "8080"

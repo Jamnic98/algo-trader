@@ -6,7 +6,7 @@ import (
 )
 
 
-func initDatabase(cfg Config) {
+func InitDatabase(cfg Config) {
   // Connect to Postgres
   db.ConnectPostgres(cfg.Dsn)
 
