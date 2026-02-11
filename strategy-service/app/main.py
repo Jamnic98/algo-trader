@@ -8,6 +8,7 @@ logger = setup_logging()
 
 app = create_app()
 
+
 def main() -> None:
     logger.info(f"Environment: {settings.app_env}")
     run(app)

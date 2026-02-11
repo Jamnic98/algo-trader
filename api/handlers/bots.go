@@ -15,9 +15,9 @@ import (
 // Register routes for bots
 func RegisterBotRoutes(rg *gin.RouterGroup) {
     rg.GET("/", getBotsHandler)
-    rg.GET("/:id", getBotByIdHandler)
+    rg.GET("/:id/", getBotByIdHandler)
     rg.POST("/", createBotHandler)
-    rg.DELETE("/:id", deleteBotHandler)
+    rg.DELETE("/:id/", deleteBotHandler)
 }
 
 func getBotsHandler(c *gin.Context) {
