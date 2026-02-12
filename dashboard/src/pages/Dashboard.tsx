@@ -1,5 +1,5 @@
 const Dashboard = () => {
-  return <>Algo Trader</>
+  return <>Algo Trader Dashboard</>
 }
 
 export default Dashboard

@@ -39,7 +39,7 @@ jobs:
 
       - name: Run Vitest
         working-directory: dashboard
-        run: npx vitest --passWithNoTests --reporter=dot --coverage
+        run: npx vitest --passWithNoTests --reporter=dot
 
   test-go:
     name: Test Go API
