@@ -1,8 +1,8 @@
 package setup
 
 import (
-	"api/internal/db"
-	"api/internal/models"
+	"trader-core/internal/db"
+	"trader-core/internal/db/models"
 )
 
 

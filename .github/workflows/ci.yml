@@ -11,6 +11,26 @@ on:
       - "strategy-service/**"
 
 jobs:
+  test-dashboard:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Run Vitest
+        working-directory: dashboard
+        run: npx vitest --passWithNoTests --reporter=dot
+
   test-go:
     name: Test Go API
     runs-on: ubuntu-latest

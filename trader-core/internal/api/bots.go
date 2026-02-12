@@ -1,12 +1,12 @@
-package handlers
+package api
 
 import (
 	"errors"
 	"net/http"
 	"strconv"
 
-	"api/internal/db"
-	"api/internal/models"
+	"trader-core/internal/db"
+	"trader-core/internal/db/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

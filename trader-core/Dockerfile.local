@@ -1,0 +1,25 @@
+# Build stage
+FROM golang:1.25.4-bookworm AS build
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go build -o api ./cmd/server
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+ && apt-get install -y ca-certificates \
+ && update-ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=build /app/api .
+
+CMD ["./api"]

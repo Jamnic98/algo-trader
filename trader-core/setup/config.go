@@ -31,7 +31,7 @@ func GetConfig() Config {
     }
 
     dsn := os.Getenv("DB_DSN")
-    port := os.Getenv("PORT")
+    port := os.Getenv("TRADER_CORE_PORT")
     if port == "" {
         port = "8080"
     }

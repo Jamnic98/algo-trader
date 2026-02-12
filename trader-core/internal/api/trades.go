@@ -1,10 +1,10 @@
-package handlers
+package api
 
 import (
 	"net/http"
 
-	"api/internal/db"
-	"api/internal/models"
+	"trader-core/internal/db"
+	"trader-core/internal/db/models"
 
 	"github.com/gin-gonic/gin"
 )
