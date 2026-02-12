@@ -1,5 +1,16 @@
+import { Route, Routes } from 'react-router-dom'
+
+import { AppLayout } from 'layouts'
+import { Dashboard } from 'pages'
+
 function App() {
-  return <div className="">Algo Trader</div>
+  return (
+    <Routes>
+      <Route path="/" element={<AppLayout />}>
+        <Route index element={<Dashboard />} />
+      </Route>
+    </Routes>
+  )
 }
 
 export default App
