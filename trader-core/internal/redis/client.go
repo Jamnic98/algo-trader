@@ -8,23 +8,35 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type Client struct {
+	rdb *redis.Client
+}
+
 func NewClient() *redis.Client {
-	addr := os.Getenv("REDIS_ADDR")
-	if addr == "" {
-			addr = "redis:6379"
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://redis:6379/0"
 	}
 
-	rdb := redis.NewClient(&redis.Options{
-			Addr: addr,
-			DB:   0, // default DB
-	})
+	opt, err := redis.ParseURL(redisURL)
+	if err != nil {
+		log.Fatal("Invalid REDIS_URL:", err)
+	}
 
-	// Test connection
-	ctx := context.Background()
-	if err := rdb.Ping(ctx).Err(); err != nil {
-			log.Fatal("Redis connection failed:", err)
+	rdb := redis.NewClient(opt)
+
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		log.Fatal("Redis connection failed:", err)
 	}
 
 	log.Println("Connected to Redis!")
 	return rdb
+}
+
+func (c *Client) Set(ctx context.Context, key string, value any) error {
+	return c.rdb.Set(ctx, key, value, 0).Err()
+}
+
+func (c *Client) Get(ctx context.Context, key string) (string, error) {
+	return c.rdb.Get(ctx, key).Result()
 }

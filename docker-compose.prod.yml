@@ -24,7 +24,7 @@ services:
     env_file:
       - .env.prod
     depends_on:
-      - strategy-service
+      - trader-core
 
   trader-core:
     container_name: trader-core
@@ -33,18 +33,6 @@ services:
       dockerfile: Dockerfile.prod
     depends_on:
       - redis
-    networks:
-      - app-network
-    env_file:
-      - .env.prod
-
-  strategy-service:
-    container_name: strategy-service
-    build:
-      context: ./strategy-service
-      dockerfile: Dockerfile.prod
-    depends_on:
-      - trader-core
     networks:
       - app-network
     env_file:

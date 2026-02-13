@@ -11,7 +11,7 @@ services:
     env_file:
       - .env.local
     depends_on:
-      - strategy-service
+      - trader-core
 
   trader-core:
     container_name: trader-core-local
@@ -24,22 +24,6 @@ services:
       - "8080:8080"
     depends_on:
       - redis
-    networks:
-      - app-network
-    env_file:
-      - .env.local
-
-  strategy-service:
-    container_name: strategy-service-local
-    build:
-      context: ./strategy-service
-      dockerfile: Dockerfile.local
-    expose:
-      - "8000"
-    ports:
-      - "8000:8000"
-    depends_on:
-      - trader-core
     networks:
       - app-network
     env_file:

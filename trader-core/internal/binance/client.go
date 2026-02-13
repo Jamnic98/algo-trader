@@ -29,7 +29,7 @@ func NewClient(ctx context.Context, url string) *Client {
   return &Client{
     url:    url,
     send:   make(chan any, 100),
-    recv:   make(chan []byte, 100),
+    recv:   make(chan []byte, 1000),
     ctx:    cctx,
     cancel: cancel,
   }

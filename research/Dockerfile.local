@@ -1,0 +1,14 @@
+# Use slim Python
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the Python subscriber code
+COPY app/ /app/
+
+# No need to expose ports, just run the script
+CMD ["python", "subscriber.py"]
