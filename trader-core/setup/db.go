@@ -5,13 +5,11 @@ import (
 	"trader-core/internal/db/models"
 )
 
-
 func InitDatabase(cfg Config) {
-  // Connect to Postgres
-  db.ConnectPostgres(cfg.Dsn)
+	// Connect to Postgres
+	db.ConnectPostgres(cfg.Dsn)
 
-  // Auto-migrate tables
-  db.Migrate(&models.Bot{})
-  db.Migrate(&models.Candle{})
-  db.Migrate(&models.Trade{})
+	// Auto-migrate tables
+	db.Migrate(&models.Candle{})
+	db.Migrate(&models.Trade{})
 }

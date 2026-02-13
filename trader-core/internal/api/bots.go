@@ -1,91 +1,96 @@
 package api
 
 import (
-	"errors"
+	"context"
 	"net/http"
-	"strconv"
+	"time"
 
-	"trader-core/internal/db"
-	"trader-core/internal/db/models"
+	"trader-core/internal/bot"
+	"trader-core/internal/engine"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
+	"github.com/google/uuid"
 )
 
-// Register routes for bots
+var activeBots = make(map[string]*bot.Bot)
+
 func RegisterBotRoutes(rg *gin.RouterGroup) {
-    rg.GET("/", getBotsHandler)
-    rg.GET("/:id/", getBotByIdHandler)
-    rg.POST("/", createBotHandler)
-    rg.DELETE("/:id/", deleteBotHandler)
+	rg.GET("/", getBotsHandler)
+	rg.GET("/:id", getBotByIDHandler)
+	rg.POST("/", createBotHandler)
+	rg.DELETE("/:id/", deleteBotHandler)
 }
 
 func getBotsHandler(c *gin.Context) {
-    var bots []models.Bot
-
-    if err := db.DB.Find(&bots).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return
-    }
-
-    c.JSON(http.StatusOK, gin.H{"bots": bots})
+	bots := []bot.Bot{}
+	for _, b := range activeBots {
+		bots = append(bots, *b)
+	}
+	c.JSON(http.StatusOK, gin.H{"bots": bots})
 }
 
-func getBotByIdHandler(c *gin.Context) {
-    var bot models.Bot
+func getBotByIDHandler(c *gin.Context) {
+	id := c.Param("id")
+	b, exists := activeBots[id]
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
 
-    idStr := c.Param("id")
-
-    id, err := strconv.ParseUint(idStr, 10, 64)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-        return
-    }
-
-    result := db.DB.First(&bot, uint(id))
-    if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-        c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
-        return
-    }
-    if result.Error != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
-        return
-    }
-
-    c.JSON(http.StatusOK, gin.H{"bot": bot})
+	c.JSON(http.StatusOK, gin.H{"bot": b})
 }
 
 func createBotHandler(c *gin.Context) {
-    bot := models.Bot{}
+	var b bot.Bot
+	if err := c.BindJSON(&b); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
-    if err := db.DB.Create(&bot).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return
-    }
+	// Generate ID if not provided
+	if b.ID == "" {
+		b.ID = uuid.New().String()
+	}
 
-    c.JSON(http.StatusCreated, gin.H{"id": bot.ID})
+	// Parse interval string from JSON
+	dur, err := time.ParseDuration(b.Interval)
+	if err != nil || dur <= 0 {
+		dur = time.Minute // default to 1 minute
+	}
+
+	if _, exists := activeBots[b.ID]; exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "bot with this ID already exists"})
+		return
+	}
+
+	b.Status = "running"
+	b.Started = time.Now()
+
+	// Context to cancel goroutine later
+	ctx, cancel := context.WithCancel(context.Background())
+	b.SetCancel(cancel)
+
+	b.Engine = engine.NewPaperExecution(10000, 0.001)
+
+	activeBots[b.ID] = &b
+
+	// Launch strategy loop with parsed duration
+	go bot.RunBotStrategy(ctx, &b)
+
+	c.JSON(http.StatusCreated, gin.H{"bot": b})
 }
 
 func deleteBotHandler(c *gin.Context) {
-    idStr := c.Param("id")
+	id := c.Param("id")
+	b, exists := activeBots[id]
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
 
-    id, err := strconv.ParseUint(idStr, 10, 64)
-    if err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-        return
-    }
+	// Stop the strategy goroutine using Stop()
+	b.Stop()
 
-    result := db.DB.Delete(&models.Bot{}, uint(id))
-
-    if result.Error != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": result.Error.Error()})
-        return
-    }
-
-    if result.RowsAffected == 0 {
-        c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
-        return
-    }
-
-    c.Status(http.StatusNoContent)
+	delete(activeBots, id)
+	c.Status(http.StatusNoContent)
 }
