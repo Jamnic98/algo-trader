@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"log"
+
 	"trader-core/internal/engine"
 )
 
@@ -32,11 +33,13 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			}
 
 			fill, err := b.Engine.ExecuteTrade(
-				b.ID,         // bot ID
-				b.Symbol,     // symbol
-				side,         // side of type engine.Side
-				candle.Close, // price
-				0.001,        // qty
+				engine.Order{
+					BotID:  b.ID,         // bot ID
+					Symbol: b.Symbol,     // symbol
+					Side:   side,         // side of type engine.Side
+					Price:  candle.Close, // price
+					Qty:    0.001,        // qty
+				},
 			)
 			if err != nil {
 				log.Println("trade error:", err)

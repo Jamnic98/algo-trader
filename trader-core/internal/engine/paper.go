@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 )
@@ -29,16 +30,16 @@ func NewPaperExecution(account *PaperAccount) *PaperExecution {
 	return &PaperExecution{Account: account}
 }
 
-func (pe *PaperExecution) ExecuteTrade(botID, symbol string, side Side, price, qty float64) (*Fill, error) {
-	cost := price * qty
+func (pe *PaperExecution) ExecuteTrade(order Order) (*Fill, error) {
+	cost := order.Price * order.Qty
 	fee := cost * pe.Account.Fee
 
 	fill := &Fill{
-		BotID:  botID,
-		Symbol: symbol,
-		Side:   side,
-		Price:  price,
-		Qty:    qty,
+		BotID:  order.BotID,
+		Symbol: order.Symbol,
+		Side:   order.Side,
+		Price:  order.Price,
+		Qty:    order.Qty,
 		Fee:    fee,
 		Time:   time.Now(),
 	}
@@ -74,4 +75,14 @@ func (a *PaperAccount) ApplyFill(f *Fill) error {
 	}
 
 	return nil
+}
+
+func (a *PaperAccount) Snapshot() (balance float64, positions map[string]float64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	positions = make(map[string]float64)
+	maps.Copy(positions, a.Positions)
+
+	return a.balance, positions
 }

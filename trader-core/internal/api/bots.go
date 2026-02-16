@@ -1,18 +1,45 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	"trader-core/internal/bot"
-	// "trader-core/internal/engine"
+	"trader-core/internal/engine"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
-var activeBots = make(map[string]*bot.Bot)
+type BotDTO struct {
+	ID       string `json:"id"`
+	Symbol   string `json:"symbol"`
+	Interval string `json:"interval"`
+	Status   string `json:"status"`
+	Started  string `json:"started"`
+	Lookback string `json:"lookback"`
+}
+
+func botToDTO(b *bot.Bot) BotDTO {
+	return BotDTO{
+		ID:       b.ID,
+		Symbol:   b.Symbol,
+		Interval: b.Interval.String(),
+		Status:   b.Status,
+		Started:  b.Started.Format(time.RFC3339),
+		Lookback: b.Lookback.String(),
+	}
+}
+
+var (
+	runtime      *bot.Runtime
+	paperAccount *engine.PaperAccount
+	activeBots   = make(map[string]*bot.Bot)
+)
+
+func InitBotAPI(rt *bot.Runtime, acc *engine.PaperAccount) {
+	runtime = rt
+	paperAccount = acc
+}
 
 func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("/", getBotsHandler)
@@ -24,9 +51,9 @@ func RegisterBotRoutes(rg *gin.RouterGroup) {
 }
 
 func getBotsHandler(c *gin.Context) {
-	bots := []bot.Bot{}
+	bots := []BotDTO{}
 	for _, b := range activeBots {
-		bots = append(bots, *b)
+		bots = append(bots, botToDTO(b))
 	}
 	c.JSON(http.StatusOK, gin.H{"bots": bots})
 }
@@ -39,47 +66,51 @@ func getBotByIDHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"bot": b})
+	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
 }
 
 func createBotHandler(c *gin.Context) {
-	var b bot.Bot
-	if err := c.BindJSON(&b); err != nil {
+	var req struct {
+		Symbol   string `json:"symbol"`
+		Interval string `json:"interval"`
+		Lookback string `json:"lookback"`
+	}
+	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Generate ID if not provided
-	if b.ID == "" {
-		b.ID = uuid.New().String()
+	// Parse duration
+	lookback, err := time.ParseDuration(req.Lookback)
+	if err != nil || lookback <= 0 {
+		lookback = 24 * time.Hour
 	}
 
-	// Parse interval string from JSON
-	dur, err := time.ParseDuration(b.Interval.String())
-	if err != nil || dur <= 0 {
-		dur = time.Minute // default to 1 minute
+	interval, err := engine.ParseInterval(req.Interval)
+	if err != nil {
+		interval = engine.Interval1m
 	}
 
-	if _, exists := activeBots[b.ID]; exists {
-		c.JSON(http.StatusConflict, gin.H{"error": "bot with this ID already exists"})
+	// Create bot via factory
+	botFactory := bot.BotFactory{PaperAccount: paperAccount}
+	b, err := botFactory.NewPaperBot(bot.BotConfig{
+		Symbol:   req.Symbol,
+		Interval: interval,
+		Lookback: lookback,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	b.Status = "running"
-	b.Started = time.Now()
+	// Attach bot to runtime (dispatcher + market manager)
+	if err := runtime.AttachBot(b); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-	// Context to cancel goroutine later
-	ctx, cancel := context.WithCancel(context.Background())
-	b.SetCancel(cancel)
-
-	// b.Engine = engine.NewPaperExecution(account)
-
-	activeBots[b.ID] = &b
-
-	// Launch strategy loop with parsed duration
-	go bot.RunBotStrategy(ctx, &b)
-
-	c.JSON(http.StatusCreated, gin.H{"bot": b})
+	activeBots[b.ID] = b
+	c.JSON(http.StatusCreated, gin.H{"bot": botToDTO(b)})
 }
 
 func deleteBotHandler(c *gin.Context) {
@@ -90,8 +121,7 @@ func deleteBotHandler(c *gin.Context) {
 		return
 	}
 
-	// Stop the strategy goroutine using Stop()
-	b.Stop()
+	runtime.DetatchBot(b)
 
 	delete(activeBots, id)
 	c.Status(http.StatusNoContent)
@@ -105,7 +135,7 @@ func startBotHandler(c *gin.Context) {
 		return
 	}
 
-	if err := b.Start(); err != nil {
+	if err := runtime.AttachBot(b); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
@@ -121,7 +151,7 @@ func stopBotHandler(c *gin.Context) {
 		return
 	}
 
-	b.Stop()
+	runtime.DetatchBot(b)
 
 	c.Status(http.StatusNoContent)
 }

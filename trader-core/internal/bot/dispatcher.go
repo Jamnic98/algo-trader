@@ -1,27 +1,27 @@
-package binance
+package bot
 
 import (
 	"log"
 	"sync"
 
-	"trader-core/internal/bot"
 	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
 )
 
 type Dispatcher struct {
-	subscriptions map[string][]*bot.Bot
 	mu            sync.RWMutex
+	subscriptions map[string][]*Bot
 }
 
 func NewDispatcher() *Dispatcher {
+	log.Println("Creating dispatcher")
 	return &Dispatcher{
-		subscriptions: make(map[string][]*bot.Bot),
+		subscriptions: make(map[string][]*Bot),
 	}
 }
 
 // Subscribe a bot to a feed
-func (d *Dispatcher) Subscribe(symbol string, interval engine.Interval, b *bot.Bot) {
+func (d *Dispatcher) Subscribe(symbol string, interval engine.Interval, b *Bot) {
 	key := symbol + "_" + interval.String()
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -29,7 +29,7 @@ func (d *Dispatcher) Subscribe(symbol string, interval engine.Interval, b *bot.B
 }
 
 // Unsubscribe a bot
-func (d *Dispatcher) Unsubscribe(symbol string, interval engine.Interval, b *bot.Bot) {
+func (d *Dispatcher) Unsubscribe(symbol string, interval engine.Interval, b *Bot) {
 	key := symbol + "_" + interval.String()
 	d.mu.Lock()
 	defer d.mu.Unlock()
