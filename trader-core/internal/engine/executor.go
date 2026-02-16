@@ -1,5 +1,9 @@
 package engine
 
 type TradeExecutor interface {
-	ExecuteTrade(symbol, side string, price float64, qty float64) error
+	ExecuteTrade(botID, symbol string, side Side, price, qty float64) (*Fill, error)
+}
+
+type ExecutionEngine interface {
+	PlaceOrder(order Order) error
 }

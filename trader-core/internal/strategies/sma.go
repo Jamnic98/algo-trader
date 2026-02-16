@@ -1,11 +1,11 @@
 package strategies
 
-type SimpleStrategy struct {
+type SimpleSMA struct {
 	shortSMA []float64
 	longSMA  []float64
 }
 
-func (s *SimpleStrategy) Update(close float64) (side string, qty float64) {
+func (s *SimpleSMA) Update(close float64) (side string, qty float64) {
 	s.shortSMA = append(s.shortSMA, close)
 	s.longSMA = append(s.longSMA, close)
 

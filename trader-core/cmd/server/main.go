@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"os"
 	"sync"
@@ -12,29 +11,13 @@ import (
 	"trader-core/internal/bot"
 	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
+	"trader-core/internal/strategies"
 	"trader-core/setup"
 
 	"github.com/google/uuid"
 )
 
-type KlineEvent struct {
-	EventType string `json:"e"`
-	EventTime int64  `json:"E"`
-	Symbol    string `json:"s"`
-	K         struct {
-		StartTime int64       `json:"t"`
-		CloseTime int64       `json:"T"`
-		Symbol    string      `json:"s"`
-		Interval  string      `json:"i"`
-		Open      json.Number `json:"o"`
-		Close     json.Number `json:"c"`
-		High      json.Number `json:"h"`
-		Low       json.Number `json:"l"`
-		Volume    json.Number `json:"v"`
-		Trades    int64       `json:"n"`
-		IsClosed  bool        `json:"x"`
-	} `json:"k"`
-}
+const BINANCE_WS_URL = "wss://stream.binance.com:443/ws"
 
 func main() {
 	// logger setup
@@ -46,9 +29,6 @@ func main() {
 
 	// Tell the logger to write to the file
 	log.SetOutput(f)
-
-	log.Println("Bot started")
-	log.Println("Candle received")
 
 	var wg sync.WaitGroup
 	ctx, cancel := context.WithCancel(context.Background())
@@ -64,67 +44,68 @@ func main() {
 		}
 	})
 
-	binanceClient := binance.NewClient(ctx, "wss://stream.binance.com:443/ws")
+	binanceClient := binance.NewClient(ctx, BINANCE_WS_URL)
 	wg.Go(func() {
 		if err := binanceClient.Run(); err != nil {
 			log.Fatal(err)
 		}
 	})
 
-	binanceClient.Subscribe("btcusdt@kline_1m")
+	dispatcher := binance.NewDispatcher()
+	marketManager := binance.NewMarketDataManager(binanceClient, dispatcher)
+	wg.Go(func() {
+		marketManager.Run(ctx)
+	})
 
-	b := bot.Bot{
-		ID:          uuid.New().String(),
-		Symbol:      "BTCUSDT",
-		Interval:    "1m",
-		Status:      "running",
-		Started:     time.Now(),
-		Engine:      engine.NewPaperExecution(10000, 0.001),
-		Strategy:    bot.SimpleStrategy{},
-		MaxLookback: 100,
-		CandleCh:    make(chan models.Candle, 100),
+	account := engine.NewPaperAccount(10000, 0.001)
+
+	// create a bot and start it
+	b1 := bot.Bot{
+		ID:       uuid.New().String(),
+		Symbol:   "BTCUSDT",
+		Interval: bot.Interval1m,
+		Status:   "running",
+		Started:  time.Now(),
+		Engine:   engine.NewPaperExecution(account),
+		Strategy: strategies.SimpleStrategy{},
+		Lookback: 24 * time.Hour,
+		CandleCh: make(chan models.Candle, 10),
 	}
 
-	wg.Add(1)
-	go bot.RunBotStrategy(ctx, &b)
-
-	for msg := range binanceClient.Messages() {
-		var evt KlineEvent
-		if err := json.Unmarshal(msg, &evt); err != nil {
-			log.Println("unmarshal error:", err)
-			continue
+	// Start bot
+	wg.Go(func() {
+		if err := b1.Start(); err != nil {
+			log.Println(err)
 		}
+	})
 
-		if evt.K.IsClosed {
-			// Convert numbers to float64 if needed
-			open, _ := evt.K.Open.Float64()
-			high, _ := evt.K.High.Float64()
-			low, _ := evt.K.Low.Float64()
-			closePrice, _ := evt.K.Close.Float64()
-			volume, _ := evt.K.Volume.Float64()
+	// wire bot to system
+	dispatcher.Subscribe(b1.Symbol, b1.Interval, &b1)
+	marketManager.Subscribe(b1.Symbol, b1.Interval)
 
-			log.Printf("Candle closed for %s %s: O=%f H=%f L=%f C=%f V=%f\n",
-				evt.Symbol, evt.K.Interval, open, high, low, closePrice, volume)
-			log.Println()
-
-			candle := models.Candle{
-				Open:   open,
-				High:   high,
-				Low:    low,
-				Close:  closePrice,
-				Volume: volume,
-			}
-
-			// only send candles the bot cares about
-			if b.Symbol == evt.Symbol && b.Interval == "1m" {
-				select {
-				case b.CandleCh <- candle:
-				default:
-					log.Println("bot candle buffer full, dropping candle")
-				}
-			}
-		}
+	// create a bot and start it
+	b2 := bot.Bot{
+		ID:       uuid.New().String(),
+		Symbol:   "SOLUSDT",
+		Interval: bot.Interval5m,
+		Status:   "running",
+		Started:  time.Now(),
+		Engine:   engine.NewPaperExecution(account),
+		Strategy: strategies.SimpleStrategy{},
+		Lookback: 24 * time.Hour,
+		CandleCh: make(chan models.Candle, 10),
 	}
+
+	// Start bot
+	wg.Go(func() {
+		if err := b2.Start(); err != nil {
+			log.Println(err)
+		}
+	})
+
+	// wire bot to system
+	dispatcher.Subscribe(b2.Symbol, b2.Interval, &b2)
+	marketManager.Subscribe(b2.Symbol, b2.Interval)
 
 	wg.Wait()
 	<-ctx.Done()

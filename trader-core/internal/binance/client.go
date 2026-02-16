@@ -82,6 +82,10 @@ func (c *Client) readLoop() {
 	}
 }
 
+func (c *Client) Messages() <-chan []byte {
+	return c.recv
+}
+
 func (c *Client) Subscribe(streams ...string) {
 	c.send <- map[string]any{
 		"method": "SUBSCRIBE",
@@ -96,8 +100,4 @@ func (c *Client) Unsubscribe(streams ...string) {
 		"params": streams,
 		"id":     time.Now().Unix(),
 	}
-}
-
-func (c *Client) Messages() <-chan []byte {
-	return c.recv
 }

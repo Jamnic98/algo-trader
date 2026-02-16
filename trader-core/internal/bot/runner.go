@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"log"
+	"trader-core/internal/engine"
 )
 
 func RunBotStrategy(ctx context.Context, b *Bot) {
@@ -16,28 +17,41 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			b.Candles = append(b.Candles, candle)
 
 			// cap lookback
-			if len(b.Candles) > b.MaxLookback {
-				b.Candles = b.Candles[len(b.Candles)-b.MaxLookback:]
+			if len(b.Candles) > b.MaxCandles {
+				b.Candles = b.Candles[len(b.Candles)-b.MaxCandles:]
 			}
 
 			// need enough history
-			if len(b.Candles) < 20 {
+			if len(b.Candles) < 5 {
 				continue
 			}
 
 			side := b.Strategy.OnCandles(b.Candles)
-			if side == NONE {
+			if side == engine.NONE {
 				continue
 			}
 
-			err := b.Engine.ExecuteTrade(
-				b.Symbol,
-				string(side),
-				candle.Close,
-				0.001,
+			fill, err := b.Engine.ExecuteTrade(
+				b.ID,         // bot ID
+				b.Symbol,     // symbol
+				side,         // side of type engine.Side
+				candle.Close, // price
+				0.001,        // qty
 			)
 			if err != nil {
 				log.Println("trade error:", err)
+			} else {
+				// TODO: persist to DB or do something with the fill
+				// Replace LogTrade with a simple log statement
+				log.Printf(
+					"Bot %s executed %s %.4f %s @ %.2f (fee %.6f)\n",
+					fill.BotID,
+					fill.Side,
+					fill.Qty,
+					fill.Symbol,
+					fill.Price,
+					fill.Fee,
+				)
 			}
 		}
 	}

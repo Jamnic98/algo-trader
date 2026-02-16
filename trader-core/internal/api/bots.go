@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"trader-core/internal/bot"
-	"trader-core/internal/engine"
+	// "trader-core/internal/engine"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -16,8 +16,10 @@ var activeBots = make(map[string]*bot.Bot)
 
 func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("/", getBotsHandler)
-	rg.GET("/:id", getBotByIDHandler)
+	rg.GET("/:id/", getBotByIDHandler)
 	rg.POST("/", createBotHandler)
+	rg.POST("/:id/start/", startBotHandler)
+	rg.POST("/:id/stop/", stopBotHandler)
 	rg.DELETE("/:id/", deleteBotHandler)
 }
 
@@ -53,7 +55,7 @@ func createBotHandler(c *gin.Context) {
 	}
 
 	// Parse interval string from JSON
-	dur, err := time.ParseDuration(b.Interval)
+	dur, err := time.ParseDuration(b.Interval.String())
 	if err != nil || dur <= 0 {
 		dur = time.Minute // default to 1 minute
 	}
@@ -70,7 +72,7 @@ func createBotHandler(c *gin.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 	b.SetCancel(cancel)
 
-	b.Engine = engine.NewPaperExecution(10000, 0.001)
+	// b.Engine = engine.NewPaperExecution(account)
 
 	activeBots[b.ID] = &b
 
@@ -92,5 +94,34 @@ func deleteBotHandler(c *gin.Context) {
 	b.Stop()
 
 	delete(activeBots, id)
+	c.Status(http.StatusNoContent)
+}
+
+func startBotHandler(c *gin.Context) {
+	id := c.Param("id")
+	b, exists := activeBots[id]
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
+
+	if err := b.Start(); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusAccepted)
+}
+
+func stopBotHandler(c *gin.Context) {
+	id := c.Param("id")
+	b, exists := activeBots[id]
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
+
+	b.Stop()
+
 	c.Status(http.StatusNoContent)
 }

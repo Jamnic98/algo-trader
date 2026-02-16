@@ -2,60 +2,76 @@ package engine
 
 import (
 	"fmt"
-	"log"
+	"sync"
 	"time"
-
-	"trader-core/internal/db/models"
 )
 
-type PaperExecution struct {
-	Portfolio map[string]float64 // symbol -> quantity
-	Cash      float64            // available cash in USD, USDT, etc.
-	Trades    []models.Trade     // log of executed trades
-	Fee       float64            // trading fee rate
+type PaperAccount struct {
+	mu        sync.Mutex
+	balance   float64
+	Positions map[string]float64
+	Fee       float64
 }
 
-func NewPaperExecution(initialCash float64, fee float64) *PaperExecution {
-	return &PaperExecution{
-		Portfolio: make(map[string]float64),
-		Cash:      initialCash,
+func NewPaperAccount(startBalance, fee float64) *PaperAccount {
+	return &PaperAccount{
+		balance:   startBalance,
 		Fee:       fee,
+		Positions: make(map[string]float64),
 	}
 }
 
-// Execute a simulated trade
-func (pe *PaperExecution) ExecuteTrade(symbol string, side string, price float64, qty float64) error {
-	cost := price * qty
-	feeAmount := cost * pe.Fee
+type PaperExecution struct {
+	Account *PaperAccount
+}
 
-	switch side {
+func NewPaperExecution(account *PaperAccount) *PaperExecution {
+	return &PaperExecution{Account: account}
+}
+
+func (pe *PaperExecution) ExecuteTrade(botID, symbol string, side Side, price, qty float64) (*Fill, error) {
+	cost := price * qty
+	fee := cost * pe.Account.Fee
+
+	fill := &Fill{
+		BotID:  botID,
+		Symbol: symbol,
+		Side:   side,
+		Price:  price,
+		Qty:    qty,
+		Fee:    fee,
+		Time:   time.Now(),
+	}
+
+	if err := pe.Account.ApplyFill(fill); err != nil {
+		return nil, err
+	}
+
+	return fill, nil
+}
+
+func (a *PaperAccount) ApplyFill(f *Fill) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	switch f.Side {
 	case "BUY":
-		totalCost := cost + feeAmount
-		if pe.Cash < totalCost {
-			return fmt.Errorf("not enough cash to buy")
+		if a.balance < f.Price*f.Qty+f.Fee {
+			return fmt.Errorf("not enough cash")
 		}
-		pe.Cash -= totalCost
-		pe.Portfolio[symbol] += qty
+		a.balance -= f.Price*f.Qty + f.Fee
+		a.Positions[f.Symbol] += f.Qty
+
 	case "SELL":
-		if pe.Portfolio[symbol] < qty {
-			return fmt.Errorf("not enough asset to sell")
+		if a.Positions[f.Symbol] < f.Qty {
+			return fmt.Errorf("not enough asset")
 		}
-		pe.Portfolio[symbol] -= qty
-		pe.Cash += cost - feeAmount
+		a.Positions[f.Symbol] -= f.Qty
+		a.balance += f.Price*f.Qty - f.Fee
+
 	default:
 		return fmt.Errorf("invalid side")
 	}
 
-	trade := models.Trade{
-		Symbol:    symbol,
-		Side:      side,
-		Price:     price,
-		Quantity:  qty,
-		Fee:       feeAmount,
-		Timestamp: time.Now(),
-	}
-	pe.Trades = append(pe.Trades, trade)
-
-	log.Println(trade)
 	return nil
 }
