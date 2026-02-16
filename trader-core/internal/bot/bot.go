@@ -12,7 +12,7 @@ import (
 
 type Bot struct {
 	ID         string                    `json:"id"`
-	Interval   Interval                  `json:"interval"`
+	Interval   engine.Interval           `json:"interval"`
 	Symbol     string                    `json:"symbol"`
 	Status     string                    `json:"status"`
 	Started    time.Time                 `json:"started"`

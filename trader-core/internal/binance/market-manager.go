@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"trader-core/internal/bot"
 	"trader-core/internal/db/models"
+	"trader-core/internal/engine"
 )
 
 type MarketDataManager struct {
@@ -80,7 +80,7 @@ func NewMarketDataManager(
 	}
 }
 
-func (m *MarketDataManager) Subscribe(symbol string, interval bot.Interval) {
+func (m *MarketDataManager) Subscribe(symbol string, interval engine.Interval) {
 	key := symbol + "_" + interval.String()
 	stream := strings.ToLower(symbol) + "@kline_" + interval.String()
 
@@ -93,7 +93,7 @@ func (m *MarketDataManager) Subscribe(symbol string, interval bot.Interval) {
 	m.refCount[key]++
 }
 
-func (m *MarketDataManager) Unsubscribe(symbol string, interval bot.Interval) {
+func (m *MarketDataManager) Unsubscribe(symbol string, interval engine.Interval) {
 	key := symbol + "_" + interval.String()
 	stream := strings.ToLower(symbol) + "@kline_" + interval.String()
 

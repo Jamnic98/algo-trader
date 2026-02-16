@@ -6,6 +6,7 @@ import (
 
 	"trader-core/internal/bot"
 	"trader-core/internal/db/models"
+	"trader-core/internal/engine"
 )
 
 type Dispatcher struct {
@@ -20,7 +21,7 @@ func NewDispatcher() *Dispatcher {
 }
 
 // Subscribe a bot to a feed
-func (d *Dispatcher) Subscribe(symbol string, interval bot.Interval, b *bot.Bot) {
+func (d *Dispatcher) Subscribe(symbol string, interval engine.Interval, b *bot.Bot) {
 	key := symbol + "_" + interval.String()
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -28,7 +29,7 @@ func (d *Dispatcher) Subscribe(symbol string, interval bot.Interval, b *bot.Bot)
 }
 
 // Unsubscribe a bot
-func (d *Dispatcher) Unsubscribe(symbol string, interval bot.Interval, b *bot.Bot) {
+func (d *Dispatcher) Unsubscribe(symbol string, interval engine.Interval, b *bot.Bot) {
 	key := symbol + "_" + interval.String()
 	d.mu.Lock()
 	defer d.mu.Unlock()

@@ -63,7 +63,7 @@ func main() {
 	b1 := bot.Bot{
 		ID:       uuid.New().String(),
 		Symbol:   "BTCUSDT",
-		Interval: bot.Interval1m,
+		Interval: engine.Interval1m,
 		Status:   "running",
 		Started:  time.Now(),
 		Engine:   engine.NewPaperExecution(account),
@@ -87,7 +87,7 @@ func main() {
 	b2 := bot.Bot{
 		ID:       uuid.New().String(),
 		Symbol:   "SOLUSDT",
-		Interval: bot.Interval5m,
+		Interval: engine.Interval5m,
 		Status:   "running",
 		Started:  time.Now(),
 		Engine:   engine.NewPaperExecution(account),
