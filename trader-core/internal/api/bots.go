@@ -11,22 +11,22 @@ import (
 )
 
 type BotDTO struct {
-	ID       string `json:"id"`
-	Symbol   string `json:"symbol"`
-	Interval string `json:"interval"`
-	Status   string `json:"status"`
-	Started  string `json:"started"`
-	Lookback string `json:"lookback"`
+	ID       string        `json:"id"`
+	Symbol   string        `json:"symbol"`
+	Interval string        `json:"interval"`
+	Status   bot.BotStatus `json:"status"`
+	Started  string        `json:"started"`
+	Lookback string        `json:"lookback"`
 }
 
 func botToDTO(b *bot.Bot) BotDTO {
 	return BotDTO{
 		ID:       b.ID,
-		Symbol:   b.Symbol,
 		Interval: b.Interval.String(),
-		Status:   b.Status,
-		Started:  b.Started.Format(time.RFC3339),
 		Lookback: b.Lookback.String(),
+		Started:  b.Started.Format(time.RFC3339),
+		Status:   b.Status,
+		Symbol:   b.Symbol,
 	}
 }
 
@@ -121,9 +121,14 @@ func deleteBotHandler(c *gin.Context) {
 		return
 	}
 
-	runtime.DetatchBot(b)
+	if err := runtime.DetachBot(b); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
 
+	b.Stop()
 	delete(activeBots, id)
+
 	c.Status(http.StatusNoContent)
 }
 
@@ -135,7 +140,7 @@ func startBotHandler(c *gin.Context) {
 		return
 	}
 
-	if err := runtime.AttachBot(b); err != nil {
+	if err := b.Start(); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
@@ -151,7 +156,7 @@ func stopBotHandler(c *gin.Context) {
 		return
 	}
 
-	runtime.DetatchBot(b)
+	b.Stop()
 
 	c.Status(http.StatusNoContent)
 }

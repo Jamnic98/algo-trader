@@ -11,7 +11,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 	for {
 		select {
 		case <-ctx.Done():
-			b.Status = "stopped"
+			b.Status = BotStopped
 			return
 
 		case candle := <-b.CandleCh:

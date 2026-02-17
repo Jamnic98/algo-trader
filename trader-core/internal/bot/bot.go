@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"trader-core/internal/db/models"
@@ -10,6 +11,15 @@ import (
 	"trader-core/internal/strategies"
 
 	"github.com/google/uuid"
+)
+
+type BotStatus string
+
+const (
+	BotCreated  BotStatus = "created"
+	BotAttached BotStatus = "attached"
+	BotRunning  BotStatus = "running"
+	BotStopped  BotStatus = "stopped"
 )
 
 type BotConfig struct {
@@ -23,7 +33,7 @@ type Bot struct {
 	ID         string                    `json:"id"`
 	Interval   engine.Interval           `json:"interval"`
 	Symbol     string                    `json:"symbol"`
-	Status     string                    `json:"status"`
+	Status     BotStatus                 `json:"status"`
 	Started    time.Time                 `json:"started"`
 	Strategy   strategies.SimpleStrategy `json:"strategy"`
 	Engine     engine.ExecutionEngine
@@ -33,13 +43,13 @@ type Bot struct {
 	CandleCh chan models.Candle
 	Candles  []models.Candle
 
-	Ctx    context.Context
+	ctx    context.Context
 	cancel context.CancelFunc
 }
 
 func (b *Bot) Start() error {
-	if b.Ctx != nil {
-		return errors.New("bot already running")
+	if b.Status != BotAttached && b.Status != BotStopped {
+		return fmt.Errorf("cannot start bot from %s", b.Status)
 	}
 
 	if b.Lookback <= 0 {
@@ -49,18 +59,18 @@ func (b *Bot) Start() error {
 	intervalDur := b.Interval.Duration()
 	b.MaxCandles = max(int(b.Lookback/intervalDur), 1)
 
-	b.Ctx, b.cancel = context.WithCancel(context.Background())
-	b.Status = "running"
+	b.ctx, b.cancel = context.WithCancel(context.Background())
 	b.Started = time.Now()
+	b.Status = BotRunning
 
-	go RunBotStrategy(b.Ctx, b)
+	go RunBotStrategy(b.ctx, b)
 	return nil
 }
 
 func (b *Bot) Stop() {
 	if b.cancel != nil {
 		b.cancel()
-		b.Status = "stopped"
+		b.Status = BotStopped
 	}
 }
 
@@ -85,7 +95,7 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		Strategy: strategies.SimpleStrategy{},
 		Engine:   engine.NewPaperExecution(f.PaperAccount),
 		CandleCh: make(chan models.Candle, 10),
-		Status:   "created",
+		Status:   BotCreated,
 	}
 
 	return b, nil
@@ -97,19 +107,29 @@ type Runtime struct {
 }
 
 func (rt *Runtime) AttachBot(b *Bot) error {
+	if b.Status != BotCreated {
+		return fmt.Errorf("cannot attach bot from %s", b.Status)
+	}
+
 	rt.Dispatcher.Subscribe(b.Symbol, b.Interval, b)
 	rt.MarketManager.Subscribe(b.Symbol, b.Interval)
 
-	if err := b.Start(); err != nil {
-		return err
-	}
-
+	b.Status = BotAttached
 	return nil
 }
 
-func (rt *Runtime) DetatchBot(b *Bot) {
+func (rt *Runtime) DetachBot(b *Bot) error {
+	if b.Status == BotRunning {
+		return fmt.Errorf("cannot detach running bot")
+	}
+
+	if b.Status == BotCreated {
+		return nil
+	}
+
 	rt.Dispatcher.Unsubscribe(b.Symbol, b.Interval, b)
 	rt.MarketManager.Unsubscribe(b.Symbol, b.Interval)
 
-	b.Stop()
+	b.Status = BotCreated
+	return nil
 }
