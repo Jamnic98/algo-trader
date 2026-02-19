@@ -3,7 +3,10 @@ package bot
 import (
 	"context"
 	"log"
+	"time"
 
+	"trader-core/internal/db"
+	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
 )
 
@@ -11,10 +14,14 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 	for {
 		select {
 		case <-ctx.Done():
-			b.Status = BotStopped
+			b.Status = BotAttached
 			return
 
-		case candle := <-b.CandleCh:
+		case candle, ok := <-b.CandleCh:
+			if !ok {
+				b.Status = BotAttached
+				return
+			}
 			b.Candles = append(b.Candles, candle)
 
 			// cap lookback
@@ -23,7 +30,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			}
 
 			// need enough history
-			if len(b.Candles) < 5 {
+			if len(b.Candles) < 2 {
 				continue
 			}
 
@@ -43,19 +50,32 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			)
 			if err != nil {
 				log.Println("trade error:", err)
-			} else {
-				// TODO: persist to DB or do something with the fill
-				// Replace LogTrade with a simple log statement
-				log.Printf(
-					"Bot %s executed %s %.4f %s @ %.2f (fee %.6f)\n",
-					fill.BotID,
-					fill.Side,
-					fill.Qty,
-					fill.Symbol,
-					fill.Price,
-					fill.Fee,
-				)
+				continue
 			}
+			trade := models.Trade{
+				BotID:     fill.BotID,
+				Symbol:    fill.Symbol,
+				Price:     fill.Price,
+				Fee:       fill.Fee,
+				FeeAsset:  "USDT",
+				Side:      string(fill.Side),
+				Quantity:  fill.Qty,
+				Exchange:  "binance",
+				Timestamp: time.Now(),
+			}
+			if err := db.DB.Create(&trade).Error; err != nil {
+				log.Println("Failed to insert trade into DB")
+				return
+			}
+			log.Printf(
+				"Bot %s executed %s %.4f %s @ %.2f (fee %.6f)\n",
+				fill.BotID,
+				fill.Side,
+				fill.Qty,
+				fill.Symbol,
+				fill.Price,
+				fill.Fee,
+			)
 		}
 	}
 }

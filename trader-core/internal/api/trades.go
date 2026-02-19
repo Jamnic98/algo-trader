@@ -9,44 +9,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func tradeToDTO(t *models.Trade) models.TradeDTO {
+	return models.TradeDTO{
+		ID:        t.ID,
+		BotID:     t.BotID,
+		Symbol:    t.Symbol,
+		Side:      t.Side,
+		Price:     t.Price,
+		Quantity:  t.Quantity,
+		Fee:       t.Fee,
+		FeeAsset:  t.FeeAsset,
+		Exchange:  t.Exchange,
+		Timestamp: t.Timestamp,
+		CreatedAt: t.CreatedAt,
+	}
+}
+
 // Register routes for trades
 func RegisterTradeRoutes(rg *gin.RouterGroup) {
-    rg.GET("/", getTradesHandler)
-    rg.POST("/", createTradeHandler)
+	rg.GET("/", getTradesHandler)
 }
 
 func getTradesHandler(c *gin.Context) {
-    var trades []models.Trade
+	var trades []models.Trade
 
-    if err := db.DB.Find(&trades).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return
-    }
+	if err := db.DB.Find(&trades).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{"trades": trades})
-}
+	tradesDTO := make([]models.TradeDTO, len(trades))
+	for i, t := range trades {
+		tradesDTO[i] = tradeToDTO(&t)
+	}
 
-func createTradeHandler(c *gin.Context) {
-    var input struct {
-        symbol string 
-        price  float64
-    }
-
-    if err := c.BindJSON(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON"})
-        return
-    }
-
-    trade := models.Trade{
-        Symbol:    input.symbol,
-        Price:     input.price,
-        // Timestamp: time.Now(),
-    }
-
-    if err := db.DB.Create(&trade).Error; err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-        return
-    }
-
-    c.JSON(http.StatusCreated, gin.H{"trade":  trade})
+	c.JSON(http.StatusOK, gin.H{"trades": tradesDTO})
 }

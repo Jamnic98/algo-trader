@@ -15,3 +15,17 @@ type Trade struct {
 	Timestamp time.Time
 	CreatedAt time.Time // GORM convention
 }
+
+type TradeDTO struct {
+	ID        uint      `json:"id"`
+	BotID     string    `json:"botID"`
+	Symbol    string    `json:"symbol"`
+	Side      string    `json:"side"`  // BUY / SELL / NONE
+	Price     float64   `json:"price"` // per unit price
+	Quantity  float64   `json:"quantity"`
+	Fee       float64   `json:"fee"`
+	FeeAsset  string    `json:"feeAsset"` // e.g. "USDT", "BTC"
+	Exchange  string    `json:"exchange"`
+	Timestamp time.Time `json:"timestamp"`
+	CreatedAt time.Time `json:"createdAt"` // GORM convention
+}

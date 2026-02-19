@@ -19,7 +19,6 @@ const (
 	BotCreated  BotStatus = "created"
 	BotAttached BotStatus = "attached"
 	BotRunning  BotStatus = "running"
-	BotStopped  BotStatus = "stopped"
 )
 
 type BotConfig struct {
@@ -48,12 +47,12 @@ type Bot struct {
 }
 
 func (b *Bot) Start() error {
-	if b.Status != BotAttached && b.Status != BotStopped {
+	if b.Status != BotAttached {
 		return fmt.Errorf("cannot start bot from %s", b.Status)
 	}
 
 	if b.Lookback <= 0 {
-		return errors.New("lookback must be >= 0")
+		return errors.New("lookback must be > 0")
 	}
 
 	intervalDur := b.Interval.Duration()
@@ -68,10 +67,17 @@ func (b *Bot) Start() error {
 }
 
 func (b *Bot) Stop() {
+	if b.Status != BotRunning {
+		return
+	}
+
 	if b.cancel != nil {
 		b.cancel()
-		b.Status = BotStopped
 	}
+
+	b.cancel = nil
+	b.ctx = nil
+	b.Status = BotAttached
 }
 
 func (b *Bot) SetCancel(c context.CancelFunc) {
@@ -94,7 +100,7 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		Lookback: cfg.Lookback,
 		Strategy: strategies.SimpleStrategy{},
 		Engine:   engine.NewPaperExecution(f.PaperAccount),
-		CandleCh: make(chan models.Candle, 10),
+		CandleCh: make(chan models.Candle),
 		Status:   BotCreated,
 	}
 
@@ -119,12 +125,8 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 }
 
 func (rt *Runtime) DetachBot(b *Bot) error {
-	if b.Status == BotRunning {
-		return fmt.Errorf("cannot detach running bot")
-	}
-
-	if b.Status == BotCreated {
-		return nil
+	if b.Status != BotAttached {
+		return fmt.Errorf("cannot detach bot from %s", b.Status)
 	}
 
 	rt.Dispatcher.Unsubscribe(b.Symbol, b.Interval, b)

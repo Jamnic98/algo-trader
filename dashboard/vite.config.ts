@@ -9,6 +9,13 @@ export default defineConfig({
   plugins: [react(), tsconfigPaths(), tailwindcss()],
   server: {
     host: true,
-    allowedHosts: ['ubuntu-server.local'],
+    allowedHosts: ['ubuntu-server.local', 'http://localhost'],
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false
+      },
+    },
   }
 });
