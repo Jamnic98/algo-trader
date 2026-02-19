@@ -15,6 +15,7 @@ type BotCreateData = {
   lookback: string
 }
 
+// const baseUrl = import.meta.env.VITE_TRADER_API_URL
 const botsEndpoint = '/api/bots'
 
 export const getAllBots = async (): Promise<BotData[]> =>

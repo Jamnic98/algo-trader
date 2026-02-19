@@ -1,5 +1,6 @@
 import { apiFetch } from 'api'
 
+// const baseUrl = import.meta.env.VITE_TRADER_API_URL
 const tradesEndpoint = '/api/trades'
 
 export type Trade = {
