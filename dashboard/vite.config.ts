@@ -4,10 +4,8 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 
 import tailwindcss from "@tailwindcss/vite";
 
-const apiTarget =
-  process.env.DOCKER === "true"
-    ? "http://trader-core:8080"
-    : "http://localhost:8080";
+const target = process.env.DOCKER ?
+'http://trader-core:8080' : 'http://localhost:8080'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -15,8 +13,8 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-      "/api": {
-        target: apiTarget,
+      '/api': {
+        target,
         changeOrigin: true,
       },
     }

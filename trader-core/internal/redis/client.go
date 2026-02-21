@@ -3,7 +3,7 @@ package redis
 import (
 	"context"
 	"log"
-	"os"
+	"trader-core/setup"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -12,11 +12,8 @@ type Client struct {
 	rdb *redis.Client
 }
 
-func NewClient() *redis.Client {
-	redisURL := os.Getenv("REDIS_URL")
-	if redisURL == "" {
-		redisURL = "redis://redis:6379/0"
-	}
+func NewRedisClient(cfg setup.Config) *redis.Client {
+	redisURL := cfg.RedisURL
 
 	opt, err := redis.ParseURL(redisURL)
 	if err != nil {

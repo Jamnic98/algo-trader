@@ -1,7 +1,6 @@
-import { apiFetch } from 'api'
+import { api } from 'api'
 
-// const baseUrl = import.meta.env.VITE_TRADER_API_URL
-const tradesEndpoint = '/api/trades'
+const tradesEndpoint = '/trades'
 
 export type Trade = {
   id: number
@@ -17,4 +16,5 @@ export type Trade = {
   createdAt: Date // GORM convention
 }
 
-export const getAllTrades = async () => (await apiFetch<{ trades: Trade[] }>(tradesEndpoint)).trades
+export const getAllTrades = async () =>
+  (await api.fetch<{ trades: Trade[] }>(`${tradesEndpoint}/`)).trades

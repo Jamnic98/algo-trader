@@ -11,22 +11,30 @@ class ApiError extends Error {
   }
 }
 
-export const apiFetch = async <T>(url: string, options?: RequestInit): Promise<T> => {
-  let response: Response
+class ApiClient {
+  private apiKey: string
+  private baseUrl: string
 
-  try {
-    response = await fetch(url, options)
-  } catch {
-    throw new ApiError('Network error')
+  constructor(baseUrl: string, apiKey: string) {
+    this.baseUrl = baseUrl
+    this.apiKey = apiKey
   }
 
-  if (!response.ok) {
-    throw new ApiError('Request failed', response.status)
-  }
+  async fetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      ...options,
+      headers: {
+        ...(options.headers ?? {}),
+        Authorization: `ApiKey ${this.apiKey}`,
+      },
+    })
 
-  if (response.status === 204) {
-    return undefined as T
-  }
+    if (!response.ok) {
+      throw new ApiError(`HTTP ${response.status}`, response.status)
+    }
 
-  return response.json() as Promise<T>
+    return response.json() as Promise<T>
+  }
 }
+
+export const api = new ApiClient(import.meta.env.VITE_API_URL, import.meta.env.VITE_SERVER_API_KEY)
