@@ -27,9 +27,11 @@ const TradesOverview = () => {
             <li key={index} className="mb-8">
               <div>Bot ID: {trade.botID}</div>
               <div>Symbol: {trade.symbol}</div>
-              <div>Price: {trade.price}</div>
-              <div>Quantity: {trade.quantity}</div>
               <div>Side: {trade.side}</div>
+              <div>Quantity: {trade.quantity}</div>
+              <div>Price: {trade.price}</div>
+              <div>Fee: {trade.fee}</div>
+              <div>Fee Asset: {trade.feeAsset}</div>
               <div>Timestamp: {trade.timestamp.toLocaleString()}</div>
             </li>
           ))}

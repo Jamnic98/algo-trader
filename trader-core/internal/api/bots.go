@@ -37,14 +37,12 @@ func botToDTO(b *bot.Bot) BotDTO {
 }
 
 var (
-	runtime      *bot.Runtime
-	paperAccount *engine.PaperAccount
-	activeBots   = make(map[string]*bot.Bot)
+	runtime    *bot.Runtime
+	activeBots = make(map[string]*bot.Bot)
 )
 
-func InitBotAPI(rt *bot.Runtime, acc *engine.PaperAccount) {
+func InitBotAPI(rt *bot.Runtime) {
 	runtime = rt
-	paperAccount = acc
 }
 
 func RegisterBotRoutes(rg *gin.RouterGroup) {
@@ -100,8 +98,7 @@ func createBotHandler(c *gin.Context) {
 		interval = engine.Interval1m
 	}
 
-	botFactory := bot.BotFactory{PaperAccount: paperAccount}
-	b, err := botFactory.NewPaperBot(bot.BotConfig{
+	b, err := runtime.BotFactory.NewPaperBot(bot.BotConfig{
 		Symbol:   req.Symbol,
 		Interval: interval,
 		Lookback: lookback,

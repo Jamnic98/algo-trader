@@ -1,9 +1,11 @@
 package engine
 
+import "github.com/shopspring/decimal"
+
 type Order struct {
 	BotID  string
 	Symbol string
 	Side   Side
-	Price  float64
-	Qty    float64
+	Price  decimal.Decimal
+	Qty    decimal.Decimal
 }

@@ -85,7 +85,8 @@ func (b *Bot) SetCancel(c context.CancelFunc) {
 }
 
 type BotFactory struct {
-	PaperAccount *engine.PaperAccount
+	Account engine.Account
+	Engine  func() engine.ExecutionEngine
 }
 
 func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
@@ -99,7 +100,7 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		Interval: cfg.Interval,
 		Lookback: cfg.Lookback,
 		Strategy: strategies.SimpleStrategy{},
-		Engine:   engine.NewPaperExecution(f.PaperAccount),
+		Engine:   f.Engine(),
 		CandleCh: make(chan models.Candle),
 		Status:   BotCreated,
 	}
@@ -108,6 +109,8 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 }
 
 type Runtime struct {
+	Account       engine.Account
+	BotFactory    *BotFactory
 	Dispatcher    *Dispatcher
 	MarketManager *MarketDataManager
 }
