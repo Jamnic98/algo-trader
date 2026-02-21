@@ -19,8 +19,9 @@ func main() {
 
 	cfg := setup.GetConfig()
 	setup.InitDatabase(cfg)
+	server := setup.InitServer(cfg)
 
-	server := setup.InitServer()
+	// Run API server
 	go func() {
 		if err := server.Run(":" + cfg.Port); err != nil {
 			log.Fatal("Failed to start server:", err)

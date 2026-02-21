@@ -1,17 +1,16 @@
 package setup
 
 import (
-	"os"
 	"trader-core/internal/api"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func InitServer() *gin.Engine {
+func InitServer(cfg Config) *gin.Engine {
 	engine := gin.Default()
 
-	if os.Getenv("APP_ENV") == "local" {
+	if cfg.Env == "local" {
 		engine.Use(cors.New(cors.Config{
 			AllowOrigins:     []string{"http://localhost:5173"},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -21,6 +20,7 @@ func InitServer() *gin.Engine {
 	}
 
 	route := engine.Group("/api")
+	route.Use(api.APIKeyAuth(cfg.ApiKey))
 	{
 		api.RegisterAccountRoutes(route.Group("/account"))
 		api.RegisterBotRoutes(route.Group("/bots"))

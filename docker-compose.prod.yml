@@ -31,6 +31,10 @@ services:
     build:
       context: ./trader-core
       dockerfile: Dockerfile.prod
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
     # depends_on:
     #   - redis
     networks:

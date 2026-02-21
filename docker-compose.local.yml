@@ -22,27 +22,27 @@ services:
       - "8080"
     ports:
       - "8080:8080"
-    depends_on:
-      - redis
+    # depends_on:
+    #   - redis
     networks:
       - app-network
     env_file:
       - .env.local
 
-  redis:
-    image: redis:8.6-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
-    networks:
-      - app-network
-    volumes:
-      - redis-data:/data
-    restart: unless-stopped
+  # redis:
+  #   image: redis:8.6-alpine
+  #   container_name: redis
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - app-network
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
 
 networks:
   app-network:
     # external: true
 
-volumes:
-  redis-data:
+# volumes:
+#   redis-data:

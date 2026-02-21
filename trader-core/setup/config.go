@@ -9,9 +9,11 @@ import (
 )
 
 type Config struct {
-	Env  string
-	Dsn  string
-	Port string
+	ApiKey   string
+	Env      string
+	Dsn      string
+	Port     string
+	RedisURL string
 }
 
 func GetConfig() Config {
@@ -30,15 +32,23 @@ func GetConfig() Config {
 		fmt.Println("Loaded env file:", envFile)
 	}
 
+	apiKey := os.Getenv("API_KEY")
 	dsn := os.Getenv("DB_DSN")
 	port := os.Getenv("TRADER_CORE_PORT")
 	if port == "" {
 		port = "8080"
 	}
 
+	redisURL := os.Getenv("REDIS_URL")
+	if redisURL == "" {
+		redisURL = "redis://redis:6379/0"
+	}
+
 	return Config{
-		Env:  env,
-		Dsn:  dsn,
-		Port: port,
+		ApiKey:   apiKey,
+		Env:      env,
+		Dsn:      dsn,
+		Port:     port,
+		RedisURL: redisURL,
 	}
 }

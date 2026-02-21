@@ -1,12 +1,6 @@
-import { apiFetch } from 'api'
+import { api } from 'api'
 
 type BotStatus = 'created' | 'attached' | 'running'
-
-export interface BotData extends BotCreateData {
-  id: string
-  status: BotStatus
-  started?: string | null
-}
 
 type BotCreateData = {
   id?: string
@@ -15,17 +9,23 @@ type BotCreateData = {
   lookback: string
 }
 
-const botsEndpoint = '/api/bots'
+export interface BotData extends BotCreateData {
+  id: string
+  status: BotStatus
+  started?: string | null
+}
+
+const botsEndpoint = '/bots'
 
 export const getAllBots = async (): Promise<BotData[]> =>
-  (await apiFetch<{ bots: BotData[] }>(botsEndpoint)).bots
+  (await api.fetch<{ bots: BotData[] }>(`${botsEndpoint}/`)).bots
 
 export const getBot = async (id: string): Promise<BotData> =>
-  (await apiFetch<{ bot: BotData }>(`${botsEndpoint}/${id}/`)).bot
+  (await api.fetch<{ bot: BotData }>(`${botsEndpoint}/${id}/`)).bot
 
 export const createBot = async (botData: BotCreateData): Promise<BotData> =>
   (
-    await apiFetch<{ bot: BotData }>(botsEndpoint, {
+    await api.fetch<{ bot: BotData }>(botsEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(botData),
@@ -33,16 +33,16 @@ export const createBot = async (botData: BotCreateData): Promise<BotData> =>
   ).bot
 
 export const startBot = async (id: string): Promise<BotData> =>
-  (await apiFetch<{ bot: BotData }>(`${botsEndpoint}/${id}/start`, { method: 'POST' })).bot
+  (await api.fetch<{ bot: BotData }>(`${botsEndpoint}/${id}/start/`, { method: 'POST' })).bot
 
 export const stopBot = async (id: string): Promise<BotData> =>
-  (await apiFetch<{ bot: BotData }>(`${botsEndpoint}/${id}/stop/`, { method: 'POST' })).bot
+  (await api.fetch<{ bot: BotData }>(`${botsEndpoint}/${id}/stop/`, { method: 'POST' })).bot
 
 export const attachBot = async (id: string): Promise<BotData> =>
-  (await apiFetch<{ bot: BotData }>(`${botsEndpoint}/${id}/attach/`, { method: 'POST' })).bot
+  (await api.fetch<{ bot: BotData }>(`${botsEndpoint}/${id}/attach/`, { method: 'POST' })).bot
 
 export const detachBot = async (id: string): Promise<BotData> =>
-  (await apiFetch<{ bot: BotData }>(`${botsEndpoint}/${id}/detach/`, { method: 'POST' })).bot
+  (await api.fetch<{ bot: BotData }>(`${botsEndpoint}/${id}/detach/`, { method: 'POST' })).bot
 
 export const deleteBot = async (id: string) =>
-  await apiFetch(`${botsEndpoint}/${id}/`, { method: 'DELETE' })
+  await api.fetch(`${botsEndpoint}/${id}/`, { method: 'DELETE' })
