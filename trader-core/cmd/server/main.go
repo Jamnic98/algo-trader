@@ -39,16 +39,22 @@ func main() {
 	go marketManager.Run(ctx)
 
 	// Paper trading account
-	account := engine.NewPaperAccount(10000, 0.001)
+	account := engine.NewPaperAccount("10000", "0.001")
+	botFactory := bot.BotFactory{Account: account, Engine: func() engine.ExecutionEngine {
+		return engine.NewPaperExecution(account)
+	}}
 
 	// Shared runtime for bots
 	runtime := &bot.Runtime{
+		Account:       account,
+		BotFactory:    &botFactory,
 		Dispatcher:    dispatcher,
 		MarketManager: marketManager,
 	}
 
 	// Inject runtime & account into API handlers
-	api.InitBotAPI(runtime, account)
+	api.InitAccountAPI(runtime)
+	api.InitBotAPI(runtime)
 
 	<-ctx.Done()
 }

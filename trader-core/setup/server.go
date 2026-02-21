@@ -22,6 +22,7 @@ func InitServer() *gin.Engine {
 
 	route := engine.Group("/api")
 	{
+		api.RegisterAccountRoutes(route.Group("/account"))
 		api.RegisterBotRoutes(route.Group("/bots"))
 		api.RegisterTradeRoutes(route.Group("/trades"))
 	}

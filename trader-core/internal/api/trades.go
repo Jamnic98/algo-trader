@@ -7,6 +7,13 @@ import (
 	"trader-core/internal/db/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
+)
+
+const (
+	priceScale    = int64(1e8)
+	quantityScale = int64(1e6)
+	feeScale      = int64(1e8)
 )
 
 func tradeToDTO(t *models.Trade) models.TradeDTO {
@@ -15,9 +22,9 @@ func tradeToDTO(t *models.Trade) models.TradeDTO {
 		BotID:     t.BotID,
 		Symbol:    t.Symbol,
 		Side:      t.Side,
-		Price:     t.Price,
-		Quantity:  t.Quantity,
-		Fee:       t.Fee,
+		Price:     decimal.NewFromInt(t.PriceInt).Div(decimal.NewFromInt(priceScale)),
+		Quantity:  decimal.NewFromInt(t.QuantityInt).Div(decimal.NewFromInt(quantityScale)),
+		Fee:       decimal.NewFromInt(t.FeeInt).Div(decimal.NewFromInt(feeScale)),
 		FeeAsset:  t.FeeAsset,
 		Exchange:  t.Exchange,
 		Timestamp: t.Timestamp,
