@@ -20,7 +20,7 @@ class ApiClient {
     this.apiKey = apiKey
   }
 
-  async fetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  private async request(path: string, options: RequestInit = {}) {
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...options,
       headers: {
@@ -33,7 +33,16 @@ class ApiClient {
       throw new ApiError(`HTTP ${response.status}`, response.status)
     }
 
-    return response.json() as Promise<T>
+    return response
+  }
+
+  async fetchJson<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const response = await this.request(path, options)
+    return (await response.json()) as T
+  }
+
+  async fetchVoid(path: string, options: RequestInit = {}): Promise<void> {
+    await this.request(path, options)
   }
 }
 

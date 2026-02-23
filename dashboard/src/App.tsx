@@ -1,13 +1,15 @@
 import { Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from 'layouts'
-import { Dashboard } from 'pages'
+import { Bots, Dashboard, Trades } from 'pages'
 
 function App() {
   return (
     <Routes>
       <Route path="/" element={<AppLayout />}>
         <Route index element={<Dashboard />} />
+        <Route path="/bots" element={<Bots />} />
+        <Route path="/trades" element={<Trades />} />
       </Route>
     </Routes>
   )

@@ -2,26 +2,33 @@ import { useEffect, useState } from 'react'
 
 import { type Trade, getAllTrades } from 'api'
 
-const TradesOverview = () => {
-  const [trades, setTrades] = useState<Trade[] | null>(null)
+const Trades = () => {
+  const [trades, setTrades] = useState<Trade[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchTrades = async () => {
       try {
         const trades = await getAllTrades()
         setTrades(trades)
-      } catch (err) {
-        console.error(err)
+      } catch {
+        setError('Failed to load trades')
+      } finally {
+        setLoading(false)
       }
     }
 
     fetchTrades()
   }, [])
 
+  if (loading) return <div>Loading trades...</div>
+  if (error) return <div>{error}</div>
+
   return (
     <div>
-      <h2>TradesOverview</h2>
-      {trades && (
+      <h1>Trades Page</h1>
+      {trades.length > 0 ? (
         <ul>
           {trades.map((trade, index) => (
             <li key={index} className="mb-8">
@@ -36,9 +43,11 @@ const TradesOverview = () => {
             </li>
           ))}
         </ul>
+      ) : (
+        <div>No trades yet</div>
       )}
     </div>
   )
 }
 
-export default TradesOverview
+export default Trades

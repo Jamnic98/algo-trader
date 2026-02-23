@@ -17,4 +17,4 @@ export type Trade = {
 }
 
 export const getAllTrades = async () =>
-  (await api.fetch<{ trades: Trade[] }>(`${tradesEndpoint}/`)).trades
+  (await api.fetchJson<{ trades: Trade[] }>(`${tradesEndpoint}/`)).trades

@@ -32,9 +32,10 @@ func GetConfig() Config {
 		fmt.Println("Loaded env file:", envFile)
 	}
 
-	apiKey := os.Getenv("API_KEY")
+	apiKey := os.Getenv("SERVER_API_KEY")
 	dsn := os.Getenv("DB_DSN")
 	port := os.Getenv("TRADER_CORE_PORT")
+	
 	if port == "" {
 		port = "8080"
 	}

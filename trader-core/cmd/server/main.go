@@ -11,7 +11,7 @@ import (
 	"trader-core/setup"
 )
 
-const BINANCE_WS_URL = "wss://stream.binance.com:443/ws"
+const binanceWSURL = "wss://stream.binance.com:443/ws"
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -29,7 +29,7 @@ func main() {
 	}()
 
 	// Binance WS client
-	binanceClient := binance.NewClient(ctx, BINANCE_WS_URL)
+	binanceClient := binance.NewClient(ctx, binanceWSURL)
 	if err := binanceClient.Run(); err != nil {
 		log.Fatal(err)
 	}

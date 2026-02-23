@@ -1,22 +1,17 @@
 import { useEffect, useState } from 'react'
 import { ArrowDownFromLine, Paperclip, Play, Square, X } from 'lucide-react'
 
-import {
-  getAllBots,
-  startBot,
-  stopBot,
-  attachBot,
-  detachBot,
-  createBot,
-  deleteBot,
-  type BotData,
-} from 'api/bots'
+import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
+import type { BotData } from 'types'
 
 const lookbackTimeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
 const defaultFormData = { symbol: 'BTCUSDT', interval: '1m', lookback: '24h' }
 
-const BotsOverview = () => {
+const Bots = () => {
   const [bots, setBots] = useState<BotData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   const [form, setForm] = useState(defaultFormData)
 
   // Fetch all bots on mount
@@ -25,10 +20,13 @@ const BotsOverview = () => {
       try {
         const bots = await getAllBots()
         setBots(bots)
-      } catch (err) {
-        console.error(err)
+      } catch {
+        setError('Failed to load bots')
+      } finally {
+        setLoading(false)
       }
     }
+
     fetchBots()
   }, [])
 
@@ -43,7 +41,7 @@ const BotsOverview = () => {
 
     try {
       const bot = await createBot(form)
-      setBots((prev) => [...prev, bot])
+      setBots((prev) => prev && [...prev, bot])
       // reset form
       setForm(defaultFormData)
     } catch (err) {
@@ -54,9 +52,7 @@ const BotsOverview = () => {
   const handleStartBot = async (id: string) => {
     try {
       const updatedBot = await startBot(id)
-      if (!updatedBot?.id) return
-
-      setBots((prev) => prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
     } catch (err) {
       console.error(err)
     }
@@ -65,7 +61,7 @@ const BotsOverview = () => {
   const handleStopBot = async (id: string) => {
     try {
       const updatedBot = await stopBot(id)
-      setBots((prevBots) => prevBots.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
     } catch (err) {
       console.error(err)
     }
@@ -74,7 +70,7 @@ const BotsOverview = () => {
   const handleAttachBot = async (id: string) => {
     try {
       const updatedBot = await attachBot(id)
-      setBots((prev) => prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
     } catch (err) {
       console.error(err)
     }
@@ -83,7 +79,7 @@ const BotsOverview = () => {
   const handleDetachBot = async (id: string) => {
     try {
       const updatedBot = await detachBot(id)
-      setBots((prev) => prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
     } catch (err) {
       console.error(err)
     }
@@ -91,21 +87,23 @@ const BotsOverview = () => {
 
   const handleDeleteBot = async (id: string) => {
     try {
-      const text = `Are you sure you want to delete bot: ${id}`
-      if (confirm(text) === true) {
+      if (confirm(`Are you sure you want to delete bot: ${id}`) === true) {
         await deleteBot(id)
-        setBots((prevBots) => prevBots.filter((b) => b.id !== id))
+        setBots((prev) => prev && prev.filter((b) => b.id !== id))
       }
     } catch (err) {
       console.error(err)
     }
   }
 
+  if (loading) return <div>Loading bots...</div>
+  if (error) return <div>{error}</div>
+
   return (
     <div>
-      <h2>All bots</h2>
+      <h1>Bots Page</h1>
       {/* Create Bot Form */}
-      <form onSubmit={handleCreateBot} className="mb-4 gap-2 flex items-center max-w-fit">
+      <form onSubmit={handleCreateBot} className="mb-4 gap-2 flex flex-wrap items-center max-w-fit">
         <div>
           <label>Symbol:</label>
           <input
@@ -148,6 +146,7 @@ const BotsOverview = () => {
         </button>
       </form>
 
+      {/* Bots list */}
       {bots.length > 0 ? (
         <div>
           {bots.map((bot) => (
@@ -213,4 +212,4 @@ const BotsOverview = () => {
   )
 }
 
-export default BotsOverview
+export default Bots

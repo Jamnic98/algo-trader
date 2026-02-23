@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom'
 
-import { Footer /* Header */ } from 'components'
+// import { Footer, Header } from 'components'
 
 const AppLayout = () => {
   return (
@@ -9,7 +9,7 @@ const AppLayout = () => {
       <main className="grow mx-auto w-full">
         <Outlet />
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   )
 }
