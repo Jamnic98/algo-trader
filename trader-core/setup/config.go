@@ -9,11 +9,13 @@ import (
 )
 
 type Config struct {
-	ApiKey   string
-	Env      string
-	Dsn      string
-	Port     string
-	RedisURL string
+	ApiKey         string
+	Env            string
+	Dsn            string
+	Port           string
+	RedisURL       string
+	TelegramChatID string
+	TelegramKey    string
 }
 
 func GetConfig() Config {
@@ -35,7 +37,9 @@ func GetConfig() Config {
 	apiKey := os.Getenv("SERVER_API_KEY")
 	dsn := os.Getenv("DB_DSN")
 	port := os.Getenv("TRADER_CORE_PORT")
-	
+	telegramKey := os.Getenv("TELEGRAM_KEY")
+	telegramChatID := os.Getenv("TELEGRAM_CHAT_ID")
+
 	if port == "" {
 		port = "8080"
 	}
@@ -46,10 +50,12 @@ func GetConfig() Config {
 	}
 
 	return Config{
-		ApiKey:   apiKey,
-		Env:      env,
-		Dsn:      dsn,
-		Port:     port,
-		RedisURL: redisURL,
+		ApiKey:         apiKey,
+		Env:            env,
+		Dsn:            dsn,
+		Port:           port,
+		RedisURL:       redisURL,
+		TelegramChatID: telegramChatID,
+		TelegramKey:    telegramKey,
 	}
 }

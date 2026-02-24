@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowDownFromLine, Paperclip, Play, Square, X } from 'lucide-react'
+import { ArrowDownFromLine, ArrowUpFromLine, Play, Square, X } from 'lucide-react'
 
 import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
 import type { BotData } from 'types'
@@ -164,7 +164,7 @@ const Bots = () => {
                     onClick={() => handleAttachBot(bot.id)}
                     className="bg-blue-500 w-8 h-8 rounded-full text-sm cursor-pointer flex justify-center items-center"
                   >
-                    <Paperclip size={20} />
+                    <ArrowUpFromLine size={20} />
                   </button>
                 )}
 

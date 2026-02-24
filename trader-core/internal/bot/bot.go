@@ -8,6 +8,7 @@ import (
 
 	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
+	"trader-core/internal/monitoring"
 	"trader-core/internal/strategies"
 
 	"github.com/google/uuid"
@@ -113,6 +114,7 @@ type Runtime struct {
 	BotFactory    *BotFactory
 	Dispatcher    *Dispatcher
 	MarketManager *MarketDataManager
+	Messenger     *monitoring.Messenger
 }
 
 func (rt *Runtime) AttachBot(b *Bot) error {

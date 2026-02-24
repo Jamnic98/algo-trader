@@ -8,6 +8,7 @@ import (
 	"trader-core/internal/binance"
 	"trader-core/internal/bot"
 	"trader-core/internal/engine"
+	"trader-core/internal/monitoring"
 	"trader-core/setup"
 )
 
@@ -45,12 +46,23 @@ func main() {
 		return engine.NewPaperExecution(account)
 	}}
 
+	messenger := &monitoring.Messenger{
+		BotToken: cfg.TelegramKey,
+		ChatID:   cfg.TelegramChatID,
+		Messages: make(chan string, 10),
+		Quit:     make(chan struct{}),
+	}
+
+	go messenger.Run()
+	defer close(messenger.Quit)
+
 	// Shared runtime for bots
 	runtime := &bot.Runtime{
 		Account:       account,
 		BotFactory:    &botFactory,
 		Dispatcher:    dispatcher,
 		MarketManager: marketManager,
+		Messenger:     messenger,
 	}
 
 	// Inject runtime & account into API handlers
