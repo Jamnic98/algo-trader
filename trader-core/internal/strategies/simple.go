@@ -18,11 +18,11 @@ func (s SimpleStrategy) OnCandles(candles []models.Candle) engine.Side {
 	last := candles[candlesLen-1]
 	prev := candles[candlesLen-2]
 
-	if last.Close > prev.Close {
+	if last.Close < prev.Close {
 		return engine.BUY
 	}
 
-	if last.Close < prev.Close {
+	if last.Close > prev.Close {
 		return engine.SELL
 	}
 

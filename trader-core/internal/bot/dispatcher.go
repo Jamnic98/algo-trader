@@ -53,7 +53,9 @@ func (d *Dispatcher) Dispatch(key string, candle models.Candle) {
 		case b.CandleCh <- candle:
 			log.Printf("Dispatched candle to bot %s", b.ID)
 		default:
-			log.Printf("Dropped candle for bot %s (channel full)", b.ID)
+			<-b.CandleCh // drop oldest
+			b.CandleCh <- candle
+			log.Printf("Dropped oldest candle for bot %s", b.ID)
 		}
 	}
 }

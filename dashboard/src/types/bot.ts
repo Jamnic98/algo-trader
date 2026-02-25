@@ -5,6 +5,7 @@ export type BotCreateData = {
   interval: string
   symbol: string
   lookback: string
+  quantity: string
 }
 
 export interface BotData extends BotCreateData {

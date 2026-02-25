@@ -12,6 +12,7 @@ import (
 	"trader-core/internal/strategies"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 type BotStatus string
@@ -27,15 +28,18 @@ type BotConfig struct {
 	Symbol   string          `json:"symbol"`
 	Interval engine.Interval `json:"interval"`
 	Lookback time.Duration   `json:"lookback"`
+	Quantity decimal.Decimal `json:"quantity"`
 }
 
 type Bot struct {
-	ID         string                    `json:"id"`
-	Interval   engine.Interval           `json:"interval"`
-	Symbol     string                    `json:"symbol"`
-	Status     BotStatus                 `json:"status"`
-	Started    time.Time                 `json:"started"`
-	Strategy   strategies.SimpleStrategy `json:"strategy"`
+	ID       string                    `json:"id"`
+	Interval engine.Interval           `json:"interval"`
+	Symbol   string                    `json:"symbol"`
+	Status   BotStatus                 `json:"status"`
+	Started  time.Time                 `json:"started"`
+	Strategy strategies.SimpleStrategy `json:"strategy"`
+	Quantity decimal.Decimal           `json:"quantity"`
+
 	Engine     engine.ExecutionEngine
 	Lookback   time.Duration
 	MaxCandles int
@@ -96,14 +100,18 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 	}
 
 	b := &Bot{
-		ID:       cfg.ID,
+		ID:     cfg.ID,
+		Status: BotCreated,
+
 		Symbol:   cfg.Symbol,
+		Quantity: cfg.Quantity,
+
 		Interval: cfg.Interval,
 		Lookback: cfg.Lookback,
+
 		Strategy: strategies.SimpleStrategy{},
 		Engine:   f.Engine(),
-		CandleCh: make(chan models.Candle),
-		Status:   BotCreated,
+		CandleCh: make(chan models.Candle, 100),
 	}
 
 	return b, nil
@@ -115,11 +123,22 @@ type Runtime struct {
 	Dispatcher    *Dispatcher
 	MarketManager *MarketDataManager
 	Messenger     *monitoring.Messenger
+	Errors        chan string
 }
 
 func (rt *Runtime) AttachBot(b *Bot) error {
 	if b.Status != BotCreated {
 		return fmt.Errorf("cannot attach bot from %s", b.Status)
+	}
+
+	// check MarketManager
+	if rt.MarketManager == nil || !rt.MarketManager.IsRunning() {
+		return fmt.Errorf("cannot attach bot: MarketManager not running")
+	}
+
+	// optional: check Binance WS alive
+	if !rt.MarketManager.client.IsAlive() {
+		return fmt.Errorf("cannot attach bot: Binance client not connected")
 	}
 
 	rt.Dispatcher.Subscribe(b.Symbol, b.Interval, b)
@@ -132,6 +151,11 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 func (rt *Runtime) DetachBot(b *Bot) error {
 	if b.Status != BotAttached {
 		return fmt.Errorf("cannot detach bot from %s", b.Status)
+	}
+
+	// check MarketManager
+	if rt.MarketManager == nil || !rt.MarketManager.IsRunning() {
+		return fmt.Errorf("cannot detach bot: MarketManager not running")
 	}
 
 	rt.Dispatcher.Unsubscribe(b.Symbol, b.Interval, b)

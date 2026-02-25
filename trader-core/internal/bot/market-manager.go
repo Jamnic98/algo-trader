@@ -5,6 +5,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"trader-core/internal/binance"
 	"trader-core/internal/engine"
@@ -17,10 +18,11 @@ type MarketDataManager struct {
 	mu        sync.Mutex
 	refCount  map[string]int
 	lastClose map[string]int64 // key -> last closed candle timestamp
+	running   atomic.Bool
 }
 
 func NewMarketDataManager(client *binance.Client, dispatcher *Dispatcher) *MarketDataManager {
-	log.Println("Creating markektManager")
+	log.Println("Creating marketManager")
 	return &MarketDataManager{
 		client:     client,
 		dispatcher: dispatcher,
@@ -58,17 +60,30 @@ func (m *MarketDataManager) Unsubscribe(symbol string, interval engine.Interval)
 }
 
 func (m *MarketDataManager) Run(ctx context.Context) {
+	m.running.Store(true)
+	defer func() {
+		m.running.Store(false)
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case msg := <-m.client.Messages():
 			candle, key, ok := engine.ParseKline(msg)
-			if !ok { // skip if not closed
+			if !ok {
 				continue
 			}
+
+			m.mu.Lock()
+			m.lastClose[key] = candle.CloseTime
+			m.mu.Unlock()
+
 			m.dispatcher.Dispatch(key, candle)
 		}
 	}
+}
 
+func (m *MarketDataManager) IsRunning() bool {
+	return m.running.Load()
 }

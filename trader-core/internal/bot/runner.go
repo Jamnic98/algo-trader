@@ -59,7 +59,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				Symbol: b.Symbol,
 				Side:   side,
 				Price:  decimal.NewFromFloat(candle.Close),
-				Qty:    decimal.RequireFromString("0.001"),
+				Qty:    b.Quantity,
 			}
 
 			fill, err := b.Engine.ExecuteTrade(order)

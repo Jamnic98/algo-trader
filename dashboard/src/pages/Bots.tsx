@@ -5,7 +5,7 @@ import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteB
 import type { BotData } from 'types'
 
 const lookbackTimeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
-const defaultFormData = { symbol: 'BTCUSDT', interval: '1m', lookback: '24h' }
+const defaultFormData = { symbol: 'BTCUSDT', interval: '1m', lookback: '24h', quantity: '0' }
 
 const Bots = () => {
   const [bots, setBots] = useState<BotData[]>([])
@@ -116,6 +116,17 @@ const Bots = () => {
           />
         </div>
         <div>
+          <label>Quantity:</label>
+          <input
+            name="quantity"
+            value={form.quantity}
+            onChange={handleChange}
+            placeholder={defaultFormData.quantity}
+            className="border p-1 rounded"
+            required
+          />
+        </div>
+        <div>
           <label>Interval:</label>
           <select
             name="interval"
@@ -153,10 +164,13 @@ const Bots = () => {
             <div key={bot.id} className="my-8 border p-4 rounded">
               <div>Id: {bot.id}</div>
               <div>Symbol: {bot.symbol}</div>
-              <div>Started At: {bot.started ? new Date(bot.started).toLocaleString() : '-'}</div>
-              <div>Status: {bot.status}</div>
+              <div>Quantity: {bot.quantity}</div>
+              <br />
               <div>Interval: {bot.interval}</div>
               <div>Lookback period: {bot.lookback}</div>
+              <br />
+              <div>Status: {bot.status}</div>
+              <div>Started At: {bot.started ? new Date(bot.started).toLocaleString() : '-'}</div>
 
               <div className="mt-2 flex gap-2">
                 {bot.status === 'created' && (

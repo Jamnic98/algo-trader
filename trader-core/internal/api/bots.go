@@ -8,6 +8,7 @@ import (
 	"trader-core/internal/engine"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 )
 
 type BotDTO struct {
@@ -17,6 +18,7 @@ type BotDTO struct {
 	Status   bot.BotStatus `json:"status"`
 	Started  *string       `json:"started,omitempty"`
 	Lookback string        `json:"lookback"`
+	Quantity string        `json:"quantity"`
 }
 
 func botToDTO(b *bot.Bot) BotDTO {
@@ -33,6 +35,7 @@ func botToDTO(b *bot.Bot) BotDTO {
 		Started:  started,
 		Status:   b.Status,
 		Symbol:   b.Symbol,
+		Quantity: b.Quantity.String(),
 	}
 }
 
@@ -81,28 +84,42 @@ func createBotHandler(c *gin.Context) {
 		Symbol   string `json:"symbol"`
 		Interval string `json:"interval"`
 		Lookback string `json:"lookback"`
+		Quantity string `json:"quantity"`
 	}
 
+	// Parse JSON
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Parse quantity
+	qty, err := decimal.NewFromString(req.Quantity)
+	if err != nil || qty.LessThan(decimal.NewFromFloat(0)) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid quantity"})
+		return
+	}
+
+	// Parse lookback duration
 	lookback, err := time.ParseDuration(req.Lookback)
 	if err != nil || lookback <= 0 {
 		lookback = 24 * time.Hour
 	}
 
+	// Parse candle interval
 	interval, err := engine.ParseInterval(req.Interval)
 	if err != nil {
 		interval = engine.Interval1m
 	}
 
+	// Create bot
 	b, err := runtime.BotFactory.NewPaperBot(bot.BotConfig{
 		Symbol:   req.Symbol,
 		Interval: interval,
 		Lookback: lookback,
+		Quantity: qty,
 	})
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
