@@ -4,8 +4,23 @@ import { ArrowDownFromLine, ArrowUpFromLine, Play, Square, X } from 'lucide-reac
 import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
 import type { BotData } from 'types'
 
+type CreateBotFormData = {
+  symbol: string
+  interval: string
+  lookback: string
+  quantity: string
+}
+
 const lookbackTimeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
 const defaultFormData = { symbol: 'BTCUSDT', interval: '1m', lookback: '24h', quantity: '0' }
+
+const validateCreateBotForm = (formData: CreateBotFormData): boolean => {
+  if (Number.parseFloat(formData.quantity) <= 0) {
+    alert('Quantity must be greater than 0')
+    return false
+  }
+  return true
+}
 
 const Bots = () => {
   const [bots, setBots] = useState<BotData[]>([])
@@ -38,6 +53,10 @@ const Bots = () => {
 
   const handleCreateBot = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    if (!validateCreateBotForm(form)) {
+      return
+    }
 
     try {
       const bot = await createBot(form)

@@ -49,14 +49,14 @@ func InitBotAPI(rt *bot.Runtime) {
 }
 
 func RegisterBotRoutes(rg *gin.RouterGroup) {
-	rg.GET("/", getBotsHandler)
-	rg.GET("/:id/", getBotByIDHandler)
-	rg.POST("/", createBotHandler)
-	rg.POST("/:id/start/", startBotHandler)
-	rg.POST("/:id/stop/", stopBotHandler)
-	rg.POST("/:id/attach/", attachBotHandler)
-	rg.POST("/:id/detach/", detachBotHandler)
-	rg.DELETE("/:id/", deleteBotHandler)
+	rg.GET("", getBotsHandler)
+	rg.GET("/:id", getBotByIDHandler)
+	rg.POST("", createBotHandler)
+	rg.POST("/:id/start", startBotHandler)
+	rg.POST("/:id/stop", stopBotHandler)
+	rg.POST("/:id/attach", attachBotHandler)
+	rg.POST("/:id/detach", detachBotHandler)
+	rg.DELETE("/:id", deleteBotHandler)
 }
 
 func getBotsHandler(c *gin.Context) {

@@ -103,41 +103,67 @@ func main() {
 		Errors:        errors,
 	}
 
-	// Safe Binance goroutine with retries + panic recovery
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				runtime.Errors <- fmt.Sprintf("CRITICAL: Binance goroutine panicked: %v", r)
-				cancel()
-			}
-		}()
-
-		maxRetries := 3
-		for i := range maxRetries {
-			if err := binanceClient.Run(); err != nil {
-				runtime.Errors <- fmt.Sprintf("WARNING: Binance client failed (attempt %d/%d): %v", i+1, maxRetries, err)
-				time.Sleep(2 * time.Second)
-			} else {
-				break
-			}
-		}
-	}()
-
-	// HEARTBEAT goroutine to detect mid-run disconnects
-	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		const maxReconnects = 3
+		const reconnectDelay = 2 * time.Second
+		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
+
+		reconnectAttempts := 0
 
 		for {
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				if !binanceClient.IsAlive() {
-					runtime.Errors <- "CRITICAL: Binance WS disconnected"
-					cancel()
-					return
+				if binanceClient.IsAlive() {
+					// reset counter when alive
+					reconnectAttempts = 0
+					continue
 				}
+
+				// WS disconnected: try to reconnect
+				reconnectAttempts++
+				if reconnectAttempts <= maxReconnects {
+					msg := fmt.Sprintf(
+						"WARNING: Binance WS disconnected, attempt %d/%d to reconnect",
+						reconnectAttempts, maxReconnects,
+					)
+
+					log.Println(msg)
+
+					// try reconnect
+					if err := binanceClient.Run(); err != nil {
+						runtime.Errors <- fmt.Sprintf(
+							"WARNING: reconnect failed: %v", err,
+						)
+					} else {
+						// successfully reconnected, reset attempts
+						log.Println("Binance websocket connection established")
+						reconnectAttempts = 0
+					}
+
+					time.Sleep(reconnectDelay)
+					continue
+				}
+
+				// max reconnects reached → critical
+				if cfg.Env != "local" {
+					runtime.Errors <- "CRITICAL: Binance WS could not reconnect after max attempts"
+					cancel()
+				}
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case err := <-runtime.Errors:
+				messenger.Notify(err)
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()

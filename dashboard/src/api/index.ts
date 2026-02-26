@@ -1,5 +1,6 @@
 export * from './bots'
 export * from './trades'
+export * from './health'
 
 class ApiError extends Error {
   status?: number

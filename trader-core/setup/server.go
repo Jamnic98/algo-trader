@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"net/http"
 	"trader-core/internal/api"
 
 	"github.com/gin-contrib/cors"
@@ -26,6 +27,13 @@ func InitServer(cfg Config) *gin.Engine {
 		api.RegisterBotRoutes(route.Group("/bots"))
 		api.RegisterTradeRoutes(route.Group("/trades"))
 	}
+
+	route.GET("/health", func(c *gin.Context) {
+		// Authorized → return OK
+		c.JSON(http.StatusOK, gin.H{
+			"status": "ok",
+		})
+	})
 
 	return engine
 }

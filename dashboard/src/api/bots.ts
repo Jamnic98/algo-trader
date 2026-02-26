@@ -4,10 +4,10 @@ import type { BotCreateData, BotData } from 'types'
 const botsEndpoint = '/bots'
 
 export const getAllBots = async (): Promise<BotData[]> =>
-  (await api.fetchJson<{ bots: BotData[] }>(`${botsEndpoint}/`)).bots
+  (await api.fetchJson<{ bots: BotData[] }>(botsEndpoint)).bots
 
 export const getBot = async (id: string): Promise<BotData> =>
-  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/`)).bot
+  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}`)).bot
 
 export const createBot = async (botData: BotCreateData): Promise<BotData> =>
   (
@@ -19,16 +19,16 @@ export const createBot = async (botData: BotCreateData): Promise<BotData> =>
   ).bot
 
 export const startBot = async (id: string): Promise<BotData> =>
-  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/start/`, { method: 'POST' })).bot
+  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/start`, { method: 'POST' })).bot
 
 export const stopBot = async (id: string): Promise<BotData> =>
-  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/stop/`, { method: 'POST' })).bot
+  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/stop`, { method: 'POST' })).bot
 
 export const attachBot = async (id: string): Promise<BotData> =>
-  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/attach/`, { method: 'POST' })).bot
+  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/attach`, { method: 'POST' })).bot
 
 export const detachBot = async (id: string): Promise<BotData> =>
-  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/detach/`, { method: 'POST' })).bot
+  (await api.fetchJson<{ bot: BotData }>(`${botsEndpoint}/${id}/detach`, { method: 'POST' })).bot
 
 export const deleteBot = async (id: string) =>
-  await api.fetchVoid(`${botsEndpoint}/${id}/`, { method: 'DELETE' })
+  await api.fetchVoid(`${botsEndpoint}/${id}`, { method: 'DELETE' })

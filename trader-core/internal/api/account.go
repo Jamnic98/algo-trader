@@ -21,7 +21,7 @@ func InitAccountAPI(rt *bot.Runtime) {
 }
 
 func RegisterAccountRoutes(rg *gin.RouterGroup) {
-	rg.GET("/", getAccountSnapshot)
+	rg.GET("", getAccountSnapshot)
 }
 
 func getAccountSnapshot(c *gin.Context) {

@@ -41,6 +41,15 @@ func (c *Client) Run() error {
 		c.connected.Store(false)
 		return err
 	}
+
+	// Add pong handler
+	conn.SetPongHandler(func(appData string) error {
+		c.mu.Lock()
+		c.lastMessage = time.Now()
+		c.mu.Unlock()
+		return nil
+	})
+
 	c.mu.Lock()
 	c.conn = conn
 	c.lastMessage = time.Now()
@@ -49,6 +58,28 @@ func (c *Client) Run() error {
 	c.connected.Store(true)
 	go c.readLoop()
 	go c.writeLoop()
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-c.ctx.Done():
+				return
+			case <-ticker.C:
+				c.mu.Lock()
+				err := c.conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(time.Second))
+				c.mu.Unlock()
+
+				if err != nil {
+					log.Println("ping error:", err)
+					c.connected.Store(false)
+					return
+				}
+			}
+		}
+	}()
 
 	return nil
 }
@@ -120,8 +151,12 @@ func (c *Client) IsAlive() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// If we’ve received at least one message, check latency
-	if !c.lastMessage.IsZero() && time.Since(c.lastMessage) > 30*time.Second {
+	if c.lastMessage.IsZero() {
+		return true
+	}
+
+	// 15s timeout for ping/pong
+	if time.Since(c.lastMessage) > 15*time.Second {
 		return false
 	}
 
