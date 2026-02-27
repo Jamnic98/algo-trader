@@ -36,7 +36,7 @@ func main() {
 
 	// Set up logging
 	logPath := ""
-	if cfg.Env == "production" {
+	if cfg.Env == "prod" {
 		logPath = "bot.log"
 	}
 	if err := monitoring.SetupLogger(logPath); err != nil {
@@ -103,6 +103,17 @@ func main() {
 		Errors:        errors,
 	}
 
+	// Connect to binance websocket
+	go func() {
+		log.Println("Connecting to Binance websocket...")
+		if err := binanceClient.Run(); err != nil {
+			runtime.Errors <- fmt.Sprintf("Failed to connect to Binance: %v", err)
+			return
+		}
+		log.Println("Binance websocket connection established")
+	}()
+
+	// Run reconnect routine for binance websocket
 	go func() {
 		const maxReconnects = 3
 		const reconnectDelay = 2 * time.Second
@@ -116,43 +127,31 @@ func main() {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				if !binanceClient.Started() {
+					continue // do nothing until ready
+				}
+
 				if binanceClient.IsAlive() {
-					// reset counter when alive
 					reconnectAttempts = 0
 					continue
 				}
 
-				// WS disconnected: try to reconnect
 				reconnectAttempts++
-				if reconnectAttempts <= maxReconnects {
-					msg := fmt.Sprintf(
-						"WARNING: Binance WS disconnected, attempt %d/%d to reconnect",
-						reconnectAttempts, maxReconnects,
-					)
-
-					log.Println(msg)
-
-					// try reconnect
-					if err := binanceClient.Run(); err != nil {
-						runtime.Errors <- fmt.Sprintf(
-							"WARNING: reconnect failed: %v", err,
-						)
-					} else {
-						// successfully reconnected, reset attempts
-						log.Println("Binance websocket connection established")
-						reconnectAttempts = 0
-					}
-
-					time.Sleep(reconnectDelay)
-					continue
-				}
-
-				// max reconnects reached → critical
-				if cfg.Env != "local" {
+				if reconnectAttempts > maxReconnects {
 					runtime.Errors <- "CRITICAL: Binance WS could not reconnect after max attempts"
 					cancel()
+					return
 				}
-				return
+
+				log.Printf("WARNING: Binance WS disconnected, attempt %d/%d to reconnect", reconnectAttempts, maxReconnects)
+				if err := binanceClient.Run(); err != nil {
+					runtime.Errors <- fmt.Sprintf("WARNING: reconnect failed: %v", err)
+				} else {
+					log.Println("Binance websocket connection established")
+					reconnectAttempts = 0
+				}
+
+				time.Sleep(reconnectDelay)
 			}
 		}
 	}()
