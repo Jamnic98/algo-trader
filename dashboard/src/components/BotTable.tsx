@@ -1,5 +1,6 @@
-import { ArrowDownFromLine, ArrowUpFromLine, Play, Square, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
+import { BotActionButtons } from 'components'
 import type { BotData } from 'types'
 
 type BotTableProps = {
@@ -12,6 +13,8 @@ type BotTableProps = {
 }
 
 const BotTable = ({ bots, startBot, stopBot, attachBot, detachBot, deleteBot }: BotTableProps) => {
+  const navigate = useNavigate()
+
   return (
     <table className="border-collapse border w-full bg-gray-50">
       <thead>
@@ -34,7 +37,7 @@ const BotTable = ({ bots, startBot, stopBot, attachBot, detachBot, deleteBot }: 
             <tr
               key={bot.id}
               className={`group cursor-pointer transition-colors ${rowBg} duration-200 hover:bg-gray-200`}
-              // onClick={() => navigateToBot(bot.id)}
+              onClick={() => navigate(`${bot.id}`)}
             >
               <td className="border px-3 py-1 font-mono text-sm max-w-30 truncate">{bot.id}</td>
               <td className="border px-3 py-1">{bot.symbol}</td>
@@ -55,71 +58,16 @@ const BotTable = ({ bots, startBot, stopBot, attachBot, detachBot, deleteBot }: 
                   : '-'}
               </td>
               <td className="border px-3 py-1">
-                <div className="flex justify-center gap-4">
-                  {bot.status === 'created' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        attachBot(bot.id)
-                      }}
-                      className="bg-blue-500 hover:bg-blue-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
-                      title="Attach"
-                    >
-                      <ArrowUpFromLine size={16} />
-                    </button>
-                  )}
-
-                  {bot.status === 'attached' && (
-                    <>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          startBot(bot.id)
-                        }}
-                        className="bg-green-500 hover:bg-green-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
-                        title="Start"
-                      >
-                        <Play size={16} />
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          detachBot(bot.id)
-                        }}
-                        className="bg-yellow-500 hover:bg-yellow-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
-                        title="Detach"
-                      >
-                        <ArrowDownFromLine size={16} />
-                      </button>
-                    </>
-                  )}
-
-                  {bot.status === 'running' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        stopBot(bot.id)
-                      }}
-                      className="bg-orange-500 hover:bg-orange-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
-                      title="Stop"
-                    >
-                      <Square size={16} />
-                    </button>
-                  )}
-
-                  {bot.status === 'created' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteBot(bot.id)
-                      }}
-                      className="bg-red-500 hover:bg-red-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
-                      title="Delete"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
+                <div className="flex justify-center gap-2">
+                  <BotActionButtons
+                    botId={bot.id}
+                    botStatus={bot.status}
+                    startBot={startBot}
+                    stopBot={stopBot}
+                    attachBot={attachBot}
+                    detachBot={detachBot}
+                    deleteBot={deleteBot}
+                  />
                 </div>
               </td>
             </tr>

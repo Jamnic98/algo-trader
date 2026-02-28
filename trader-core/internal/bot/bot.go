@@ -83,6 +83,7 @@ func (b *Bot) Stop() {
 	b.cancel = nil
 	b.ctx = nil
 	b.Status = BotAttached
+	b.Started = time.Time{}
 }
 
 func (b *Bot) SetCancel(c context.CancelFunc) {
