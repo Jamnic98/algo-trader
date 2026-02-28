@@ -1,0 +1,133 @@
+import { ArrowDownFromLine, ArrowUpFromLine, Play, Square, X } from 'lucide-react'
+
+import type { BotData } from 'types'
+
+type BotTableProps = {
+  bots: BotData[]
+  startBot: (id: string) => void
+  stopBot: (id: string) => void
+  attachBot: (id: string) => void
+  detachBot: (id: string) => void
+  deleteBot: (id: string) => void
+}
+
+const BotTable = ({ bots, startBot, stopBot, attachBot, detachBot, deleteBot }: BotTableProps) => {
+  return (
+    <table className="border-collapse border w-full bg-gray-50">
+      <thead>
+        <tr className="text-blue-900 font-semibold bg-blue-200">
+          <th className="border px-3 py-1 text-left">Id</th>
+          <th className="border px-3 py-1 text-left">Symbol</th>
+          <th className="border px-3 py-1 text-left">Quantity</th>
+          <th className="border px-3 py-1 text-left">Interval</th>
+          <th className="border px-3 py-1 text-left">Lookback</th>
+          <th className="border px-3 py-1 text-left">Status</th>
+          <th className="border px-3 py-1 text-left">Started</th>
+          <th className="border px-3 py-1 text-left">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody className="text-gray-800">
+        {bots.map((bot, index) => {
+          const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-blue-50'
+          return (
+            <tr
+              key={bot.id}
+              className={`group cursor-pointer transition-colors ${rowBg} duration-200 hover:bg-gray-200`}
+              // onClick={() => navigateToBot(bot.id)}
+            >
+              <td className="border px-3 py-1 font-mono text-sm max-w-30 truncate">{bot.id}</td>
+              <td className="border px-3 py-1">{bot.symbol}</td>
+              <td className="border px-3 py-1">{bot.quantity}</td>
+              <td className="border px-3 py-1">{bot.interval}</td>
+              <td className="border px-3 py-1">{bot.lookback}</td>
+              <td className="border px-3 py-1 capitalize">{bot.status}</td>
+              <td className="border px-3 py-1 text-center">
+                {bot.started
+                  ? new Intl.DateTimeFormat('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false,
+                    }).format(new Date(bot.started))
+                  : '-'}
+              </td>
+              <td className="border px-3 py-1">
+                <div className="flex justify-center gap-4">
+                  {bot.status === 'created' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        attachBot(bot.id)
+                      }}
+                      className="bg-blue-500 hover:bg-blue-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+                      title="Attach"
+                    >
+                      <ArrowUpFromLine size={16} />
+                    </button>
+                  )}
+
+                  {bot.status === 'attached' && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          startBot(bot.id)
+                        }}
+                        className="bg-green-500 hover:bg-green-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+                        title="Start"
+                      >
+                        <Play size={16} />
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          detachBot(bot.id)
+                        }}
+                        className="bg-yellow-500 hover:bg-yellow-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+                        title="Detach"
+                      >
+                        <ArrowDownFromLine size={16} />
+                      </button>
+                    </>
+                  )}
+
+                  {bot.status === 'running' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        stopBot(bot.id)
+                      }}
+                      className="bg-orange-500 hover:bg-orange-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+                      title="Stop"
+                    >
+                      <Square size={16} />
+                    </button>
+                  )}
+
+                  {bot.status === 'created' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteBot(bot.id)
+                      }}
+                      className="bg-red-500 hover:bg-red-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+                      title="Delete"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
+
+export default BotTable

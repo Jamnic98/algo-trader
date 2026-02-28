@@ -1,24 +1,38 @@
 import { useEffect, useState } from 'react'
-import { ArrowDownFromLine, ArrowUpFromLine, Play, Square, X } from 'lucide-react'
 
+import { BotForm, BotTable } from 'components'
 import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
 import type { BotData } from 'types'
 
 type CreateBotFormData = {
+  baseAsset: string
+  quoteAsset: string
   symbol: string
   interval: string
   lookback: string
   quantity: string
 }
 
-const lookbackTimeframes = ['1m', '5m', '15m', '1h', '4h', '1d']
-const defaultFormData = { symbol: 'BTCUSDT', interval: '1m', lookback: '24h', quantity: '0' }
+const candleIntervals = ['1m', '5m', '15m', '1h', '4h', '1d']
+const defaultFormData = {
+  baseAsset: '',
+  quoteAsset: 'USDT',
+  symbol: '',
+  interval: candleIntervals[0],
+  lookback: '24h',
+  quantity: '0',
+}
 
 const validateCreateBotForm = (formData: CreateBotFormData): boolean => {
   if (Number.parseFloat(formData.quantity) <= 0) {
     alert('Quantity must be greater than 0')
     return false
   }
+
+  if (![formData.baseAsset, formData.quoteAsset, formData.symbol].every((d) => d.trim() !== '')) {
+    return false
+  }
+
   return true
 }
 
@@ -48,7 +62,13 @@ const Bots = () => {
   // Handle form input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+
+    setForm((prev) => {
+      const next = { ...prev, [name]: value }
+      next.symbol = `${next.baseAsset}${next.quoteAsset}`.toUpperCase()
+
+      return next
+    })
   }
 
   const handleCreateBot = async (e: React.SubmitEvent<HTMLFormElement>) => {
@@ -122,121 +142,19 @@ const Bots = () => {
     <div>
       <h1>Bots Page</h1>
       {/* Create Bot Form */}
-      <form onSubmit={handleCreateBot} className="mb-4 gap-2 flex flex-wrap items-center max-w-fit">
-        <div>
-          <label>Symbol:</label>
-          <input
-            name="symbol"
-            value={form.symbol}
-            onChange={handleChange}
-            placeholder="BTCUSDT"
-            className="border p-1 rounded"
-            required
-          />
-        </div>
-        <div>
-          <label>Quantity:</label>
-          <input
-            name="quantity"
-            value={form.quantity}
-            onChange={handleChange}
-            placeholder={defaultFormData.quantity}
-            className="border p-1 rounded"
-            required
-          />
-        </div>
-        <div>
-          <label>Interval:</label>
-          <select
-            name="interval"
-            value={form.interval}
-            onChange={handleChange}
-            className="border p-1 rounded"
-          >
-            {lookbackTimeframes.map((timeframe) => (
-              <option key={timeframe} value={timeframe}>
-                {timeframe}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label>Lookback:</label>
-          <input
-            name="lookback"
-            value={form.lookback}
-            onChange={handleChange}
-            placeholder="24h"
-            className="border p-1 rounded"
-            required
-          />
-        </div>
-        <button type="submit" className="bg-green-400 p-2 rounded cursor-pointer">
-          CREATE
-        </button>
-      </form>
+      <BotForm form={form} onChange={handleChange} onSubmit={handleCreateBot} />
 
-      {/* Bots list */}
+      {/* Bots table */}
       {bots.length > 0 ? (
-        <div>
-          {bots.map((bot) => (
-            <div key={bot.id} className="my-8 border p-4 rounded">
-              <div>Id: {bot.id}</div>
-              <div>Symbol: {bot.symbol}</div>
-              <div>Quantity: {bot.quantity}</div>
-              <br />
-              <div>Interval: {bot.interval}</div>
-              <div>Lookback period: {bot.lookback}</div>
-              <br />
-              <div>Status: {bot.status}</div>
-              <div>Started At: {bot.started ? new Date(bot.started).toLocaleString() : '-'}</div>
-
-              <div className="mt-2 flex gap-2">
-                {bot.status === 'created' && (
-                  <button
-                    onClick={() => handleAttachBot(bot.id)}
-                    className="bg-blue-500 w-8 h-8 rounded-full text-sm cursor-pointer flex justify-center items-center"
-                  >
-                    <ArrowUpFromLine size={20} />
-                  </button>
-                )}
-
-                {bot.status === 'attached' && (
-                  <>
-                    <button
-                      onClick={() => handleStartBot(bot.id)}
-                      className="bg-green-500 w-8 h-8 rounded-full text-sm cursor-pointer flex justify-center items-center"
-                    >
-                      <Play size={20} />
-                    </button>
-
-                    <button
-                      onClick={() => handleDetachBot(bot.id)}
-                      className="bg-yellow-500 w-8 h-8 rounded-full text-sm cursor-pointer flex justify-center items-center"
-                    >
-                      <ArrowDownFromLine size={20} />
-                    </button>
-                  </>
-                )}
-
-                {bot.status === 'running' && (
-                  <button
-                    onClick={() => handleStopBot(bot.id)}
-                    className="bg-orange-500 w-8 h-8 rounded-full text-sm cursor-pointer flex justify-center items-center"
-                  >
-                    <Square size={20} />
-                  </button>
-                )}
-
-                <button
-                  onClick={() => handleDeleteBot(bot.id)}
-                  className="bg-red-500 w-8 h-8 rounded-full text-sm cursor-pointer flex justify-center items-center"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <BotTable
+            bots={bots}
+            startBot={handleStartBot}
+            stopBot={handleStopBot}
+            attachBot={handleAttachBot}
+            detachBot={handleDetachBot}
+            deleteBot={handleDeleteBot}
+          />
         </div>
       ) : (
         <div>No bots yet</div>
