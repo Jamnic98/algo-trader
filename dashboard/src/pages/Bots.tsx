@@ -29,6 +29,7 @@ const validateCreateBotForm = (formData: CreateBotFormData): boolean => {
     return false
   }
 
+  // Check that all symbol data filled
   if (![formData.baseAsset, formData.quoteAsset, formData.symbol].every((d) => d.trim() !== '')) {
     return false
   }
@@ -139,9 +140,9 @@ const Bots = () => {
   if (error) return <div>{error}</div>
 
   return (
-    <div>
-      <h1>Bots Page</h1>
-      {/* Create Bot Form */}
+    <>
+      <h1>Bots</h1>
+      {/* Create Bot */}
       <BotForm form={form} onChange={handleChange} onSubmit={handleCreateBot} />
 
       {/* Bots table */}
@@ -149,17 +150,19 @@ const Bots = () => {
         <div className="overflow-x-auto">
           <BotTable
             bots={bots}
-            startBot={handleStartBot}
-            stopBot={handleStopBot}
-            attachBot={handleAttachBot}
-            detachBot={handleDetachBot}
-            deleteBot={handleDeleteBot}
+            botActions={{
+              startBot: handleStartBot,
+              stopBot: handleStopBot,
+              attachBot: handleAttachBot,
+              detachBot: handleDetachBot,
+              deleteBot: handleDeleteBot,
+            }}
           />
         </div>
       ) : (
         <div>No bots yet</div>
       )}
-    </div>
+    </>
   )
 }
 

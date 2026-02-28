@@ -31,7 +31,7 @@ const BotDetail = () => {
   if (error) return <div>{error} 😢</div>
 
   return (
-    <div>
+    <>
       <h1>Bot ID: {bot!.id}</h1>
       <p>Symbol: {bot!.symbol}</p>
       <p>Interval: {bot!.interval}</p>
@@ -39,7 +39,7 @@ const BotDetail = () => {
       <p>Quantity: {bot!.quantity}</p>
       <p>Status: {bot!.status}</p>
       {bot?.started && <p>Started: {bot!.started}</p>}
-    </div>
+    </>
   )
 }
 
