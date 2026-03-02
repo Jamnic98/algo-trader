@@ -1,5 +1,6 @@
-export { default as BotActionButtons } from './BotActionButtons'
-export { default as BotForm } from './BotForm'
-export { default as BotTable } from './BotTable'
-export { default as Footer } from './Footer'
-export { default as Header } from './Header'
+export * from './Alert'
+export * from './Bot'
+
+export { default as PageTitle } from './PageTitle'
+export { default as Sidebar } from './Sidebar'
+export { default as StatusIndicator } from './StatusIndicator'

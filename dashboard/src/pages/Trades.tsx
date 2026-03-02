@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 
 import { type Trade, getAllTrades } from 'api'
+import { PageTitle } from 'components'
+import { useAlert } from 'hooks'
 
 const Trades = () => {
+  const { showAlert } = useAlert()
   const [trades, setTrades] = useState<Trade[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -14,20 +17,23 @@ const Trades = () => {
         setTrades(trades)
       } catch {
         setError('Failed to load trades')
+        showAlert({
+          title: 'Failed to load trades',
+          type: 'error',
+        })
       } finally {
         setLoading(false)
       }
     }
-
     fetchTrades()
-  }, [])
+  }, [showAlert])
 
   if (loading) return <div>Loading trades...</div>
   if (error) return <div>{error}</div>
 
   return (
     <div>
-      <h1>Trades Page</h1>
+      <PageTitle title="Trades" />
       {trades.length > 0 ? (
         <ul>
           {trades.map((trade, index) => (

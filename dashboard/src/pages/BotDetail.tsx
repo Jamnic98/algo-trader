@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { getBot } from 'api'
+import { useAlert } from 'hooks'
 import { type BotData } from 'types'
 
 const BotDetail = () => {
   const { id } = useParams()
+  const { showAlert } = useAlert()
+
   const [bot, setBot] = useState<BotData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -17,15 +20,21 @@ const BotDetail = () => {
         const botData = await getBot(id)
         if (!botData) throw new Error('Bot not found')
         setBot(botData)
-      } catch {
-        setError('Error fetching bot')
+      } catch (err) {
+        console.error(err)
+        const errorMsg = `Failed to load bot with id: ${id}`
+        setError(errorMsg)
+        showAlert({
+          title: errorMsg,
+          type: 'error',
+        })
       } finally {
         setLoading(false)
       }
     }
 
     fetchBot()
-  }, [id])
+  }, [id, showAlert])
 
   if (loading) return <div>Loading...</div>
   if (error) return <div>{error} 😢</div>

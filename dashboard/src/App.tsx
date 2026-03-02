@@ -1,18 +1,24 @@
 import { Route, Routes } from 'react-router-dom'
 
 import { AppLayout } from 'layouts'
-import { Bots, BotDetail, Dashboard, Trades } from 'pages'
+import { Accounts, Bots, BotDetail, Dashboard, Monitoring, Trades } from 'pages'
+import { AlertBanner, AlertProvider } from 'components'
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<AppLayout />}>
-        <Route index element={<Dashboard />} />
-        <Route path="bots" element={<Bots />} />
-        <Route path="bots/:id" element={<BotDetail />} />
-        <Route path="trades" element={<Trades />} />
-      </Route>
-    </Routes>
+    <AlertProvider>
+      <AlertBanner />
+      <Routes>
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="accounts" element={<Accounts />} />
+          <Route path="bots" element={<Bots />} />
+          <Route path="bots/:id" element={<BotDetail />} />
+          <Route path="monitoring" element={<Monitoring />} />
+          <Route path="trades" element={<Trades />} />
+        </Route>
+      </Routes>
+    </AlertProvider>
   )
 }
 

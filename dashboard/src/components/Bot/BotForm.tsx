@@ -26,8 +26,8 @@ type BotFormProps = {
 const BotForm = ({ form, onChange, onSubmit }: BotFormProps) => {
   return (
     <form onSubmit={onSubmit} className="gap-2 flex flex-wrap items-center">
-      <div className="flex items-center">
-        <label>Symbol:</label>
+      <div className="flex items-center gap-1">
+        <label className="text-content-secondary text-sm">Symbol:</label>
         <div className="space-x-0.5">
           <input
             tabIndex={0}
@@ -35,41 +35,39 @@ const BotForm = ({ form, onChange, onSubmit }: BotFormProps) => {
             name="baseAsset"
             value={form.baseAsset}
             onChange={onChange}
-            className="border-b p-1 w-14 text-center uppercase"
+            className="border-b border-border bg-transparent p-1 w-14 text-center uppercase text-content-primary focus:outline-none focus:border-accent"
             required
           />
-
-          <span>/</span>
-
+          <span className="text-content-secondary">/</span>
           <input
             name="quoteAsset"
             value={form.quoteAsset}
-            className="border-none p-1 rounded w-14 text-center text-gray-500 uppercase"
+            className="bg-transparent p-1 w-14 text-center text-content-secondary uppercase"
             disabled
           />
         </div>
       </div>
 
-      <div>
-        <label>Quantity:</label>
+      <div className="flex items-center gap-1">
+        <label className="text-content-secondary text-sm">Quantity:</label>
         <input
           name="quantity"
           type="number"
           value={form.quantity}
           onChange={onChange}
           placeholder={defaultFormData.quantity}
-          className="border p-1 rounded w-28"
+          className="border border-border bg-surface-secondary text-content-primary p-1 rounded w-28 focus:outline-none focus:border-accent"
           required
         />
       </div>
 
-      <div>
-        <label>Interval:</label>
+      <div className="flex items-center gap-1">
+        <label className="text-content-secondary text-sm">Interval:</label>
         <select
           name="interval"
           value={form.interval}
           onChange={onChange}
-          className="border p-1 rounded"
+          className="border border-border bg-surface-secondary text-content-primary p-1 rounded focus:outline-none focus:border-accent"
           required
         >
           {candleIntervals.map((interval) => (
@@ -80,19 +78,22 @@ const BotForm = ({ form, onChange, onSubmit }: BotFormProps) => {
         </select>
       </div>
 
-      <div>
-        <label>Lookback:</label>
+      <div className="flex items-center gap-1">
+        <label className="text-content-secondary text-sm">Lookback:</label>
         <input
           name="lookback"
           value={form.lookback}
           onChange={onChange}
           placeholder="24h"
-          className="border p-1 rounded w-14"
+          className="border border-border bg-surface-secondary text-content-primary p-1 rounded w-14 focus:outline-none focus:border-accent"
           required
         />
       </div>
 
-      <button type="submit" className="bg-green-400 p-2 rounded cursor-pointer">
+      <button
+        type="submit"
+        className="bg-accent text-surface-primary font-semibold px-3 py-1.5 rounded cursor-pointer hover:opacity-90 transition-opacity text-sm"
+      >
         CREATE
       </button>
     </form>

@@ -26,7 +26,7 @@ const BotActionButtons = ({
           e.stopPropagation()
           attachBot(botId)
         }}
-        className="bg-blue-500 hover:bg-blue-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+        className="bg-action-attach hover:bg-action-attach-hover w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
         title="Attach"
       >
         <ArrowUpFromLine size={16} />
@@ -40,7 +40,7 @@ const BotActionButtons = ({
             e.stopPropagation()
             startBot(botId)
           }}
-          className="bg-green-500 hover:bg-green-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+          className="bg-action-start hover:bg-action-start-hover w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
           title="Start"
         >
           <Play size={16} />
@@ -51,7 +51,7 @@ const BotActionButtons = ({
             e.stopPropagation()
             detachBot(botId)
           }}
-          className="bg-yellow-500 hover:bg-yellow-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+          className="bg-action-detach hover:bg-action-detach-hover w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
           title="Detach"
         >
           <ArrowDownFromLine size={16} />
@@ -65,7 +65,7 @@ const BotActionButtons = ({
           e.stopPropagation()
           stopBot(botId)
         }}
-        className="bg-orange-500 hover:bg-orange-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+        className="bg-action-stop hover:bg-stop-hover w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
         title="Stop"
       >
         <Square size={16} />
@@ -78,7 +78,7 @@ const BotActionButtons = ({
           e.stopPropagation()
           deleteBot(botId)
         }}
-        className="bg-red-500 hover:bg-red-600 w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
+        className="bg-action-delete hover:bg-action-delete-hover w-8 h-8 rounded-full flex justify-center items-center cursor-pointer transition-colors"
         title="Delete"
       >
         <X size={16} />

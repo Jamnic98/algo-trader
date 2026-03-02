@@ -5,9 +5,7 @@ import { BotActionButtons } from 'components'
 import type { BotData } from 'types'
 
 type BotStatus = 'running' | 'attached' | 'created'
-
 type BotFilters = { status?: BotStatus }
-
 type ColumnKey = 'id' | 'symbol' | 'quantity' | 'interval' | 'lookback' | 'status' | 'started'
 
 type BotTableProps = {
@@ -36,20 +34,20 @@ const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
 const BotTable = ({ bots, botFilters, botActions, columns }: BotTableProps) => {
   const navigate = useNavigate()
 
-  const visibleColumns = useMemo(() => {
-    if (!columns) return ALL_COLUMNS
-    return ALL_COLUMNS.filter((col) => columns.includes(col.key))
-  }, [columns])
+  const visibleColumns = useMemo(
+    () => (columns ? ALL_COLUMNS.filter((col) => columns.includes(col.key)) : ALL_COLUMNS),
+    [columns]
+  )
 
-  const filteredBots = useMemo(() => {
-    if (!botFilters?.status) return bots
-    return bots.filter((bot) => bot.status === botFilters.status)
-  }, [bots, botFilters])
+  const filteredBots = useMemo(
+    () => (botFilters?.status ? bots.filter((bot) => bot.status === botFilters.status) : bots),
+    [bots, botFilters]
+  )
 
   const renderCell = (bot: BotData, key: ColumnKey) => {
     switch (key) {
       case 'id':
-        return <span className="font-mono text-sm truncate">{bot.id}</span>
+        return <span className="font-mono text-sm truncate">{bot.id.split('-')[0]}</span>
       case 'status':
         return <span className="capitalize">{bot.status}</span>
       case 'started':
@@ -69,35 +67,35 @@ const BotTable = ({ bots, botFilters, botActions, columns }: BotTableProps) => {
   }
 
   return (
-    <table className="border-collapse border w-full bg-gray-50">
+    <table className="border-collapse border border-border w-full bg-surface-primary">
       <thead>
-        <tr className="text-blue-900 font-semibold bg-blue-200">
+        <tr className="text-accent font-semibold bg-surface-secondary">
           {visibleColumns.map((col) => (
-            <th key={col.key} className="border px-3 py-1 text-left">
+            <th key={col.key} className="border border-border px-3 py-1 text-left">
               {col.label}
             </th>
           ))}
-          {botActions && <th className="border px-3 py-1 text-left">Actions</th>}
+          {botActions && <th className="border border-border px-3 py-1 text-left">Actions</th>}
         </tr>
       </thead>
 
-      <tbody className="text-gray-800">
+      <tbody className="text-content-primary">
         {filteredBots.map((bot, index) => {
-          const rowBg = index % 2 === 0 ? 'bg-white' : 'bg-blue-50'
+          const rowBg = index % 2 === 0 ? 'bg-surface-primary' : 'bg-surface-secondary'
           return (
             <tr
               key={bot.id}
-              className={`group cursor-pointer transition-colors ${rowBg} duration-200 hover:bg-gray-200`}
+              className={`h-16 cursor-pointer transition-colors duration-200 ${rowBg} hover:bg-accent-muted`}
               onClick={() => navigate(`/bots/${bot.id}`)}
             >
               {visibleColumns.map((col) => (
-                <td key={col.key} className="border px-3 py-1">
+                <td key={col.key} className="border border-border px-3 py-1 text-content-secondary">
                   {renderCell(bot, col.key)}
                 </td>
               ))}
               {botActions && (
-                <td className="border px-3 py-1">
-                  <div className="flex justify-center gap-2">
+                <td className="border border-border px-3 py-1">
+                  <div className="flex justify-evenly gap-2">
                     <BotActionButtons botId={bot.id} botStatus={bot.status} {...botActions} />
                   </div>
                 </td>
