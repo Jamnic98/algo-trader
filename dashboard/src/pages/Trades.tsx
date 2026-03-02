@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { type Trade, getAllTrades } from 'api'
-import { PageTitle } from 'components'
+import { Heading } from 'components'
 import { useAlert } from 'hooks'
 
 const Trades = () => {
@@ -32,12 +32,12 @@ const Trades = () => {
   if (error) return <div>{error}</div>
 
   return (
-    <div>
-      <PageTitle title="Trades" />
+    <div className="space-y-8">
+      <Heading title="Trades" />
       {trades.length > 0 ? (
-        <ul>
-          {trades.map((trade, index) => (
-            <li key={index} className="mb-8">
+        <ul className="space-y-8 text-gray-500">
+          {trades.slice(0, 2).map((trade, index) => (
+            <li key={index} className="space-y-1">
               <div>Bot ID: {trade.botID}</div>
               <div>Symbol: {trade.symbol}</div>
               <div>Side: {trade.side}</div>

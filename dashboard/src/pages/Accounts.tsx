@@ -1,9 +1,9 @@
-import { PageTitle } from 'components'
+import { Heading } from 'components'
 
 const Accounts = () => {
   return (
     <>
-      <PageTitle title="Accounts" />
+      <Heading title="Accounts" />
     </>
   )
 }

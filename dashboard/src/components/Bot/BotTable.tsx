@@ -67,42 +67,41 @@ const BotTable = ({ bots, botFilters, botActions, columns }: BotTableProps) => {
   }
 
   return (
-    <table className="border-collapse border border-border w-full bg-surface-primary">
+    <table className="border-collapse w-full select-none">
       <thead>
-        <tr className="text-accent font-semibold bg-surface-secondary">
+        <tr className="bg-table-header text-accent font-semibold text-sm uppercase tracking-wider">
           {visibleColumns.map((col) => (
-            <th key={col.key} className="border border-border px-3 py-1 text-left">
+            <th key={col.key} className="border-b border-table-border px-4 py-3 text-left">
               {col.label}
             </th>
           ))}
-          {botActions && <th className="border border-border px-3 py-1 text-left">Actions</th>}
+          {botActions && (
+            <th className="border-b border-table-border px-4 py-3 text-left">Actions</th>
+          )}
         </tr>
       </thead>
 
-      <tbody className="text-content-primary">
-        {filteredBots.map((bot, index) => {
-          const rowBg = index % 2 === 0 ? 'bg-surface-primary' : 'bg-surface-secondary'
-          return (
-            <tr
-              key={bot.id}
-              className={`h-16 cursor-pointer transition-colors duration-200 ${rowBg} hover:bg-accent-muted`}
-              onClick={() => navigate(`/bots/${bot.id}`)}
-            >
-              {visibleColumns.map((col) => (
-                <td key={col.key} className="border border-border px-3 py-1 text-content-secondary">
-                  {renderCell(bot, col.key)}
-                </td>
-              ))}
-              {botActions && (
-                <td className="border border-border px-3 py-1">
-                  <div className="flex justify-evenly gap-2">
-                    <BotActionButtons botId={bot.id} botStatus={bot.status} {...botActions} />
-                  </div>
-                </td>
-              )}
-            </tr>
-          )
-        })}
+      <tbody>
+        {filteredBots.map((bot) => (
+          <tr
+            key={bot.id}
+            className="bg-table-row border-b border-table-border h-12 cursor-pointer transition-colors duration-150 hover:bg-table-row-hover"
+            onClick={() => navigate(`/bots/${bot.id}`)}
+          >
+            {visibleColumns.map((col) => (
+              <td key={col.key} className="px-4 text-content-secondary">
+                {renderCell(bot, col.key)}
+              </td>
+            ))}
+            {botActions && (
+              <td className="px-4 py-1">
+                <div className="flex justify-center gap-2">
+                  <BotActionButtons botId={bot.id} botStatus={bot.status} {...botActions} />
+                </div>
+              </td>
+            )}
+          </tr>
+        ))}
       </tbody>
     </table>
   )

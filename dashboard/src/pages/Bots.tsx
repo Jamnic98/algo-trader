@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { BotForm, BotTable, PageTitle } from 'components'
+import { BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
 import type { BotData } from 'types'
 import { useAlert } from 'hooks'
@@ -119,8 +119,10 @@ const Bots = () => {
 
   const handleStopBot = async (id: string) => {
     try {
-      const updatedBot = await stopBot(id)
-      setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      if (confirm(`Stop bot ${id}?`) === true) {
+        const updatedBot = await stopBot(id)
+        setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      }
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to stop bot with id: ${id}`
@@ -164,7 +166,7 @@ const Bots = () => {
 
   const handleDeleteBot = async (id: string) => {
     try {
-      if (confirm(`Are you sure you want to delete bot: ${id}`) === true) {
+      if (confirm(`Delete bot ${id}?`) === true) {
         await deleteBot(id)
         setBots((prev) => prev && prev.filter((b) => b.id !== id))
       }
@@ -180,15 +182,13 @@ const Bots = () => {
   }
 
   if (loading) return <div>Loading bots...</div>
-
   if (error) return <div>{error}</div>
 
   return (
-    <>
-      <PageTitle title="Bots" />
+    <div className="space-y-8">
+      <Heading title="Bots" />
       <BotForm form={form} onChange={handleChange} onSubmit={handleCreateBot} />
 
-      {/* Bots table */}
       {bots.length > 0 ? (
         <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
           <BotTable
@@ -205,7 +205,7 @@ const Bots = () => {
       ) : (
         <div>No bots yet</div>
       )}
-    </>
+    </div>
   )
 }
 

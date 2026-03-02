@@ -9,6 +9,10 @@
   --color-content-secondary: #a1a1aa;
   --color-border: #27272a;
   --color-surface-page: #202023;
+  --color-table-header: #171717;
+  --color-table-row: #1c1c1f;
+  --color-table-row-hover: #222226;
+  --color-table-border: #2e2e32;
 
   /* ...existing colours... */
   --color-action-attach: #3b82f6;

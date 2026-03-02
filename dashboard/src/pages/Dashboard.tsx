@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { getAllBots } from 'api'
-import { BotTable, PageTitle } from 'components'
-import type { BotData } from 'types'
+import { BotTable, Heading } from 'components'
 import { useAlert } from 'hooks'
+import type { BotData } from 'types'
 
 const Dashboard = () => {
   const { showAlert } = useAlert()
@@ -34,21 +34,22 @@ const Dashboard = () => {
   if (loading) return <div>Loading bots...</div>
 
   return (
-    <>
-      <PageTitle title="Dashboard" />
-      <div className="flex flex-col">
-        <div className="border-2">
-          <h2>Running Bots</h2>
+    <div className="space-y-8">
+      <Heading title="Dashboard" />
+
+      <div className="space-y-3">
+        <Heading title="Running Bots" as={6} size={3} />
+        <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
           <BotTable
             bots={bots}
             columns={['symbol', 'quantity', 'interval', 'lookback', 'started']}
           />
-          <button onClick={() => navigate('bots')} className="cursor-pointer">
-            all bots
-          </button>
         </div>
+        <button onClick={() => navigate('bots')} className="cursor-pointer">
+          all bots
+        </button>
       </div>
-    </>
+    </div>
   )
 }
 

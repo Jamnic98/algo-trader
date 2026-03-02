@@ -1,6 +1,6 @@
 export { default as Accounts } from './Accounts'
 export { default as Bots } from './Bots'
-export { default as BotDetail } from './BotDetail'
+export { default as BotInfo } from './BotInfo'
 export { default as Dashboard } from './Dashboard'
 export { default as Monitoring } from './Monitoring'
 export { default as Trades } from './Trades'

@@ -13,7 +13,9 @@ import {
 import { StatusIndicator } from 'components'
 import { getHealthStatus } from 'api'
 
-const sidebarLinks: { label: string; url: string; icon: ReactNode }[] = [
+type SidebarLink = { label: string; url: string; icon: ReactNode }
+
+const sidebarLinks: SidebarLink[] = [
   { label: 'dashboard', url: '/', icon: <Home size={18} /> },
   { label: 'bots', url: '/bots', icon: <Bot size={18} /> },
   { label: 'trades', url: '/trades', icon: <ChartCandlestick size={18} /> },
@@ -47,7 +49,7 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
 
   return (
     <div
-      className={`flex flex-col justify-between h-full bg-zinc-900 border-r border-zinc-800 transition-all duration-300 ${isOpen ? 'w-48' : 'w-16'}`}
+      className={`flex flex-col justify-between h-full bg-zinc-900 border-r select-none border-zinc-800 transition-all duration-300 ${isOpen ? 'w-48' : 'w-16'}`}
     >
       {/* Logo mark */}
       <div>
@@ -73,7 +75,7 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
               <li
                 key={link.url}
                 onClick={() => navigate(link.url)}
-                className={`flex flex-row items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors
+                className={`flex flex-row items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors justify-between
                   ${
                     isActive
                       ? 'bg-emerald-500/10 text-emerald-400'

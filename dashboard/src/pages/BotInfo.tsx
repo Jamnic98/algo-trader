@@ -4,8 +4,9 @@ import { useParams } from 'react-router-dom'
 import { getBot } from 'api'
 import { useAlert } from 'hooks'
 import { type BotData } from 'types'
+import { Heading } from 'components'
 
-const BotDetail = () => {
+const BotInfo = () => {
   const { id } = useParams()
   const { showAlert } = useAlert()
 
@@ -40,16 +41,20 @@ const BotDetail = () => {
   if (error) return <div>{error} 😢</div>
 
   return (
-    <>
-      <h1>Bot ID: {bot!.id}</h1>
-      <p>Symbol: {bot!.symbol}</p>
-      <p>Interval: {bot!.interval}</p>
-      <p>Lookback: {bot!.lookback}</p>
-      <p>Quantity: {bot!.quantity}</p>
-      <p>Status: {bot!.status}</p>
-      {bot?.started && <p>Started: {bot!.started}</p>}
-    </>
+    <div className="space-y-8">
+      <Heading title="Bot Info" />
+
+      <div className="space-y-3 text-gray-500">
+        <p>ID: {bot!.id}</p>
+        <p>Symbol: {bot!.symbol}</p>
+        <p>Interval: {bot!.interval}</p>
+        <p>Lookback: {bot!.lookback}</p>
+        <p>Quantity: {bot!.quantity}</p>
+        <p>Status: {bot!.status}</p>
+        {bot?.started && <p>Started: {bot!.started}</p>}
+      </div>
+    </div>
   )
 }
 
-export default BotDetail
+export default BotInfo

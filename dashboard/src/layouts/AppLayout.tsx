@@ -16,7 +16,7 @@ const AppLayout = () => {
   return (
     <div className="flex flex-row h-screen overflow-hidden bg-surface-page">
       <Sidebar isOpen={isOpen} onToggle={() => setIsOpen((open) => !open)} />
-      <main className="grow overflow-y-auto w-full">
+      <main className="flex flex-col justify-center-center grow overflow-y-auto w-full mx-auto mt-16 px-8 md:px-20 max-w-7xl">
         <Outlet />
       </main>
     </div>

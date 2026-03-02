@@ -1,9 +1,9 @@
-import { PageTitle } from 'components'
+import { Heading } from 'components'
 
 const Monitoring = () => {
   return (
     <>
-      <PageTitle title="Monitoring" />
+      <Heading title="Monitoring" />
     </>
   )
 }
