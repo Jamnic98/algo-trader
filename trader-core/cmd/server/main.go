@@ -48,6 +48,9 @@ func main() {
 	setup.InitDatabase(cfg)
 	server := setup.InitServer(cfg)
 
+	sysmon := monitoring.NewSysMonitor(2 * time.Second)
+	go sysmon.Run(ctx)
+
 	// Run API server
 	go func() {
 		if err := server.Run(":" + cfg.Port); err != nil {
@@ -170,6 +173,7 @@ func main() {
 	// Inject runtime into API handlers
 	api.InitAccountAPI(runtime)
 	api.InitBotAPI(runtime)
+	api.InitDiagnosticsAPI(server, sysmon)
 
 	// Wait for shutdown signal
 	<-ctx.Done()
