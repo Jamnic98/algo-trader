@@ -9,7 +9,10 @@ type HistoryPoint = { t: string; cpu: number; mem: number }
 
 const MAX_HISTORY = 30
 const SESSION_KEY = 'diagnostics_history'
-const WS_URL = `ws://localhost:8080/api/diagnostics/ws?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+
+const apiKey = import.meta.env.VITE_SERVER_API_KEY
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+const wsUrl = `${wsProtocol}//${window.location.host}/api/diagnostics/ws?api_key=${apiKey}`
 
 function toHHMMSS(secs: number): string {
   const h = Math.floor(secs / 3600)
@@ -130,7 +133,7 @@ const Diagnostics = () => {
   const [history, setHistory] = useState<HistoryPoint[]>(initial)
 
   useEffect(() => {
-    const ws = new WebSocket(WS_URL)
+    const ws = new WebSocket(wsUrl)
     ws.onopen = () => setConnStatus('live')
     ws.onmessage = (event) => {
       const data: DiagnosticData = JSON.parse(event.data)
