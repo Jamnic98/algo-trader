@@ -203,7 +203,7 @@ const Bots = () => {
           />
         </div>
       ) : (
-        <div>No bots yet</div>
+        <div className="text-gray-500 font-semibold text-center">- No bots -</div>
       )}
     </div>
   )

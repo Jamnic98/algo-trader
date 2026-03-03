@@ -15,7 +15,7 @@ import (
 type SystemStats struct {
 	CollectedAt       time.Time     `json:"collected_at"`
 	ProcessUptimeSecs float64       `json:"process_uptime_secs"`
-	Stale             bool          `json:"stale"` // true if collector goroutine appears stuck
+	Stale             bool          `json:"stale"`
 	CPU               CPUStat       `json:"cpu"`
 	Memory            MemStat       `json:"memory"`
 	Process           ProcessStat   `json:"process"`

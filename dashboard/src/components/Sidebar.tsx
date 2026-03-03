@@ -20,7 +20,7 @@ const sidebarLinks: SidebarLink[] = [
   { label: 'bots', url: '/bots', icon: <Bot size={18} /> },
   { label: 'trades', url: '/trades', icon: <ChartCandlestick size={18} /> },
   { label: 'accounts', url: '/accounts', icon: <Coins size={18} /> },
-  { label: 'monitoring', url: '/monitoring', icon: <Activity size={18} /> },
+  { label: 'diagnostics', url: '/diagnostics', icon: <Activity size={18} /> },
 ]
 
 type SidebarProps = { isOpen: boolean; onToggle: () => void }

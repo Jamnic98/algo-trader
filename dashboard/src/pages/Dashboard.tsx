@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 import { getAllBots } from 'api'
 import { BotTable, Heading } from 'components'
@@ -8,7 +7,6 @@ import type { BotData } from 'types'
 
 const Dashboard = () => {
   const { showAlert } = useAlert()
-  const navigate = useNavigate()
 
   const [bots, setBots] = useState<BotData[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,15 +37,16 @@ const Dashboard = () => {
 
       <div className="space-y-3">
         <Heading title="Running Bots" as={6} size={3} />
-        <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
-          <BotTable
-            bots={bots}
-            columns={['symbol', 'quantity', 'interval', 'lookback', 'started']}
-          />
-        </div>
-        <button onClick={() => navigate('bots')} className="cursor-pointer">
-          all bots
-        </button>
+        {bots.length > 0 ? (
+          <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+            <BotTable
+              bots={bots}
+              columns={['symbol', 'quantity', 'interval', 'lookback', 'started']}
+            />
+          </div>
+        ) : (
+          <div className="text-gray-500 font-semibold text-center">- No running bots -</div>
+        )}
       </div>
     </div>
   )

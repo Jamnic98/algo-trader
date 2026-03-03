@@ -8,9 +8,10 @@ import (
 
 func APIKeyAuth(expectedKey string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		key := c.GetHeader("Authorization")
+		header := c.GetHeader("Authorization")
+		query := c.Query("api_key")
 
-		if key != "ApiKey "+expectedKey {
+		if header != "ApiKey "+expectedKey && query != expectedKey {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "unauthorised",
 			})

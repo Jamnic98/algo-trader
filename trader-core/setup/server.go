@@ -3,12 +3,13 @@ package setup
 import (
 	"net/http"
 	"trader-core/internal/api"
+	"trader-core/internal/monitoring"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func InitServer(cfg Config) *gin.Engine {
+func InitServer(cfg Config, mon *monitoring.SysMonitor) *gin.Engine {
 	engine := gin.Default()
 
 	if cfg.Env == "local" {
@@ -27,6 +28,8 @@ func InitServer(cfg Config) *gin.Engine {
 		api.RegisterBotRoutes(route.Group("/bots"))
 		api.RegisterTradeRoutes(route.Group("/trades"))
 	}
+
+	route.GET("/diagnostics/ws", api.DiagnosticsWS(mon))
 
 	route.GET("/health", func(c *gin.Context) {
 		// Authorized → return OK

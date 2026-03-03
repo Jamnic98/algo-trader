@@ -44,12 +44,12 @@ func main() {
 	}
 	defer monitoring.ShutdownLogger()
 
-	// Initialize backend
-	setup.InitDatabase(cfg)
-	server := setup.InitServer(cfg)
-
 	sysmon := monitoring.NewSysMonitor(2 * time.Second)
 	go sysmon.Run(ctx)
+
+	// Initialize backend
+	setup.InitDatabase(cfg)
+	server := setup.InitServer(cfg, sysmon)
 
 	// Run API server
 	go func() {

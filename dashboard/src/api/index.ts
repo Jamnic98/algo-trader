@@ -1,4 +1,5 @@
 export * from './bots'
+export * from './diagnostics'
 export * from './trades'
 export * from './health'
 
