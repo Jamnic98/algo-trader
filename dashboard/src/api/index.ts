@@ -1,3 +1,4 @@
+export * from './account'
 export * from './bots'
 export * from './diagnostics'
 export * from './trades'

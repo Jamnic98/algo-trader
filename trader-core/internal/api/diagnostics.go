@@ -26,7 +26,6 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// DiagnosticsWS streams SystemStats to the client every 5s.
 func DiagnosticsWS(mon *monitoring.SysMonitor) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -34,6 +33,24 @@ func DiagnosticsWS(mon *monitoring.SysMonitor) gin.HandlerFunc {
 			return
 		}
 		defer conn.Close()
+
+		done := make(chan struct{})
+
+		conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+		conn.SetPongHandler(func(string) error {
+			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+			return nil
+		})
+
+		// read loop — only purpose is to detect disconnect via pong
+		go func() {
+			defer close(done)
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					return
+				}
+			}
+		}()
 
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
@@ -44,9 +61,13 @@ func DiagnosticsWS(mon *monitoring.SysMonitor) gin.HandlerFunc {
 
 		for {
 			select {
-			case <-c.Request.Context().Done():
+			case <-done:
 				return
 			case <-ticker.C:
+				conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					return
+				}
 				if err := sendStats(conn, mon); err != nil {
 					return
 				}
