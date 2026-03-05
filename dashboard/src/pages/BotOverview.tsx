@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { attachBot, deleteBot, detachBot, getBot, startBot, stopBot } from 'api'
-import { BotActionButtons, Heading, Tabs } from 'components'
+import { BotActionButtons, BotTrades, Heading, Tabs } from 'components'
 import { useAlert } from 'hooks'
 import type { BotData, Tab } from 'types'
 
@@ -12,29 +12,17 @@ const BotOverview = () => {
   const navigate = useNavigate()
 
   const [bot, setBot] = useState<BotData | null>(null)
+  const [runningFor, setRunningFor] = useState<string>('-')
+
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const tabs: Tab[] | null = bot && [
     {
-      label: 'Info',
-      content: (
-        <div className="space-y-3 text-gray-500">
-          <p>ID: {bot!.id}</p>
-          <p>Symbol: {bot!.symbol}</p>
-          <p>Interval: {bot!.interval}</p>
-          <p>Lookback: {bot!.lookback}</p>
-          <p>Quantity: {bot!.quantity}</p>
-          <p>Status: {bot!.status}</p>
-          {bot?.started && <p>Started: {bot!.started}</p>}
-        </div>
-      ),
-    },
-    {
       label: 'Trades',
       content: (
         <div className="space-y-3 text-gray-500">
-          <p>No trades yet.</p>
+          <BotTrades id={bot!.id} />
         </div>
       ),
     },
@@ -55,6 +43,27 @@ const BotOverview = () => {
       ),
     },
   ]
+
+  useEffect(() => {
+    if (!bot?.started) return
+
+    const calc = () => {
+      const seconds = Math.floor((Date.now() - Date.parse(bot.started!)) / 1000)
+      const y = Math.floor(seconds / 31536000)
+      const mo = Math.floor((seconds % 31536000) / 2592000)
+      const d = Math.floor((seconds % 2592000) / 86400)
+      const h = Math.floor((seconds % 86400) / 3600)
+      const m = Math.floor((seconds % 3600) / 60)
+      const s = seconds % 60
+      return [y && `${y}y`, mo && `${mo}mo`, d && `${d}d`, h && `${h}h`, m && `${m}m`, `${s}s`]
+        .filter(Boolean)
+        .join(' ')
+    }
+
+    setRunningFor(calc())
+    const interval = setInterval(() => setRunningFor(calc()), 1000)
+    return () => clearInterval(interval)
+  }, [bot?.started])
 
   useEffect(() => {
     const fetchBot = async () => {
@@ -150,18 +159,40 @@ const BotOverview = () => {
     <div className="space-y-4">
       <Heading title="Bot Overview" />
       {bot && (
-        <div className="flex gap-4">
-          <BotActionButtons
-            botId={bot.id}
-            botStatus={bot.status}
-            startBot={handleStartBot}
-            stopBot={handleStopBot}
-            attachBot={handleAttachBot}
-            detachBot={handleDetachBot}
-            deleteBot={handleDeleteBot}
-          />
-        </div>
+        <>
+          <div className="flex flex-row justify-between gap-4">
+            <div className="space-y-1 text-sm text-content-secondary font-mono">
+              <p>Status: {bot.status}</p>
+              <p>
+                Started:{' '}
+                {bot?.started
+                  ? new Date(Date.parse(bot.started)).toLocaleString('en-GB', { timeZone: 'UTC' })
+                  : '-'}
+              </p>
+              <p>Running for: {runningFor}</p>
+            </div>
+
+            <div className="flex gap-2">
+              <BotActionButtons
+                botId={bot.id}
+                botStatus={bot.status}
+                startBot={handleStartBot}
+                stopBot={handleStopBot}
+                attachBot={handleAttachBot}
+                detachBot={handleDetachBot}
+                deleteBot={handleDeleteBot}
+              />
+            </div>
+          </div>
+          <div className="space-y-1 text-sm text-content-secondary font-mono">
+            <p>Symbol: {bot.symbol}</p>
+            <p>Interval: {bot.interval}</p>
+            <p>Lookback: {bot.lookback}</p>
+            <p>Quantity: {bot.quantity}</p>
+          </div>
+        </>
       )}
+
       {tabs && <Tabs tabs={tabs} />}
     </div>
   )

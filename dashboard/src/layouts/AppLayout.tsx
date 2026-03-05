@@ -14,9 +14,9 @@ const AppLayout = () => {
   }, [isMobile])
 
   return (
-    <div className="flex flex-row h-screen bg-surface-page overflow-hidden">
+    <div className="flex flex-row h-screen bg-surface-page overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
       <Sidebar isOpen={isOpen} onToggle={() => setIsOpen((open) => !open)} />
-      <main className="flex flex-col grow w-full mx-auto py-8 px-8 md:px-16 max-w-7xl overflow-y-auto overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+      <main className="flex flex-col grow w-full mx-auto py-8 px-8 md:px-16 overflow-y-auto">
         <Breadcrumbs />
         <Outlet />
       </main>

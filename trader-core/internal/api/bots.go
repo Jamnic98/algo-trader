@@ -1,10 +1,14 @@
 package api
 
 import (
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 
 	"trader-core/internal/bot"
+	"trader-core/internal/db"
+	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +55,8 @@ func InitBotAPI(rt *bot.Runtime) {
 func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("", getBotsHandler)
 	rg.GET("/:id", getBotByIDHandler)
+	rg.GET("/:id/trades", getBotTrades)
+
 	rg.POST("", createBotHandler)
 	rg.POST("/:id/start", startBotHandler)
 	rg.POST("/:id/stop", stopBotHandler)
@@ -77,6 +83,39 @@ func getBotByIDHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
+}
+
+func getBotTrades(c *gin.Context) {
+	botID := c.Param("id")
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	var trades []models.Trade
+	var total int64
+
+	db.DB.Model(&models.Trade{}).Where("bot_id = ?", botID).Count(&total)
+	if err := db.DB.Where("bot_id = ?", botID).Order("timestamp DESC").Offset((page - 1) * limit).Limit(limit).Find(&trades).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	totalPages := int(math.Ceil(float64(total) / float64(limit)))
+
+	dtos := make([]models.TradeDTO, len(trades))
+	for i, t := range trades {
+		dtos[i] = tradeToDTO(&t)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": dtos,
+		"pagination": gin.H{
+			"page":        page,
+			"limit":       limit,
+			"total":       total,
+			"total_pages": totalPages,
+		},
+	})
 }
 
 func createBotHandler(c *gin.Context) {
