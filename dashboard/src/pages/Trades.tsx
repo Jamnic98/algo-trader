@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 
-import { type Trade, getAllTrades } from 'api'
+import { getAllTrades } from 'api'
 import { Heading } from 'components'
 import { useAlert } from 'hooks'
+import type { Trade } from 'types'
 
 const Trades = () => {
   const { showAlert } = useAlert()
