@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 
 import { getAccount } from 'api'
-import { Heading } from 'components'
+import { BarLoader, Heading } from 'components'
 import { useAlert } from 'hooks'
 import type { AccountData } from 'types'
 
@@ -34,7 +34,7 @@ const Accounts = () => {
     return () => clearInterval(interval)
   }, [fetchAccount])
 
-  if (loading) return <div className="text-content-secondary">Loading account...</div>
+  if (loading) return <BarLoader fullscreen />
   if (!account) return null
 
   return (

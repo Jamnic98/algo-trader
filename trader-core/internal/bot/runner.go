@@ -37,11 +37,16 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				b.Status = BotAttached
 				return
 			}
-			b.Candles = append(b.Candles, candle)
 
-			// cap lookback
+			// always update candle buffer regardless of status
+			b.Candles = append(b.Candles, candle)
 			if len(b.Candles) > b.MaxCandles {
 				b.Candles = b.Candles[len(b.Candles)-b.MaxCandles:]
+			}
+
+			// only trade when running
+			if b.Status != BotRunning {
+				continue
 			}
 
 			// need enough history
@@ -68,7 +73,6 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				continue
 			}
 
-			// scale to int64 for storage
 			trade := models.Trade{
 				BotID:       fill.BotID,
 				Symbol:      fill.Symbol,
@@ -80,10 +84,12 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				Exchange:    "binance",
 				Timestamp:   fill.Time,
 			}
+
 			if err := db.DB.Create(&trade).Error; err != nil {
 				log.Println("Failed to insert trade into DB")
 				return
 			}
+
 			log.Printf(
 				"Bot %s executed %s %s %s @ %s (fee %s)\n",
 				fill.BotID,

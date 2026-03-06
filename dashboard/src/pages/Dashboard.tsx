@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { getAllBots } from 'api'
-import { BotTable, Heading } from 'components'
+import { BarLoader, BotTable, Heading } from 'components'
 import { useAlert } from 'hooks'
 import type { BotData } from 'types'
 
@@ -29,7 +29,7 @@ const Dashboard = () => {
     fetchBots()
   }, [showAlert])
 
-  if (loading) return <div>Loading bots...</div>
+  if (loading) return <BarLoader fullscreen />
 
   return (
     <div className="space-y-8">

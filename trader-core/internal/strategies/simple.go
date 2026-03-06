@@ -13,16 +13,18 @@ func NewSimpleStrategy() *SimpleStrategy {
 	return &SimpleStrategy{}
 }
 
-func (s SimpleStrategy) OnCandles(candles []models.Candle) engine.Side {
+func (s *SimpleStrategy) OnCandles(candles []models.Candle) engine.Side {
 	candlesLen := len(candles)
 	last := candles[candlesLen-1]
 	prev := candles[candlesLen-2]
 
-	if last.Close < prev.Close {
+	if !s.hasPosition && last.Close < prev.Close {
+		s.hasPosition = true
 		return engine.BUY
 	}
 
-	if last.Close > prev.Close {
+	if s.hasPosition && last.Close > prev.Close {
+		s.hasPosition = false
 		return engine.SELL
 	}
 

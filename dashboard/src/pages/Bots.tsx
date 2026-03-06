@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-import { BotForm, BotTable, Heading } from 'components'
+import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
 import type { BotData } from 'types'
 import { useAlert } from 'hooks'
@@ -181,7 +181,7 @@ const Bots = () => {
     }
   }
 
-  if (loading) return <div>Loading bots...</div>
+  if (loading) return <BarLoader fullscreen />
   if (error) return <div>{error}</div>
 
   return (

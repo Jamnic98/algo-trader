@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { attachBot, deleteBot, detachBot, getBot, startBot, stopBot } from 'api'
-import { BotActionButtons, BotTrades, Heading, Tabs } from 'components'
+import { BarLoader, BotActionButtons, BotTrades, Heading, Tabs } from 'components'
 import { useAlert } from 'hooks'
 import type { BotData, Tab } from 'types'
 
@@ -19,18 +19,18 @@ const BotOverview = () => {
 
   const tabs: Tab[] | null = bot && [
     {
-      label: 'Trades',
-      content: (
-        <div className="space-y-3 text-gray-500">
-          <BotTrades id={bot!.id} />
-        </div>
-      ),
-    },
-    {
       label: 'Stats',
       content: (
         <div className="space-y-3 text-gray-500">
           <p>No performance data yet.</p>
+        </div>
+      ),
+    },
+    {
+      label: 'Trades',
+      content: (
+        <div className="space-y-3 text-gray-500">
+          <BotTrades id={bot!.id} />
         </div>
       ),
     },
@@ -152,7 +152,7 @@ const BotOverview = () => {
     }
   }
 
-  if (loading) return <div>Loading...</div>
+  if (loading) return <BarLoader fullscreen />
   if (error) return <div>{error} 😢</div>
 
   return (
@@ -169,7 +169,7 @@ const BotOverview = () => {
                   ? new Date(Date.parse(bot.started)).toLocaleString('en-GB', { timeZone: 'UTC' })
                   : '-'}
               </p>
-              <p>Running for: {runningFor}</p>
+              {bot.started ? <p>Running for: {runningFor}</p> : null}
             </div>
 
             <div className="flex gap-2">

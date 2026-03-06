@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { getBotTrades } from 'api'
 import type { Trade, Pagination } from 'types'
+import { BarLoader } from 'components'
 
 type BotTradesProps = {
   id: string
@@ -68,38 +69,39 @@ const BotTrades = ({ id }: BotTradesProps) => {
     fetchTrades()
   }, [id, page])
 
-  if (loading) return <div>Loading trades...</div>
+  if (loading) return <BarLoader fullscreen />
   if (error) return <div>{error} 😢</div>
   if (!trades.length) return <div className="text-content-secondary">No trades yet.</div>
 
   return (
-    <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
-      <table className="border-collapse w-full select-none">
-        <thead>
-          <tr className="bg-table-header text-accent font-semibold text-sm uppercase tracking-wider">
-            {COLUMNS.map((col) => (
-              <th key={col.key} className="border-b border-table-border px-4 py-3 text-left">
-                {col.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {trades.map((trade) => (
-            <tr
-              key={trade.id}
-              className="bg-table-row border-b border-table-border h-8 transition-colors duration-150 text-nowrap"
-            >
+    <>
+      <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+        <table className="border-collapse w-full select-none">
+          <thead>
+            <tr className="bg-table-header text-accent font-semibold text-sm uppercase tracking-wider">
               {COLUMNS.map((col) => (
-                <td key={col.key} className="px-4 text-content-secondary">
-                  {renderCell(trade, col.key)}
-                </td>
+                <th key={col.key} className="border-b border-table-border px-4 py-3 text-left">
+                  {col.label}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
-
+          </thead>
+          <tbody>
+            {trades.map((trade) => (
+              <tr
+                key={trade.id}
+                className="bg-table-row border-b border-table-border h-8 transition-colors duration-150 text-nowrap"
+              >
+                {COLUMNS.map((col) => (
+                  <td key={col.key} className="px-4 text-content-secondary">
+                    {renderCell(trade, col.key)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {/* Pagination */}
       {pagination && pagination.total_pages > 1 && (
         <div className="flex items-center justify-between mt-4 text-xs font-mono text-content-secondary">
@@ -156,7 +158,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
           </span>
         </div>
       )}
-    </div>
+    </>
   )
 }
 

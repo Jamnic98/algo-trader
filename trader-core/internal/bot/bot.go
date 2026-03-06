@@ -32,13 +32,13 @@ type BotConfig struct {
 }
 
 type Bot struct {
-	ID       string                    `json:"id"`
-	Interval engine.Interval           `json:"interval"`
-	Symbol   string                    `json:"symbol"`
-	Status   BotStatus                 `json:"status"`
-	Started  time.Time                 `json:"started"`
-	Strategy strategies.SimpleStrategy `json:"strategy"`
-	Quantity decimal.Decimal           `json:"quantity"`
+	ID       string                     `json:"id"`
+	Interval engine.Interval            `json:"interval"`
+	Symbol   string                     `json:"symbol"`
+	Status   BotStatus                  `json:"status"`
+	Started  time.Time                  `json:"started"`
+	Strategy *strategies.SimpleStrategy `json:"strategy"`
+	Quantity decimal.Decimal            `json:"quantity"`
 
 	Engine     engine.ExecutionEngine
 	Lookback   time.Duration
@@ -63,11 +63,8 @@ func (b *Bot) Start() error {
 	intervalDur := b.Interval.Duration()
 	b.MaxCandles = max(int(b.Lookback/intervalDur), 1)
 
-	b.ctx, b.cancel = context.WithCancel(context.Background())
 	b.Started = time.Now()
 	b.Status = BotRunning
-
-	go RunBotStrategy(b.ctx, b)
 	return nil
 }
 
@@ -75,13 +72,6 @@ func (b *Bot) Stop() {
 	if b.Status != BotRunning {
 		return
 	}
-
-	if b.cancel != nil {
-		b.cancel()
-	}
-
-	b.cancel = nil
-	b.ctx = nil
 	b.Status = BotAttached
 	b.Started = time.Time{}
 }
@@ -110,7 +100,7 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		Interval: cfg.Interval,
 		Lookback: cfg.Lookback,
 
-		Strategy: strategies.SimpleStrategy{},
+		Strategy: &strategies.SimpleStrategy{},
 		Engine:   f.Engine(),
 		CandleCh: make(chan models.Candle, 100),
 	}
@@ -145,6 +135,10 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	rt.Dispatcher.Subscribe(b.Symbol, b.Interval, b)
 	rt.MarketManager.Subscribe(b.Symbol, b.Interval)
 
+	// start goroutine here — drains candles as they arrive, no trading yet
+	b.ctx, b.cancel = context.WithCancel(context.Background())
+	go RunBotStrategy(b.ctx, b)
+
 	b.Status = BotAttached
 	return nil
 }
@@ -154,13 +148,20 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 		return fmt.Errorf("cannot detach bot from %s", b.Status)
 	}
 
-	// check MarketManager
 	if rt.MarketManager == nil || !rt.MarketManager.IsRunning() {
 		return fmt.Errorf("cannot detach bot: MarketManager not running")
 	}
 
 	rt.Dispatcher.Unsubscribe(b.Symbol, b.Interval, b)
 	rt.MarketManager.Unsubscribe(b.Symbol, b.Interval)
+
+	// kill the goroutine
+	if b.cancel != nil {
+		b.cancel()
+	}
+	b.cancel = nil
+	b.ctx = nil
+	b.Candles = nil
 
 	b.Status = BotCreated
 	return nil
