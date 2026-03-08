@@ -205,6 +205,7 @@ const BotOverview = () => {
                   : '-'}
               </p>
               {bot.started ? <p>Running for: {runningFor}</p> : null}
+              {bot?.candles ? <p>Candles: {bot.candles.length}</p> : null}
             </div>
 
             <div className="flex gap-2">

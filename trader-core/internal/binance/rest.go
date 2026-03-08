@@ -56,15 +56,41 @@ func (r *RawKline) UnmarshalJSON(data []byte) error {
 // FetchKlines calls Binance REST API and returns raw klines.
 // limit is capped at 1000 by Binance.
 func FetchKlines(symbol, interval string, limit int) ([]RawKline, error) {
-	if limit > 1000 {
-		limit = 1000
+	const maxPerRequest = 1000
+
+	if limit <= maxPerRequest {
+		return fetchKlinesBatch(symbol, interval, limit, 0)
 	}
 
-	// wrong — %s on an int will print like "%!s(int=100)"
+	var all []RawKline
+	endTime := int64(0)
+
+	for limit > 0 {
+		batch := min(limit, maxPerRequest)
+		klines, err := fetchKlinesBatch(symbol, interval, batch, endTime)
+		if err != nil {
+			return nil, err
+		}
+		if len(klines) == 0 {
+			break
+		}
+
+		all = append(klines, all...) // prepend — oldest first
+		endTime = klines[0].OpenTime - 1
+		limit -= len(klines)
+	}
+
+	return all, nil
+}
+
+func fetchKlinesBatch(symbol, interval string, limit int, endTime int64) ([]RawKline, error) {
 	url := fmt.Sprintf(
 		"%s/api/v3/klines?symbol=%s&interval=%s&limit=%d",
 		restBaseURL, symbol, interval, limit,
 	)
+	if endTime > 0 {
+		url += fmt.Sprintf("&endTime=%d", endTime)
+	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(url)

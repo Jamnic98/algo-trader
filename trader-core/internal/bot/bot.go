@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"trader-core/internal/db/models"
@@ -104,6 +105,16 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	if !rt.MarketManager.client.IsAlive() {
 		return fmt.Errorf("cannot attach bot: Binance client not connected")
 	}
+
+	intervalDur := b.Interval.Duration()
+	b.MaxCandles = max(int(b.Lookback/intervalDur), 1)
+
+	candles, err := rt.MarketManager.FetchCandles(b.Symbol, b.Interval, b.MaxCandles+1)
+	if err != nil {
+		return fmt.Errorf("failed to fetch historical candles: %w", err)
+	}
+	log.Printf("fetched %d candles for %s %s (maxCandles=%d)", len(candles), b.Symbol, b.Interval, b.MaxCandles)
+	b.Candles = candles
 
 	rt.Dispatcher.Subscribe(b.Symbol, b.Interval, b)
 	rt.MarketManager.Subscribe(b.Symbol, b.Interval)
