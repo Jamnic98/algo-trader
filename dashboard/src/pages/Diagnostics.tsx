@@ -46,7 +46,7 @@ const Diagnostics = () => {
       const point: HistoryPoint = {
         t: nowLabel(),
         cpu: data.cpu.used_percent,
-        mem: (data.process.rss_bytes / (data.process.rss_bytes + data.memory.free_bytes)) * 100,
+        mem: (data.process.rss_bytes / (data.memory.total_bytes - data.memory.used_bytes)) * 100,
       }
       const next = [...historyRef.current, point].slice(-MAX_HISTORY)
       historyRef.current = next
@@ -71,6 +71,7 @@ const Diagnostics = () => {
   if (!diagnostics) return null
 
   const { cpu, memory, process, go_runtime, process_uptime_secs, stale } = diagnostics
+  const available = memory.total_bytes - memory.used_bytes
   const isStale = stale || connStatus === 'disconnected'
 
   return (
@@ -105,7 +106,7 @@ const Diagnostics = () => {
             history={history}
             color="#60a5fa"
             unit="%"
-            latest={(process.rss_bytes / (process.rss_bytes + memory.free_bytes)) * 100}
+            latest={(process.rss_bytes / available) * 100}
           />
         </div>
       </div>
@@ -116,8 +117,8 @@ const Diagnostics = () => {
           <StatCard label="CPU Usage" value={`${cpu.used_percent.toFixed(1)}%`} accent />
           <StatCard label="CPU Cores" value={cpu.num_cpu} />
           <StatCard
-            label="Memory Free"
-            value={formatBytes(memory.free_bytes)}
+            label="Memory Available"
+            value={formatBytes(memory.total_bytes - memory.used_bytes)}
             sub={`of ${formatBytes(memory.total_bytes)}`}
           />
         </div>

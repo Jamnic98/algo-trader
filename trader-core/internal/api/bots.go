@@ -16,13 +16,14 @@ import (
 )
 
 type BotDTO struct {
-	ID       string        `json:"id"`
-	Symbol   string        `json:"symbol"`
-	Interval string        `json:"interval"`
-	Status   bot.BotStatus `json:"status"`
-	Started  *string       `json:"started,omitempty"`
-	Lookback string        `json:"lookback"`
-	Quantity string        `json:"quantity"`
+	ID       string             `json:"id"`
+	Symbol   string             `json:"symbol"`
+	Interval string             `json:"interval"`
+	Status   bot.BotStatus      `json:"status"`
+	Started  *string            `json:"started,omitempty"`
+	Lookback string             `json:"lookback"`
+	Quantity string             `json:"quantity"`
+	Candles  []models.CandleDTO `json:"candles,omitempty"`
 }
 
 func botToDTO(b *bot.Bot) BotDTO {
@@ -30,6 +31,11 @@ func botToDTO(b *bot.Bot) BotDTO {
 	if !b.Started.IsZero() {
 		s := b.Started.Format(time.RFC3339)
 		started = &s
+	}
+
+	candles := make([]models.CandleDTO, len(b.Candles))
+	for i, c := range b.Candles {
+		candles[i] = models.CandleToDTO(c)
 	}
 
 	return BotDTO{
@@ -40,6 +46,7 @@ func botToDTO(b *bot.Bot) BotDTO {
 		Status:   b.Status,
 		Symbol:   b.Symbol,
 		Quantity: b.Quantity.String(),
+		Candles:  candles,
 	}
 }
 

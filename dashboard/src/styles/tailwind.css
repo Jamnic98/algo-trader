@@ -61,3 +61,8 @@
     left: 110%;
   }
 }
+
+/* Remove lightweight logo from candles chart */
+.tv-lightweight-charts a {
+  display: none !important;
+}

@@ -29,12 +29,11 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 	for {
 		select {
 		case <-ctx.Done():
-			b.Status = BotAttached
 			return
 
 		case candle, ok := <-b.CandleCh:
 			if !ok {
-				b.Status = BotAttached
+
 				return
 			}
 
@@ -63,7 +62,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				BotID:  b.ID,
 				Symbol: b.Symbol,
 				Side:   side,
-				Price:  decimal.NewFromFloat(candle.Close),
+				Price:  candle.Close,
 				Qty:    b.Quantity,
 			}
 

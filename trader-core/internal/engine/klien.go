@@ -3,6 +3,8 @@ package engine
 import (
 	"encoding/json"
 	"trader-core/internal/db/models"
+
+	"github.com/shopspring/decimal"
 )
 
 type KlineEvent struct {
@@ -36,24 +38,15 @@ func ParseKline(msg []byte) (models.Candle, string, bool) {
 		return models.Candle{}, "", false
 	}
 
-	open, err1 := evt.K.Open.Float64()
-	high, err2 := evt.K.High.Float64()
-	low, err3 := evt.K.Low.Float64()
-	closePrice, err4 := evt.K.Close.Float64()
-	volume, err5 := evt.K.Volume.Float64()
-
-	if err1 != nil || err2 != nil || err3 != nil || err4 != nil || err5 != nil {
-		return models.Candle{}, "", false
-	}
-
 	candle := models.Candle{
-		Open:   open,
-		High:   high,
-		Low:    low,
-		Close:  closePrice,
-		Volume: volume,
+		Open:      decimal.RequireFromString(evt.K.Open.String()),
+		High:      decimal.RequireFromString(evt.K.High.String()),
+		Low:       decimal.RequireFromString(evt.K.Low.String()),
+		Close:     decimal.RequireFromString(evt.K.Close.String()),
+		Volume:    decimal.RequireFromString(evt.K.Volume.String()),
+		OpenTime:  evt.K.StartTime,
+		CloseTime: evt.K.CloseTime,
 	}
-
 	key := evt.K.Symbol + "_" + evt.K.Interval
 	return candle, key, true
 }

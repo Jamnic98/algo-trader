@@ -71,7 +71,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
 
   if (loading) return <BarLoader fullscreen />
   if (error) return <div>{error} 😢</div>
-  if (!trades.length) return <div className="text-content-secondary">No trades yet.</div>
+  if (!trades.length) return <div className="text-gray-500">No trades yet.</div>
 
   return (
     <>

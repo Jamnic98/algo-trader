@@ -1,3 +1,5 @@
+import type { OHLCVCandle } from 'types'
+
 type BotStatus = 'created' | 'attached' | 'running'
 
 export type BotCreateData = {
@@ -12,4 +14,6 @@ export interface BotData extends BotCreateData {
   id: string
   status: BotStatus
   started?: string | null
+
+  candles?: OHLCVCandle[] | null
 }

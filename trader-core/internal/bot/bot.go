@@ -76,36 +76,9 @@ func (b *Bot) Stop() {
 	b.Started = time.Time{}
 }
 
+// TODO: review usage
 func (b *Bot) SetCancel(c context.CancelFunc) {
 	b.cancel = c
-}
-
-type BotFactory struct {
-	Account engine.Account
-	Engine  func() engine.ExecutionEngine
-}
-
-func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
-	if cfg.ID == "" {
-		cfg.ID = uuid.New().String()
-	}
-
-	b := &Bot{
-		ID:     cfg.ID,
-		Status: BotCreated,
-
-		Symbol:   cfg.Symbol,
-		Quantity: cfg.Quantity,
-
-		Interval: cfg.Interval,
-		Lookback: cfg.Lookback,
-
-		Strategy: &strategies.SimpleStrategy{},
-		Engine:   f.Engine(),
-		CandleCh: make(chan models.Candle, 100),
-	}
-
-	return b, nil
 }
 
 type Runtime struct {
@@ -165,4 +138,32 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 
 	b.Status = BotCreated
 	return nil
+}
+
+type BotFactory struct {
+	Account engine.Account
+	Engine  func() engine.ExecutionEngine
+}
+
+func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
+	if cfg.ID == "" {
+		cfg.ID = uuid.New().String()
+	}
+
+	b := &Bot{
+		ID:     cfg.ID,
+		Status: BotCreated,
+
+		Symbol:   cfg.Symbol,
+		Quantity: cfg.Quantity,
+
+		Interval: cfg.Interval,
+		Lookback: cfg.Lookback,
+
+		Strategy: &strategies.SimpleStrategy{},
+		Engine:   f.Engine(),
+		CandleCh: make(chan models.Candle, 100),
+	}
+
+	return b, nil
 }

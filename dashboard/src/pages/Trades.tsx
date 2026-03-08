@@ -35,27 +35,29 @@ const Trades = () => {
   return (
     <div className="space-y-8">
       <Heading title="Trades" />
-      <p className="text-gray-500 underline">Last 5 Trades</p>
       {trades.length > 0 ? (
-        <ul className="space-y-8 text-gray-500">
-          {trades
-            .slice(-5, trades.length - 1)
-            .reverse()
-            .map((trade, index) => (
-              <li key={index} className="space-y-1">
-                <div>Bot ID: {trade.botID}</div>
-                <div>Symbol: {trade.symbol}</div>
-                <div>Side: {trade.side}</div>
-                <div>Quantity: {trade.quantity}</div>
-                <div>Price: {trade.price}</div>
-                <div>Fee: {trade.fee}</div>
-                <div>Fee Asset: {trade.feeAsset}</div>
-                <div>Timestamp: {trade.timestamp.toLocaleString()}</div>
-              </li>
-            ))}
-        </ul>
+        <>
+          <p className="text-gray-500 underline">Last 5 Trades</p>
+          <ul className="space-y-8 text-gray-500">
+            {trades
+              .slice(-5, trades.length)
+              .reverse()
+              .map((trade, index) => (
+                <li key={index} className="space-y-1">
+                  <div>Bot ID: {trade.botID}</div>
+                  <div>Symbol: {trade.symbol}</div>
+                  <div>Side: {trade.side}</div>
+                  <div>Quantity: {trade.quantity}</div>
+                  <div>Price: {trade.price}</div>
+                  <div>Fee: {trade.fee}</div>
+                  <div>Fee Asset: {trade.feeAsset}</div>
+                  <div>Timestamp: {trade.timestamp.toLocaleString()}</div>
+                </li>
+              ))}
+          </ul>
+        </>
       ) : (
-        <div>No trades yet</div>
+        <div className="text-gray-500">No trades yet</div>
       )}
     </div>
   )

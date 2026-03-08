@@ -1,14 +1,12 @@
-import { useState } from 'react'
-
 import type { Tab } from 'types'
 
 type TabsProps = {
   tabs: Tab[]
+  activeTab: number
+  onTabChange: (index: number) => void
 }
 
-const Tabs = ({ tabs }: TabsProps) => {
-  const [activeTab, setActiveTab] = useState(0)
-
+const Tabs = ({ tabs, activeTab, onTabChange }: TabsProps) => {
   return (
     <div>
       {/* Tab Bar */}
@@ -18,7 +16,7 @@ const Tabs = ({ tabs }: TabsProps) => {
           return (
             <button
               key={tab.label}
-              onClick={() => setActiveTab(index)}
+              onClick={() => onTabChange(index)}
               className={`relative px-4 py-1.5 text-xs font-mono tracking-widest uppercase rounded-md cursor-pointer transition-all duration-200 border
                 ${
                   isActive

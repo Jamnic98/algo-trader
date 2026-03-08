@@ -1,6 +1,7 @@
 export * from './account'
 export * from './alert'
 export * from './bot'
+export * from './candle'
 export * from './diagnostic'
 export * from './tab'
 export * from './trade'

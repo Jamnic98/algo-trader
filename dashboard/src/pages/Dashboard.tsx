@@ -45,7 +45,7 @@ const Dashboard = () => {
             />
           </div>
         ) : (
-          <div className="text-gray-500 font-semibold text-center">- No running bots -</div>
+          <div className="text-gray-500">No running bots</div>
         )}
       </div>
     </div>

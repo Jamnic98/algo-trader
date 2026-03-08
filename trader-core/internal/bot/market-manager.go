@@ -6,9 +6,13 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"trader-core/internal/binance"
+	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
+
+	"github.com/shopspring/decimal"
 )
 
 type MarketDataManager struct {
@@ -86,4 +90,30 @@ func (m *MarketDataManager) Run(ctx context.Context) {
 
 func (m *MarketDataManager) IsRunning() bool {
 	return m.running.Load()
+}
+
+func (m *MarketDataManager) FetchCandles(symbol string, interval engine.Interval, limit int) ([]models.Candle, error) {
+	raw, err := binance.FetchKlines(symbol, interval.String(), limit)
+	if err != nil {
+		return nil, err
+	}
+
+	candles := make([]models.Candle, 0, len(raw))
+	for _, k := range raw {
+		// skip the last candle — it's still open/live
+		if k.CloseTime > time.Now().UnixMilli() {
+			continue
+		}
+		candles = append(candles, models.Candle{
+			OpenTime:  k.OpenTime,
+			CloseTime: k.CloseTime,
+			Open:      decimal.RequireFromString(k.Open),
+			High:      decimal.RequireFromString(k.High),
+			Low:       decimal.RequireFromString(k.Low),
+			Close:     decimal.RequireFromString(k.Close),
+			Volume:    decimal.RequireFromString(k.Volume),
+		})
+	}
+
+	return candles, nil
 }

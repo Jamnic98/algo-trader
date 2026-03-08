@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { attachBot, deleteBot, detachBot, getBot, startBot, stopBot } from 'api'
-import { BarLoader, BotActionButtons, BotTrades, Heading, Tabs } from 'components'
+import { BarLoader, BotActionButtons, BotTrades, CandlestickChart, Heading, Tabs } from 'components'
 import { useAlert } from 'hooks'
 import type { BotData, Tab } from 'types'
 
@@ -10,6 +10,7 @@ const BotOverview = () => {
   const { id } = useParams()
   const { showAlert } = useAlert()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [bot, setBot] = useState<BotData | null>(null)
   const [runningFor, setRunningFor] = useState<string>('-')
@@ -17,6 +18,7 @@ const BotOverview = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // TODO: move to separate component
   const tabs: Tab[] | null = bot && [
     {
       label: 'Stats',
@@ -35,6 +37,20 @@ const BotOverview = () => {
       ),
     },
     {
+      label: 'Candles',
+      content: (
+        <>
+          {bot.candles ? (
+            <CandlestickChart data={bot.candles} symbol="BTC/USDT" height={400} />
+          ) : (
+            <div className="space-y-3 text-gray-500">
+              <p>No candles yet.</p>
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
       label: 'Logs',
       content: (
         <div className="space-y-3 text-gray-500">
@@ -43,6 +59,25 @@ const BotOverview = () => {
       ),
     },
   ]
+
+  const tabLabels = tabs ? tabs.map((t) => t.label.toLowerCase()) : []
+
+  const activeTab = (() => {
+    const tabParam = searchParams.get('tab')
+    const index = tabLabels.indexOf(tabParam ?? '')
+    return index >= 0 ? index : 0
+  })()
+
+  const handleTabChange = (index: number) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('tab', tabLabels[index])
+        return next
+      },
+      { replace: false }
+    )
+  }
 
   useEffect(() => {
     if (!bot?.started) return
@@ -193,7 +228,7 @@ const BotOverview = () => {
         </>
       )}
 
-      {tabs && <Tabs tabs={tabs} />}
+      {tabs && <Tabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />}
     </div>
   )
 }

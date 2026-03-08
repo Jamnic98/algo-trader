@@ -4,6 +4,7 @@ export * from './Loaders'
 
 export { default as Breadcrumbs } from './Breadcrumbs'
 export { default as ChartCard } from './ChartCard'
+export { default as CandlestickChart } from './CandlestickChart'
 export { default as Heading } from './Heading'
 export { default as Sidebar } from './Sidebar'
 export { default as SectionLabel } from './SectionLabel'
