@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
-import type { BotData } from 'types'
+import type { Bot } from 'types'
 import { useAlert } from 'hooks'
 
 type CreateBotFormData = {
@@ -40,7 +40,7 @@ const validateCreateBotForm = (formData: CreateBotFormData): boolean => {
 
 const Bots = () => {
   const { showAlert } = useAlert()
-  const [bots, setBots] = useState<BotData[]>([])
+  const [bots, setBots] = useState<Bot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react'
 import { getAllBots } from 'api'
 import { BarLoader, BotTable, Heading } from 'components'
 import { useAlert } from 'hooks'
-import type { BotData } from 'types'
+import type { Bot } from 'types'
 
 const Dashboard = () => {
   const { showAlert } = useAlert()
 
-  const [bots, setBots] = useState<BotData[]>([])
+  const [bots, setBots] = useState<Bot[]>([])
   const [loading, setLoading] = useState(true)
 
   // Fetch all bots on mount

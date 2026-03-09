@@ -4,7 +4,21 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { attachBot, deleteBot, detachBot, getBot, startBot, stopBot } from 'api'
 import { BarLoader, BotActionButtons, BotTrades, CandlestickChart, Heading, Tabs } from 'components'
 import { useAlert } from 'hooks'
-import type { BotData, Tab } from 'types'
+import type { Bot, Tab } from 'types'
+import { Copy } from 'lucide-react'
+
+const makeBotRunDurationStr = (botStart: string): string => {
+  const seconds = Math.floor((Date.now() - Date.parse(botStart)) / 1000)
+  const y = Math.floor(seconds / 31536000)
+  const mo = Math.floor((seconds % 31536000) / 2592000)
+  const d = Math.floor((seconds % 2592000) / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  return [y && `${y}y`, mo && `${mo}mo`, d && `${d}d`, h && `${h}h`, m && `${m}m`, `${s}s`]
+    .filter(Boolean)
+    .join(' ')
+}
 
 const BotOverview = () => {
   const { id } = useParams()
@@ -12,19 +26,40 @@ const BotOverview = () => {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const [bot, setBot] = useState<BotData | null>(null)
+  const [bot, setBot] = useState<Bot | null>(null)
   const [runningFor, setRunningFor] = useState<string>('-')
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // TODO: move to separate component
   const tabs: Tab[] | null = bot && [
+    {
+      label: 'Info',
+      content: (
+        <div className="space-y-1 text-sm text-content-secondary font-mono select-none">
+          <span className="flex items-center gap-2">
+            <p className="">Id: {bot.id}</p>
+            <Copy
+              size={14}
+              className="cursor-pointer hover:text-content-primary transition-colors"
+              onClick={() => {
+                navigator.clipboard.writeText(bot.id)
+                showAlert({ type: 'info', message: 'Bot id copied' })
+              }}
+            />
+          </span>
+          <p>Interval: {bot.interval}</p>
+          <p>Lookback: {bot.lookback}</p>
+          {bot?.quantity && <p>Quantity: {bot.quantity}</p>}
+          {bot?.candles ? <p>Candles: {bot.candles.length}</p> : null}
+        </div>
+      ),
+    },
     {
       label: 'Stats',
       content: (
         <div className="space-y-3 text-gray-500">
-          <p>No performance data yet.</p>
+          <p>No stats yet.</p>
         </div>
       ),
     },
@@ -82,21 +117,8 @@ const BotOverview = () => {
   useEffect(() => {
     if (!bot?.started) return
 
-    const calc = () => {
-      const seconds = Math.floor((Date.now() - Date.parse(bot.started!)) / 1000)
-      const y = Math.floor(seconds / 31536000)
-      const mo = Math.floor((seconds % 31536000) / 2592000)
-      const d = Math.floor((seconds % 2592000) / 86400)
-      const h = Math.floor((seconds % 86400) / 3600)
-      const m = Math.floor((seconds % 3600) / 60)
-      const s = seconds % 60
-      return [y && `${y}y`, mo && `${mo}mo`, d && `${d}d`, h && `${h}h`, m && `${m}m`, `${s}s`]
-        .filter(Boolean)
-        .join(' ')
-    }
-
-    setRunningFor(calc())
-    const interval = setInterval(() => setRunningFor(calc()), 1000)
+    setRunningFor(makeBotRunDurationStr(bot.started))
+    const interval = setInterval(() => setRunningFor(makeBotRunDurationStr(bot.started!)), 1000)
     return () => clearInterval(interval)
   }, [bot?.started])
 
@@ -195,8 +217,9 @@ const BotOverview = () => {
       <Heading title="Bot Overview" />
       {bot && (
         <>
-          <div className="flex flex-row justify-between gap-4">
+          <div className="flex flex-row justify-between gap-4 select-none">
             <div className="space-y-1 text-sm text-content-secondary font-mono">
+              <p>Symbol: {bot.symbol}</p>
               <p>Status: {bot.status}</p>
               <p>
                 Started:{' '}
@@ -205,7 +228,6 @@ const BotOverview = () => {
                   : '-'}
               </p>
               {bot.started ? <p>Running for: {runningFor}</p> : null}
-              {bot?.candles ? <p>Candles: {bot.candles.length}</p> : null}
             </div>
 
             <div className="flex gap-2">
@@ -219,12 +241,6 @@ const BotOverview = () => {
                 deleteBot={handleDeleteBot}
               />
             </div>
-          </div>
-          <div className="space-y-1 text-sm text-content-secondary font-mono">
-            <p>Symbol: {bot.symbol}</p>
-            <p>Interval: {bot.interval}</p>
-            <p>Lookback: {bot.lookback}</p>
-            <p>Quantity: {bot.quantity}</p>
           </div>
         </>
       )}

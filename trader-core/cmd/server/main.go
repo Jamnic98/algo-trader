@@ -17,8 +17,6 @@ import (
 	"trader-core/setup"
 )
 
-const binanceWSURL = "wss://stream.binance.com:443/ws"
-
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -47,7 +45,7 @@ func main() {
 	sysmon := monitoring.NewSysMonitor(2 * time.Second)
 	go sysmon.Run(ctx)
 
-	// Initialize backend
+	// Initialize backend DB & API server
 	setup.InitDatabase(cfg)
 	server := setup.InitServer(cfg, sysmon)
 
@@ -59,7 +57,7 @@ func main() {
 	}()
 
 	// Centralized errors channel
-	errors := make(chan string, 20)
+	errors := make(chan string, 10)
 
 	// Set up Messenger for Telegram notifications
 	messenger := &monitoring.Messenger{
@@ -71,17 +69,11 @@ func main() {
 	go messenger.Run()
 	defer close(messenger.Quit)
 
-	// Listener: send all errors to log + Telegram
-	go func() {
-		for errMsg := range errors {
-			log.Println(errMsg)
-			messenger.Notify(errMsg)
-		}
-	}()
-
-	// Dispatcher + MarketManager
+	// Dispatcher
 	dispatcher := bot.NewDispatcher()
-	binanceClient := binance.NewClient(ctx, binanceWSURL)
+	binanceClient := binance.NewClient(ctx)
+
+	// MarketManager
 	marketManager := bot.NewMarketDataManager(binanceClient, dispatcher)
 	go marketManager.Run(ctx)
 
@@ -105,6 +97,11 @@ func main() {
 		Messenger:     messenger,
 		Errors:        errors,
 	}
+
+	// Inject runtime into API handlers
+	api.InitAccountAPI(runtime)
+	api.InitBotAPI(runtime)
+	api.InitDiagnosticsAPI(server, sysmon)
 
 	// Connect to binance websocket
 	go func() {
@@ -159,6 +156,14 @@ func main() {
 		}
 	}()
 
+	// Listener: send all errors to log + Telegram
+	go func() {
+		for errMsg := range errors {
+			log.Println(errMsg)
+			messenger.Notify(errMsg)
+		}
+	}()
+
 	go func() {
 		for {
 			select {
@@ -169,11 +174,6 @@ func main() {
 			}
 		}
 	}()
-
-	// Inject runtime into API handlers
-	api.InitAccountAPI(runtime)
-	api.InitBotAPI(runtime)
-	api.InitDiagnosticsAPI(server, sysmon)
 
 	// Wait for shutdown signal
 	<-ctx.Done()

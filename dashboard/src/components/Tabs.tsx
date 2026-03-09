@@ -8,9 +8,9 @@ type TabsProps = {
 
 const Tabs = ({ tabs, activeTab, onTabChange }: TabsProps) => {
   return (
-    <div>
+    <>
       {/* Tab Bar */}
-      <div className="flex gap-0.5 bg-surface-secondary p-1 rounded-lg w-fit border border-border">
+      <div className="flex gap-0.5 bg-surface-secondary p-1 rounded-lg w-fit border border-border select-none">
         {tabs.map((tab, index) => {
           const isActive = activeTab === index
           return (
@@ -38,7 +38,7 @@ const Tabs = ({ tabs, activeTab, onTabChange }: TabsProps) => {
 
       {/* Content */}
       <div className="text-content-secondary animate-fade-in">{tabs[activeTab].content}</div>
-    </div>
+    </>
   )
 }
 

@@ -12,7 +12,7 @@ const LABEL_MAP: Record<string, string> = {
 const looksLikeId = (segment: string) => /^[0-9a-f]{8}-/i.test(segment) || segment.length > 20
 
 const formatSegment = (segment: string): string => {
-  if (looksLikeId(segment)) return segment //.split('-')[0]
+  if (looksLikeId(segment)) return segment.split('-')[0]
   if (LABEL_MAP[segment]) return LABEL_MAP[segment]
   return segment.charAt(0).toUpperCase() + segment.slice(1)
 }

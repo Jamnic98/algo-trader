@@ -23,12 +23,14 @@ type Client struct {
 	lastMessage time.Time
 }
 
+const binanceWSURL = "wss://stream.binance.com:443/ws"
+
 // NewClient constructor
-func NewClient(ctx context.Context, url string) *Client {
+func NewClient(ctx context.Context) *Client {
 	cctx, cancel := context.WithCancel(ctx)
 
 	return &Client{
-		url:    url,
+		url:    binanceWSURL,
 		send:   make(chan any, 10),
 		recv:   make(chan []byte, 10),
 		ctx:    cctx,

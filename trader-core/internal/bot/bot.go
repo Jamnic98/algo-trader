@@ -25,7 +25,7 @@ const (
 )
 
 type BotConfig struct {
-	ID       string          `json:"id"`
+	ID       string          `gorm:"primaryKey" json:"id"`
 	Symbol   string          `json:"symbol"`
 	Interval engine.Interval `json:"interval"`
 	Lookback time.Duration   `json:"lookback"`

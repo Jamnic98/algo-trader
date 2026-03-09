@@ -10,10 +10,10 @@ export type BotCreateData = {
   quantity: string
 }
 
-export interface BotData extends BotCreateData {
+export interface Bot extends BotCreateData {
   id: string
   status: BotStatus
-  started?: string | null
+  started?: string
 
   candles?: OHLCVCandle[] | null
 }
