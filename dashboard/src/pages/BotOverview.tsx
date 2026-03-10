@@ -85,14 +85,14 @@ const BotOverview = () => {
         </>
       ),
     },
-    {
-      label: 'Logs',
-      content: (
-        <div className="space-y-3 text-gray-500">
-          <p>No logs yet.</p>
-        </div>
-      ),
-    },
+    // {
+    //   label: 'Logs',
+    //   content: (
+    //     <div className="space-y-3 text-gray-500">
+    //       <p>No logs yet.</p>
+    //     </div>
+    //   ),
+    // },
   ]
 
   const tabLabels = tabs ? tabs.map((t) => t.label.toLowerCase()) : []

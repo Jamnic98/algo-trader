@@ -6,6 +6,7 @@ import (
 
 	"trader-core/internal/db"
 	"trader-core/internal/db/models"
+	"trader-core/internal/dto"
 	"trader-core/internal/engine"
 
 	"github.com/shopspring/decimal"
@@ -79,15 +80,19 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				PriceInt:    ToInt64(fill.Price, priceScale),
 				QuantityInt: ToInt64(fill.Qty, quantityScale),
 				FeeInt:      ToInt64(fill.Fee, feeScale),
-				FeeAsset:    "USDT",
-				Exchange:    "binance",
-				Timestamp:   fill.Time,
+				// TODO: remove from hardcoding
+				FeeAsset:  "USDT",
+				Exchange:  "binance",
+				Timestamp: fill.Time,
 			}
 
 			if err := db.DB.Create(&trade).Error; err != nil {
 				log.Println("Failed to insert trade into DB")
 				return
 			}
+
+			// broadcast to SSE subscribers
+			b.TradeBroadcaster.Publish(dto.TradeToDTO(&trade))
 
 			log.Printf(
 				"Bot %s executed %s %s %s @ %s (fee %s)\n",

@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { BotActionButtons } from 'components'
 import type { Bot } from 'types'
 
-type ColumnKey = 'id' | 'symbol' | 'quantity' | 'interval' | 'lookback' | 'status' | 'started'
 type BotStatus = 'running' | 'attached' | 'created'
 type BotFilters = { status?: BotStatus }
+type ColumnKey = 'id' | 'symbol' | 'quantity' | 'interval' | 'lookback' | 'status' | 'started'
 
 type BotTableProps = {
   bots: Bot[]
@@ -21,21 +21,21 @@ type BotTableProps = {
   columns?: ColumnKey[]
 }
 
-const ALL_COLUMNS: ColumnKey[] = [
-  'id',
-  'symbol',
-  'quantity',
-  'interval',
-  'lookback',
-  'status',
-  'started',
+const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
+  { key: 'id', label: 'Id' },
+  { key: 'symbol', label: 'Symbol' },
+  { key: 'quantity', label: 'Quantity' },
+  { key: 'interval', label: 'Interval' },
+  { key: 'lookback', label: 'Lookback' },
+  { key: 'status', label: 'Status' },
+  { key: 'started', label: 'Started' },
 ]
 
 const BotTable = ({ bots, botFilters, botActions, columns }: BotTableProps) => {
   const navigate = useNavigate()
 
   const visibleColumns = useMemo(
-    () => (columns ? ALL_COLUMNS.filter((col) => columns.includes(col)) : ALL_COLUMNS),
+    () => (columns ? ALL_COLUMNS.filter((col) => columns.includes(col.key)) : ALL_COLUMNS),
     [columns]
   )
 
@@ -71,8 +71,8 @@ const BotTable = ({ bots, botFilters, botActions, columns }: BotTableProps) => {
       <thead>
         <tr className="bg-table-header text-accent font-semibold text-sm uppercase tracking-wider">
           {visibleColumns.map((col) => (
-            <th key={col} className="border-b border-table-border px-4 py-3 text-left">
-              {col}
+            <th key={col.key} className="border-b border-table-border px-4 py-3 text-left">
+              {col.label}
             </th>
           ))}
           {botActions && (
@@ -89,8 +89,8 @@ const BotTable = ({ bots, botFilters, botActions, columns }: BotTableProps) => {
             onClick={() => navigate(`/bots/${bot.id}`)}
           >
             {visibleColumns.map((col) => (
-              <td key={col} className="px-4 text-content-secondary">
-                {renderCell(bot, col)}
+              <td key={col.key} className="px-4 text-content-secondary">
+                {renderCell(bot, col.key)}
               </td>
             ))}
             {botActions && (

@@ -2,12 +2,13 @@ services:
   loadbalancer:
     container_name: algo-trader-loadbalancer
     image: nginx:1.27.5-alpine-slim
-    expose:
-      - "80"
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs/tradr.crt:/etc/nginx/certs/tradr.crt:ro
+      - ./certs/tradr.key:/etc/nginx/certs/tradr.key:ro
     depends_on:
       - dashboard
       - trader-core

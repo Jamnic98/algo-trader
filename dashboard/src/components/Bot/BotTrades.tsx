@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { getBotTrades } from 'api'
-import type { Trade, Pagination } from 'types'
 import { BarLoader } from 'components'
+import type { Trade, Pagination } from 'types'
 
 type BotTradesProps = {
   id: string
@@ -51,6 +51,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // initial fetch
   useEffect(() => {
     const fetchTrades = async () => {
       try {
@@ -65,8 +66,28 @@ const BotTrades = ({ id }: BotTradesProps) => {
         setLoading(false)
       }
     }
-
     fetchTrades()
+  }, [id, page])
+
+  useEffect(() => {
+    if (page !== 1) return
+
+    const source = new EventSource(
+      `/api/bots/${id}/trades/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+    )
+
+    source.onmessage = (e) => {
+      const trade: Trade = JSON.parse(e.data)
+      setTrades((prev) => [trade, ...prev])
+      setPagination((prev) => (prev ? { ...prev, total: prev.total + 1 } : prev))
+    }
+
+    source.onerror = () => {
+      console.error('trade stream error')
+      source.close()
+    }
+
+    return () => source.close()
   }, [id, page])
 
   if (loading) return <BarLoader fullscreen />

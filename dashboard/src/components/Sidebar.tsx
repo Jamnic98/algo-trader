@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 
 import { StatusIndicator } from 'components'
-import { getHealthStatus } from 'api'
 
 type SidebarLink = { label: string; url: string; icon: ReactNode }
 
@@ -32,19 +31,21 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
   const [healthStatus, setHealthStatus] = useState('')
 
   useEffect(() => {
-    const fetchHealthStatus = async () => {
-      try {
-        const status = await getHealthStatus()
-        setHealthStatus(status)
-      } catch (err) {
-        console.error(err)
-        setHealthStatus('error')
-      }
+    const source = new EventSource(
+      `/api/health/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+    )
+
+    source.onmessage = (e) => {
+      const { status } = JSON.parse(e.data)
+      setHealthStatus(status)
     }
 
-    fetchHealthStatus()
-    const intervalId = setInterval(fetchHealthStatus, 60 * 1000)
-    return () => clearInterval(intervalId)
+    source.onerror = () => {
+      setHealthStatus('error')
+      source.close()
+    }
+
+    return () => source.close()
   }, [])
 
   return (

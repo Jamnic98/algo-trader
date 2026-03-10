@@ -1,58 +1,21 @@
 package api
 
 import (
-	"math"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
-	"time"
+	"sync"
 
 	"trader-core/internal/bot"
-	"trader-core/internal/db"
-	"trader-core/internal/db/models"
-	"trader-core/internal/engine"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
 )
 
-type BotDTO struct {
-	ID       string             `json:"id"`
-	Symbol   string             `json:"symbol"`
-	Interval string             `json:"interval"`
-	Status   bot.BotStatus      `json:"status"`
-	Started  *string            `json:"started,omitempty"`
-	Lookback string             `json:"lookback"`
-	Quantity string             `json:"quantity"`
-	Candles  []models.CandleDTO `json:"candles,omitempty"`
-}
-
-func botToDTO(b *bot.Bot) BotDTO {
-	var started *string
-	if !b.Started.IsZero() {
-		s := b.Started.Format(time.RFC3339)
-		started = &s
-	}
-
-	candles := make([]models.CandleDTO, len(b.Candles))
-	for i, c := range b.Candles {
-		candles[i] = models.CandleToDTO(c)
-	}
-
-	return BotDTO{
-		ID:       b.ID,
-		Interval: b.Interval.String(),
-		Lookback: b.Lookback.String(),
-		Started:  started,
-		Status:   b.Status,
-		Symbol:   b.Symbol,
-		Quantity: b.Quantity.String(),
-		Candles:  candles,
-	}
-}
-
 var (
-	runtime    *bot.Runtime
-	activeBots = make(map[string]*bot.Bot)
+	runtime      *bot.Runtime
+	activeBotsMu sync.RWMutex
+	activeBots   = make(map[string]*bot.Bot)
 )
 
 func InitBotAPI(rt *bot.Runtime) {
@@ -62,7 +25,8 @@ func InitBotAPI(rt *bot.Runtime) {
 func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("", getBotsHandler)
 	rg.GET("/:id", getBotByIDHandler)
-	rg.GET("/:id/trades", getBotTrades)
+	rg.GET("/:id/trades", getBotTradesHandler)
+	rg.GET("/:id/trades/stream", streamBotTradesHandler)
 
 	rg.POST("", createBotHandler)
 	rg.POST("/:id/start", startBotHandler)
@@ -72,46 +36,39 @@ func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.DELETE("/:id", deleteBotHandler)
 }
 
-func getBotsHandler(c *gin.Context) {
-	bots := []BotDTO{}
-	for _, b := range activeBots {
-		bots = append(bots, botToDTO(b))
-	}
-
-	c.JSON(http.StatusOK, gin.H{"bots": bots})
-}
-
 func getBotByIDHandler(c *gin.Context) {
-	id := c.Param("id")
-	b, exists := activeBots[id]
-	if !exists {
+	b := getBot(c.Param("id"))
+	if b == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
 }
 
-func getBotTrades(c *gin.Context) {
-	botID := c.Param("id")
+func getBotsHandler(c *gin.Context) {
+	activeBotsMu.RLock()
+	bots := make([]*bot.Bot, 0, len(activeBots))
+	for _, b := range activeBots {
+		bots = append(bots, b)
+	}
+	activeBotsMu.RUnlock()
 
+	dtos := make([]BotDTO, len(bots))
+	for i, b := range bots {
+		dtos[i] = botToDTO(b)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"bots": dtos})
+}
+
+func getBotTradesHandler(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	var trades []models.Trade
-	var total int64
-
-	db.DB.Model(&models.Trade{}).Where("bot_id = ?", botID).Count(&total)
-	if err := db.DB.Where("bot_id = ?", botID).Order("timestamp DESC").Offset((page - 1) * limit).Limit(limit).Find(&trades).Error; err != nil {
+	dtos, total, totalPages, err := fetchBotTrades(c.Param("id"), page, limit)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
-	}
-
-	totalPages := int(math.Ceil(float64(total) / float64(limit)))
-
-	dtos := make([]models.TradeDTO, len(trades))
-	for i, t := range trades {
-		dtos[i] = tradeToDTO(&t)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -125,6 +82,32 @@ func getBotTrades(c *gin.Context) {
 	})
 }
 
+func streamBotTradesHandler(c *gin.Context) {
+	b := getBot(c.Param("id"))
+	if b == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
+
+	ch := b.TradeBroadcaster.Subscribe()
+	defer b.TradeBroadcaster.Unsubscribe(ch)
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	for {
+		select {
+		case trade := <-ch:
+			data, _ := json.Marshal(trade)
+			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+			c.Writer.Flush()
+		case <-c.Request.Context().Done():
+			return
+		}
+	}
+}
+
 func createBotHandler(c *gin.Context) {
 	var req struct {
 		Symbol   string `json:"symbol"`
@@ -132,113 +115,82 @@ func createBotHandler(c *gin.Context) {
 		Lookback string `json:"lookback"`
 		Quantity string `json:"quantity"`
 	}
-
-	// Parse JSON
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Parse quantity
-	qty, err := decimal.NewFromString(req.Quantity)
-	if err != nil || qty.LessThan(decimal.NewFromFloat(0)) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid quantity"})
+	cfg, err := parseBotCreateRequest(req.Symbol, req.Interval, req.Lookback, req.Quantity)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Parse lookback duration
-	lookback, err := time.ParseDuration(req.Lookback)
-	if err != nil || lookback <= 0 {
-		lookback = 24 * time.Hour
-	}
-
-	// Parse candle interval
-	interval, err := engine.ParseInterval(req.Interval)
-	if err != nil {
-		interval = engine.Interval1m
-	}
-
-	// Create bot
-	b, err := runtime.BotFactory.NewPaperBot(bot.BotConfig{
-		Symbol:   req.Symbol,
-		Interval: interval,
-		Lookback: lookback,
-		Quantity: qty,
-	})
-
+	b, err := runtime.BotFactory.NewPaperBot(cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	activeBotsMu.Lock()
 	activeBots[b.ID] = b
+	activeBotsMu.Unlock()
+
 	c.JSON(http.StatusCreated, gin.H{"bot": botToDTO(b)})
 }
 
 func startBotHandler(c *gin.Context) {
-	id := c.Param("id")
-	b, exists := activeBots[id]
-	if !exists {
+	b := getBot(c.Param("id"))
+	if b == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-
 	if err := b.Start(); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
 }
 
 func attachBotHandler(c *gin.Context) {
-	id := c.Param("id")
-	b, exists := activeBots[id]
-	if !exists {
+	b := getBot(c.Param("id"))
+	if b == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-
 	if err := runtime.AttachBot(b); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
 }
 
 func detachBotHandler(c *gin.Context) {
-	id := c.Param("id")
-	b, exists := activeBots[id]
-	if !exists {
+	b := getBot(c.Param("id"))
+	if b == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-
 	if err := runtime.DetachBot(b); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
-
 	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
 }
 
 func stopBotHandler(c *gin.Context) {
-	id := c.Param("id")
-	b, exists := activeBots[id]
-	if !exists {
+	b := getBot(c.Param("id"))
+	if b == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-
 	b.Stop()
 	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
 }
 
 func deleteBotHandler(c *gin.Context) {
-	id := c.Param("id")
-	b, exists := activeBots[id]
-	if !exists {
+	b := getBot(c.Param("id"))
+	if b == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
@@ -246,7 +198,6 @@ func deleteBotHandler(c *gin.Context) {
 	if b.Status == bot.BotRunning {
 		b.Stop()
 	}
-
 	if b.Status == bot.BotAttached {
 		if err := runtime.DetachBot(b); err != nil {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
@@ -254,6 +205,9 @@ func deleteBotHandler(c *gin.Context) {
 		}
 	}
 
-	delete(activeBots, id)
+	activeBotsMu.Lock()
+	delete(activeBots, b.ID)
+	activeBotsMu.Unlock()
+
 	c.Status(http.StatusNoContent)
 }

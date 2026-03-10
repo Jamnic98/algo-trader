@@ -1,7 +1,8 @@
 package setup
 
 import (
-	"net/http"
+	"fmt"
+	"time"
 	"trader-core/internal/api"
 	"trader-core/internal/monitoring"
 
@@ -31,11 +32,27 @@ func InitServer(cfg Config, mon *monitoring.SysMonitor) *gin.Engine {
 
 	route.GET("/diagnostics/ws", api.DiagnosticsWS(mon))
 
-	route.GET("/health", func(c *gin.Context) {
-		// Authorized → return OK
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-		})
+	route.GET("/health/stream", func(c *gin.Context) {
+		c.Header("Content-Type", "text/event-stream")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		// send immediately on connect
+		fmt.Fprintf(c.Writer, "data: {\"status\":\"ok\"}\n\n")
+		c.Writer.Flush()
+
+		for {
+			select {
+			case <-ticker.C:
+				fmt.Fprintf(c.Writer, "data: {\"status\":\"ok\"}\n\n")
+				c.Writer.Flush()
+			case <-c.Request.Context().Done():
+				return
+			}
+		}
 	})
 
 	return engine

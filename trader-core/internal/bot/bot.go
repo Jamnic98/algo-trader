@@ -4,15 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"trader-core/internal/db/models"
+	"trader-core/internal/dto"
 	"trader-core/internal/engine"
-	"trader-core/internal/monitoring"
 	"trader-core/internal/strategies"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -48,6 +46,8 @@ type Bot struct {
 	CandleCh chan models.Candle
 	Candles  []models.Candle
 
+	TradeBroadcaster *Broadcaster[dto.TradeDTO]
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -61,8 +61,10 @@ func (b *Bot) Start() error {
 		return errors.New("lookback must be > 0")
 	}
 
-	intervalDur := b.Interval.Duration()
-	b.MaxCandles = max(int(b.Lookback/intervalDur), 1)
+	// drain candles accumulated while attached
+	for len(b.CandleCh) > 0 {
+		<-b.CandleCh
+	}
 
 	b.Started = time.Now()
 	b.Status = BotRunning
@@ -80,101 +82,4 @@ func (b *Bot) Stop() {
 // TODO: review usage
 func (b *Bot) SetCancel(c context.CancelFunc) {
 	b.cancel = c
-}
-
-type Runtime struct {
-	Account       engine.Account
-	BotFactory    *BotFactory
-	Dispatcher    *Dispatcher
-	MarketManager *MarketDataManager
-	Messenger     *monitoring.Messenger
-	Errors        chan string
-}
-
-func (rt *Runtime) AttachBot(b *Bot) error {
-	if b.Status != BotCreated {
-		return fmt.Errorf("cannot attach bot from %s", b.Status)
-	}
-
-	// check MarketManager
-	if rt.MarketManager == nil || !rt.MarketManager.IsRunning() {
-		return fmt.Errorf("cannot attach bot: MarketManager not running")
-	}
-
-	// optional: check Binance WS alive
-	if !rt.MarketManager.client.IsAlive() {
-		return fmt.Errorf("cannot attach bot: Binance client not connected")
-	}
-
-	intervalDur := b.Interval.Duration()
-	b.MaxCandles = max(int(b.Lookback/intervalDur), 1)
-
-	candles, err := rt.MarketManager.FetchCandles(b.Symbol, b.Interval, b.MaxCandles+1)
-	if err != nil {
-		return fmt.Errorf("failed to fetch historical candles: %w", err)
-	}
-	log.Printf("fetched %d candles for %s %s (maxCandles=%d)", len(candles), b.Symbol, b.Interval, b.MaxCandles)
-	b.Candles = candles
-
-	rt.Dispatcher.Subscribe(b.Symbol, b.Interval, b)
-	rt.MarketManager.Subscribe(b.Symbol, b.Interval)
-
-	// start goroutine here — drains candles as they arrive, no trading yet
-	b.ctx, b.cancel = context.WithCancel(context.Background())
-	go RunBotStrategy(b.ctx, b)
-
-	b.Status = BotAttached
-	return nil
-}
-
-func (rt *Runtime) DetachBot(b *Bot) error {
-	if b.Status != BotAttached {
-		return fmt.Errorf("cannot detach bot from %s", b.Status)
-	}
-
-	if rt.MarketManager == nil || !rt.MarketManager.IsRunning() {
-		return fmt.Errorf("cannot detach bot: MarketManager not running")
-	}
-
-	rt.Dispatcher.Unsubscribe(b.Symbol, b.Interval, b)
-	rt.MarketManager.Unsubscribe(b.Symbol, b.Interval)
-
-	// kill the goroutine
-	if b.cancel != nil {
-		b.cancel()
-	}
-	b.cancel = nil
-	b.ctx = nil
-	b.Candles = nil
-
-	b.Status = BotCreated
-	return nil
-}
-
-type BotFactory struct {
-	Account engine.Account
-	Engine  func() engine.ExecutionEngine
-}
-
-func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
-	if cfg.ID == "" {
-		cfg.ID = uuid.New().String()
-	}
-
-	b := &Bot{
-		ID:     cfg.ID,
-		Status: BotCreated,
-
-		Symbol:   cfg.Symbol,
-		Quantity: cfg.Quantity,
-
-		Interval: cfg.Interval,
-		Lookback: cfg.Lookback,
-
-		Strategy: &strategies.SimpleStrategy{},
-		Engine:   f.Engine(),
-		CandleCh: make(chan models.Candle, 100),
-	}
-
-	return b, nil
 }
