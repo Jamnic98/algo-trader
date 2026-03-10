@@ -57,9 +57,7 @@ const Accounts = () => {
             ))}
           </div>
         ) : (
-          <div className="text-content-secondary font-semibold text-center">
-            - No open positions -
-          </div>
+          <div className="text-gray-500">No open positions</div>
         )}
       </div>
     </div>

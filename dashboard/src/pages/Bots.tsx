@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 
 import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
-import type { Bot } from 'types'
 import { useAlert } from 'hooks'
+import type { Bot, LoadingAction } from 'types'
 
 type CreateBotFormData = {
   baseAsset: string
@@ -43,8 +43,11 @@ const Bots = () => {
   const [bots, setBots] = useState<Bot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
   const [form, setForm] = useState(defaultFormData)
+  const [botLoadingActions, setBotLoadingActions] = useState<Record<string, LoadingAction>>({})
+
+  const setBotLoading = (id: string, action: LoadingAction) =>
+    setBotLoadingActions((prev) => ({ ...prev, [id]: action }))
 
   // Fetch all bots on mount
   useEffect(() => {
@@ -104,80 +107,80 @@ const Bots = () => {
 
   const handleStartBot = async (id: string) => {
     try {
+      setBotLoading(id, 'start')
       const updatedBot = await startBot(id)
-      setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      setBots((prev) => prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to start bot with id: ${id}`
       setError(errorMsg)
-      showAlert({
-        title: errorMsg,
-        type: 'error',
-      })
+      showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setBotLoading(id, null)
     }
   }
 
   const handleStopBot = async (id: string) => {
     try {
       if (confirm(`Stop bot ${id}?`) === true) {
+        setBotLoading(id, 'stop')
         const updatedBot = await stopBot(id)
-        setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+        setBots((prev) => prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
       }
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to stop bot with id: ${id}`
       setError(errorMsg)
-      showAlert({
-        title: errorMsg,
-        type: 'error',
-      })
+      showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setBotLoading(id, null)
     }
   }
 
   const handleAttachBot = async (id: string) => {
     try {
+      setBotLoading(id, 'attach')
       const updatedBot = await attachBot(id)
-      setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      setBots((prev) => prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to attach bot with id: ${id}`
       setError(errorMsg)
-      showAlert({
-        title: errorMsg,
-        type: 'error',
-      })
+      showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setBotLoading(id, null)
     }
   }
 
   const handleDetachBot = async (id: string) => {
     try {
+      setBotLoading(id, 'detach')
       const updatedBot = await detachBot(id)
-      setBots((prev) => prev && prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
+      setBots((prev) => prev.map((b) => (b.id === updatedBot.id ? updatedBot : b)))
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to detach bot with id: ${id}`
       setError(errorMsg)
-      showAlert({
-        title: errorMsg,
-        type: 'error',
-      })
+      showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setBotLoading(id, null)
     }
   }
 
   const handleDeleteBot = async (id: string) => {
     try {
       if (confirm(`Delete bot ${id}?`) === true) {
+        setBotLoading(id, 'delete')
         await deleteBot(id)
-        setBots((prev) => prev && prev.filter((b) => b.id !== id))
+        setBots((prev) => prev.filter((b) => b.id !== id))
       }
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to delete bot with id: ${id}`
       setError(errorMsg)
-      showAlert({
-        title: errorMsg,
-        type: 'error',
-      })
+      showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setBotLoading(id, null)
     }
   }
 
@@ -200,6 +203,7 @@ const Bots = () => {
               detachBot: handleDetachBot,
               deleteBot: handleDeleteBot,
             }}
+            botLoadingActions={botLoadingActions}
           />
         </div>
       ) : (

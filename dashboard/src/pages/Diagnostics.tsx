@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { ChartCard, Heading, SectionLabel, StatCard } from 'components'
+import { BarLoader, ChartCard, Heading, SectionLabel, StatCard } from 'components'
 import type { ConnStatus, DiagnosticData, HistoryPoint } from 'types'
 import { useAlert } from 'hooks'
 
@@ -24,6 +24,19 @@ const Diagnostics = () => {
   const [diagnostics, setDiagnostics] = useState<DiagnosticData>()
   const [connStatus, setConnStatus] = useState<ConnStatus>('connecting')
   const [history, setHistory] = useState<HistoryPoint[]>([])
+  const [uptime, setUptime] = useState('--:--:--')
+
+  const serverUptimeBaseRef = useRef<number | null>(null)
+  const clientStartRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (serverUptimeBaseRef.current === null || clientStartRef.current === null) return
+      const elapsed = Math.floor((performance.now() - clientStartRef.current) / 1000)
+      setUptime(toHHMMSS(serverUptimeBaseRef.current + elapsed))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     const source = new EventSource(`/api/diagnostics/stream?api_key=${apiKey}`)
@@ -33,6 +46,10 @@ const Diagnostics = () => {
       setDiagnostics(stats)
       setHistory(history)
       setConnStatus('live')
+      if (serverUptimeBaseRef.current === null) {
+        serverUptimeBaseRef.current = stats.process_uptime_secs
+        clientStartRef.current = performance.now()
+      }
     }
 
     source.onerror = () => {
@@ -44,8 +61,7 @@ const Diagnostics = () => {
     return () => source.close()
   }, [showAlert])
 
-  if (connStatus === 'connecting' && !diagnostics)
-    return <div className="text-content-secondary p-8 font-mono text-[13px]">Connecting...</div>
+  if (connStatus === 'connecting' && !diagnostics) return <BarLoader fullscreen />
 
   if (connStatus === 'disconnected' && !diagnostics)
     return (
@@ -56,7 +72,7 @@ const Diagnostics = () => {
 
   if (!diagnostics) return null
 
-  const { cpu, memory, process, go_runtime, process_uptime_secs, stale } = diagnostics
+  const { cpu, memory, process, go_runtime, stale } = diagnostics
   const available = memory.total_bytes - memory.used_bytes
   const isStale = stale || connStatus === 'disconnected'
 
@@ -65,13 +81,19 @@ const Diagnostics = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading title="Diagnostics" />
         <div
-          className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-mono border ${isStale ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-accent-muted border-accent/30 text-accent'}`}
+          className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-mono border ${
+            isStale
+              ? 'bg-red-500/10 border-red-500/30 text-red-400'
+              : 'bg-accent-muted border-accent/30 text-accent'
+          }`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${isStale ? 'bg-red-400' : 'bg-accent shadow-[0_0_6px_var(--color-accent)]'}`}
+            className={`w-1.5 h-1.5 rounded-full ${
+              isStale ? 'bg-red-400' : 'bg-accent shadow-[0_0_6px_var(--color-accent)]'
+            }`}
           />
           {connStatus === 'disconnected' ? 'Disconnected' : isStale ? 'Stale' : 'Live'} · uptime{' '}
-          {toHHMMSS(process_uptime_secs)}
+          {uptime}
         </div>
       </div>
 

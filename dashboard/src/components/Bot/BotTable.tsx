@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { BotActionButtons } from 'components'
-import type { Bot } from 'types'
+import type { Bot, LoadingAction } from 'types'
 
 type BotStatus = 'running' | 'attached' | 'created'
 type BotFilters = { status?: BotStatus }
@@ -11,6 +11,7 @@ type ColumnKey = 'id' | 'symbol' | 'quantity' | 'interval' | 'lookback' | 'statu
 type BotTableProps = {
   bots: Bot[]
   botFilters?: BotFilters
+  botLoadingActions?: Record<string, LoadingAction>
   botActions?: {
     startBot: (id: string) => void
     stopBot: (id: string) => void
@@ -31,7 +32,7 @@ const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: 'started', label: 'Started' },
 ]
 
-const BotTable = ({ bots, botFilters, botActions, columns }: BotTableProps) => {
+const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: BotTableProps) => {
   const navigate = useNavigate()
 
   const visibleColumns = useMemo(
@@ -96,7 +97,12 @@ const BotTable = ({ bots, botFilters, botActions, columns }: BotTableProps) => {
             {botActions && (
               <td className="px-4 py-1">
                 <div className="flex justify-center gap-2">
-                  <BotActionButtons botId={bot.id} botStatus={bot.status} {...botActions} />
+                  <BotActionButtons
+                    botId={bot.id}
+                    botStatus={bot.status}
+                    loadingAction={botLoadingActions?.[bot.id] ?? null}
+                    {...botActions}
+                  />
                 </div>
               </td>
             )}

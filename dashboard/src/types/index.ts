@@ -14,3 +14,5 @@ export type Pagination = {
   total: number
   total_pages: number
 }
+
+export type LoadingAction = 'attach' | 'detach' | 'start' | 'stop' | 'delete' | null

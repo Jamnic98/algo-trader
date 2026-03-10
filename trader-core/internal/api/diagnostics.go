@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"trader-core/internal/monitoring"
@@ -16,47 +15,47 @@ type DiagnosticsPayload struct {
 	History []monitoring.HistoryPoint `json:"history"`
 }
 
-func InitDiagnosticsAPI(router *gin.Engine, mon *monitoring.SysMonitor) {
-	router.GET("/api/diagnostics", func(c *gin.Context) {
-		c.JSON(http.StatusOK, mon.GetStats())
-	})
-	router.GET("/api/diagnostics/stream", DiagnosticsSSE(mon))
+var sysmon *monitoring.SysMonitor
+
+func InitDiagnosticsAPI(mon *monitoring.SysMonitor) {
+	sysmon = mon
 }
 
-func DiagnosticsSSE(mon *monitoring.SysMonitor) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Header("Content-Type", "text/event-stream")
-		c.Header("Cache-Control", "no-cache")
-		c.Header("Connection", "keep-alive")
+func RegisterDiagnosticsRoutes(rg *gin.RouterGroup) {
+	rg.GET("", getStaticDiagnostics)
+	rg.GET("/stream", DiagnosticsSSE)
+}
 
-		sendDiagnostics(c, mon)
+func getStaticDiagnostics(c *gin.Context) {
+	c.JSON(200, sysmon.GetStats())
+}
 
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
+func DiagnosticsSSE(c *gin.Context) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
 
-		for {
-			select {
-			case <-ticker.C:
-				sendDiagnostics(c, mon)
-			case <-c.Request.Context().Done():
-				return
-			}
+	sendDiagnostics(c)
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			sendDiagnostics(c)
+		case <-c.Request.Context().Done():
+			return
 		}
 	}
 }
 
-func sendDiagnostics(c *gin.Context, mon *monitoring.SysMonitor) {
+func sendDiagnostics(c *gin.Context) {
 	payload := DiagnosticsPayload{
-		Stats:   mon.GetStats(),
-		History: mon.GetHistory(),
+		Stats:   sysmon.GetStats(),
+		History: sysmon.GetHistory(),
 	}
 	data, _ := json.Marshal(payload)
 	fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 	c.Writer.Flush()
-}
-
-func getStaticDiagnostics(mon *monitoring.SysMonitor) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.JSON(http.StatusOK, mon.GetStats())
-	}
 }

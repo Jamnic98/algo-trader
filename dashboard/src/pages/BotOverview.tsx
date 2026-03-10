@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Copy } from 'lucide-react'
 
 import { attachBot, deleteBot, detachBot, getBot, startBot, stopBot } from 'api'
 import { BarLoader, BotActionButtons, BotTrades, CandlestickChart, Heading, Tabs } from 'components'
 import { useAlert } from 'hooks'
-import type { Bot, Tab } from 'types'
-import { Copy } from 'lucide-react'
+import type { Bot, LoadingAction, Tab } from 'types'
 
 const makeBotRunDurationStr = (botStart: string): string => {
   const seconds = Math.floor((Date.now() - Date.parse(botStart)) / 1000)
@@ -28,6 +28,7 @@ const BotOverview = () => {
 
   const [bot, setBot] = useState<Bot | null>(null)
   const [runningFor, setRunningFor] = useState<string>('-')
+  const [loadingAction, setLoadingAction] = useState<LoadingAction>(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,7 +51,6 @@ const BotOverview = () => {
           </span>
           <p>Interval: {bot.interval}</p>
           <p>Lookback: {bot.lookback}</p>
-
           {bot?.quantity && <p>Quantity: {bot.quantity}</p>}
           {bot?.candles ? <p>Candles: {bot.candles.length}</p> : null}
         </div>
@@ -86,14 +86,6 @@ const BotOverview = () => {
         </>
       ),
     },
-    // {
-    //   label: 'Logs',
-    //   content: (
-    //     <div className="space-y-3 text-gray-500">
-    //       <p>No logs yet.</p>
-    //     </div>
-    //   ),
-    // },
   ]
 
   const tabLabels = tabs ? tabs.map((t) => t.label.toLowerCase()) : []
@@ -117,7 +109,6 @@ const BotOverview = () => {
 
   useEffect(() => {
     if (!bot?.started) return
-
     setRunningFor(makeBotRunDurationStr(bot.started))
     const interval = setInterval(() => setRunningFor(makeBotRunDurationStr(bot.started!)), 1000)
     return () => clearInterval(interval)
@@ -134,10 +125,7 @@ const BotOverview = () => {
         console.error(err)
         const errorMsg = `Failed to load bot with id: ${id}`
         setError(errorMsg)
-        showAlert({
-          title: errorMsg,
-          type: 'error',
-        })
+        showAlert({ title: errorMsg, type: 'error' })
       } finally {
         setLoading(false)
       }
@@ -148,6 +136,7 @@ const BotOverview = () => {
 
   const handleStartBot = async (botId: string) => {
     try {
+      setLoadingAction('start')
       const updatedBot = await startBot(botId)
       setBot(updatedBot)
     } catch (err) {
@@ -155,12 +144,15 @@ const BotOverview = () => {
       const errorMsg = `Failed to start bot with id: ${botId}`
       setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setLoadingAction(null)
     }
   }
 
   const handleStopBot = async (botId: string) => {
     try {
       if (confirm(`Stop bot ${botId}?`) === true) {
+        setLoadingAction('stop')
         const updatedBot = await stopBot(botId)
         setBot(updatedBot)
       }
@@ -169,11 +161,14 @@ const BotOverview = () => {
       const errorMsg = `Failed to stop bot with id: ${botId}`
       setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setLoadingAction(null)
     }
   }
 
   const handleAttachBot = async (botId: string) => {
     try {
+      setLoadingAction('attach')
       const updatedBot = await attachBot(botId)
       setBot(updatedBot)
     } catch (err) {
@@ -181,11 +176,14 @@ const BotOverview = () => {
       const errorMsg = `Failed to attach bot with id: ${botId}`
       setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setLoadingAction(null)
     }
   }
 
   const handleDetachBot = async (botId: string) => {
     try {
+      setLoadingAction('detach')
       const updatedBot = await detachBot(botId)
       setBot(updatedBot)
     } catch (err) {
@@ -193,12 +191,15 @@ const BotOverview = () => {
       const errorMsg = `Failed to detach bot with id: ${botId}`
       setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setLoadingAction(null)
     }
   }
 
   const handleDeleteBot = async (botId: string) => {
     try {
       if (confirm(`Delete bot ${botId}?`) === true) {
+        setLoadingAction('delete')
         await deleteBot(botId)
         navigate('/bots')
       }
@@ -207,6 +208,8 @@ const BotOverview = () => {
       const errorMsg = `Failed to delete bot with id: ${botId}`
       setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
+    } finally {
+      setLoadingAction(null)
     }
   }
 
@@ -235,6 +238,7 @@ const BotOverview = () => {
               <BotActionButtons
                 botId={bot.id}
                 botStatus={bot.status}
+                loadingAction={loadingAction}
                 startBot={handleStartBot}
                 stopBot={handleStopBot}
                 attachBot={handleAttachBot}

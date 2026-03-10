@@ -21,7 +21,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Catch OS signals for graceful shutdown
+	// graceful shutdown on OS signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -30,9 +30,10 @@ func main() {
 		cancel()
 	}()
 
+	// config
 	cfg := setup.GetConfig()
 
-	// Set up logging
+	// logging
 	logPath := ""
 	if cfg.Env == "prod" {
 		logPath = "bot.log"
@@ -42,10 +43,14 @@ func main() {
 	}
 	defer monitoring.ShutdownLogger()
 
-	// Centralized errors channel
-	errors := make(chan string, 10)
+	// database
+	setup.InitDatabase(cfg)
 
-	// Set up Messenger for Telegram notifications
+	// system monitor
+	sysmon := monitoring.NewSysMonitor(2 * time.Second)
+	go sysmon.Run(ctx)
+
+	// telegram messenger
 	messenger := &monitoring.Messenger{
 		BotToken: cfg.TelegramKey,
 		ChatID:   cfg.TelegramChatID,
@@ -55,18 +60,14 @@ func main() {
 	go messenger.Run()
 	defer close(messenger.Quit)
 
-	// Dispatcher
+	// market data
 	dispatcher := bot.NewDispatcher()
 	binanceClient := binance.NewClient(ctx)
-
-	// MarketManager
 	marketManager := bot.NewMarketDataManager(binanceClient, dispatcher)
 	go marketManager.Run(ctx)
 
-	// Paper trading account
+	// paper trading account and bot factory
 	account := engine.NewPaperAccount("10000", "0.01")
-
-	// Bot factory
 	botFactory := bot.BotFactory{
 		Account: account,
 		Engine: func() engine.ExecutionEngine {
@@ -74,52 +75,45 @@ func main() {
 		},
 	}
 
-	// Shared runtime for bots
+	// shared bot runtime
 	runtime := &bot.Runtime{
 		Account:       account,
 		BotFactory:    &botFactory,
 		Dispatcher:    dispatcher,
 		MarketManager: marketManager,
 		Messenger:     messenger,
-		Errors:        errors,
+		Errors:        make(chan string, 10),
 	}
 
-	sysmon := monitoring.NewSysMonitor(2 * time.Second)
-	go sysmon.Run(ctx)
-
-	// Initialize backend DB & API server
-	setup.InitDatabase(cfg)
-	server := setup.InitServer(cfg, sysmon)
-
-	// Run API server
-	go func() {
-		if err := server.Run(":" + cfg.Port); err != nil {
-			log.Fatal("Failed to start API server:", err)
-		}
-	}()
-
-	// Inject runtime into API handlers
+	// inject dependencies into API handlers
 	api.InitAccountAPI(runtime)
 	api.InitBotAPI(runtime)
-	api.InitDiagnosticsAPI(server, sysmon)
+	api.InitDiagnosticsAPI(sysmon)
 
-	// Connect to binance websocket
+	// start API server
+	server := setup.InitServer(cfg, sysmon)
 	go func() {
-		log.Println("Connecting to Binance websocket...")
-		if err := binanceClient.Run(); err != nil {
-			runtime.Errors <- fmt.Sprintf("Failed to connect to Binance: %v", err)
-			return
+		if err := server.Run(":" + cfg.Port); err != nil {
+			log.Fatal("failed to start API server:", err)
 		}
-		log.Println("Binance websocket connection established")
 	}()
 
-	// Run reconnect routine for binance websocket
+	// connect to binance websocket
+	go func() {
+		log.Println("connecting to Binance websocket...")
+		if err := binanceClient.Run(); err != nil {
+			runtime.Errors <- fmt.Sprintf("failed to connect to Binance: %v", err)
+			return
+		}
+		log.Println("Binance websocket connected")
+	}()
+
+	// binance websocket reconnect loop
 	go func() {
 		const maxReconnects = 3
 		const reconnectDelay = 2 * time.Second
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
-
 		reconnectAttempts := 0
 
 		for {
@@ -128,35 +122,31 @@ func main() {
 				return
 			case <-ticker.C:
 				if !binanceClient.Started() {
-					continue // do nothing until ready
+					continue
 				}
-
 				if binanceClient.IsAlive() {
 					reconnectAttempts = 0
 					continue
 				}
-
 				reconnectAttempts++
 				if reconnectAttempts > maxReconnects {
 					runtime.Errors <- "CRITICAL: Binance WS could not reconnect after max attempts"
 					cancel()
 					return
 				}
-
-				log.Printf("WARNING: Binance WS disconnected, attempt %d/%d to reconnect", reconnectAttempts, maxReconnects)
+				log.Printf("WARNING: Binance WS disconnected, attempt %d/%d", reconnectAttempts, maxReconnects)
 				if err := binanceClient.Run(); err != nil {
 					runtime.Errors <- fmt.Sprintf("WARNING: reconnect failed: %v", err)
 				} else {
-					log.Println("Binance websocket connection established")
+					log.Println("Binance websocket reconnected")
 					reconnectAttempts = 0
 				}
-
 				time.Sleep(reconnectDelay)
 			}
 		}
 	}()
 
-	// Listener: send all errors to log + Telegram
+	// forward errors to log and Telegram
 	go func() {
 		for {
 			select {
@@ -169,7 +159,6 @@ func main() {
 		}
 	}()
 
-	// Wait for shutdown signal
 	<-ctx.Done()
-	log.Println("Main context canceled, shutting down")
+	log.Println("shutdown complete")
 }
