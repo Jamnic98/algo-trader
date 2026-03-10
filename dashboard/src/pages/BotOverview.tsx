@@ -50,6 +50,7 @@ const BotOverview = () => {
           </span>
           <p>Interval: {bot.interval}</p>
           <p>Lookback: {bot.lookback}</p>
+
           {bot?.quantity && <p>Quantity: {bot.quantity}</p>}
           {bot?.candles ? <p>Candles: {bot.candles.length}</p> : null}
         </div>
@@ -76,7 +77,7 @@ const BotOverview = () => {
       content: (
         <>
           {bot.candles ? (
-            <CandlestickChart data={bot.candles} symbol="BTC/USDT" height={400} />
+            <CandlestickChart data={bot.candles} symbol={bot.symbol} height={400} />
           ) : (
             <div className="space-y-3 text-gray-500">
               <p>No candles yet.</p>

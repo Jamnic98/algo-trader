@@ -2,84 +2,61 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"trader-core/internal/monitoring"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 )
 
-// InitDiagnosticsAPI registers the /diagnostics route
+type DiagnosticsPayload struct {
+	Stats   monitoring.SystemStats    `json:"stats"`
+	History []monitoring.HistoryPoint `json:"history"`
+}
+
 func InitDiagnosticsAPI(router *gin.Engine, mon *monitoring.SysMonitor) {
 	router.GET("/api/diagnostics", func(c *gin.Context) {
 		c.JSON(http.StatusOK, mon.GetStats())
 	})
+	router.GET("/api/diagnostics/stream", DiagnosticsSSE(mon))
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true // tighten this for production
-	},
-}
-
-func DiagnosticsWS(mon *monitoring.SysMonitor) gin.HandlerFunc {
+func DiagnosticsSSE(mon *monitoring.SysMonitor) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
-		if err != nil {
-			return
-		}
-		defer conn.Close()
+		c.Header("Content-Type", "text/event-stream")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
 
-		done := make(chan struct{})
-
-		conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-		conn.SetPongHandler(func(string) error {
-			conn.SetReadDeadline(time.Now().Add(10 * time.Second))
-			return nil
-		})
-
-		// read loop — only purpose is to detect disconnect via pong
-		go func() {
-			defer close(done)
-			for {
-				if _, _, err := conn.ReadMessage(); err != nil {
-					return
-				}
-			}
-		}()
+		sendDiagnostics(c, mon)
 
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
-		if err := sendStats(conn, mon); err != nil {
-			return
-		}
-
 		for {
 			select {
-			case <-done:
-				return
 			case <-ticker.C:
-				conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-					return
-				}
-				if err := sendStats(conn, mon); err != nil {
-					return
-				}
+				sendDiagnostics(c, mon)
+			case <-c.Request.Context().Done():
+				return
 			}
 		}
 	}
 }
 
-func sendStats(conn *websocket.Conn, mon *monitoring.SysMonitor) error {
-	b, err := json.Marshal(mon.GetStats())
-	if err != nil {
-		return err
+func sendDiagnostics(c *gin.Context, mon *monitoring.SysMonitor) {
+	payload := DiagnosticsPayload{
+		Stats:   mon.GetStats(),
+		History: mon.GetHistory(),
 	}
-	return conn.WriteMessage(websocket.TextMessage, b)
+	data, _ := json.Marshal(payload)
+	fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+	c.Writer.Flush()
+}
+
+func getStaticDiagnostics(mon *monitoring.SysMonitor) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, mon.GetStats())
+	}
 }

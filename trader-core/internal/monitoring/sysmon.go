@@ -51,11 +51,18 @@ type rawCPU struct {
 	total                                          uint64
 }
 
+type HistoryPoint struct {
+	T   string  `json:"t"`
+	CPU float64 `json:"cpu"`
+	Mem float64 `json:"mem"`
+}
+
 type SysMonitor struct {
 	mu         sync.RWMutex
 	latest     SystemStats
+	history    []HistoryPoint
 	interval   time.Duration
-	staleAfter time.Duration // flag as stale after this long without an update
+	staleAfter time.Duration
 	startedAt  time.Time
 	prevCPU    rawCPU
 }
@@ -63,8 +70,9 @@ type SysMonitor struct {
 func NewSysMonitor(interval time.Duration) *SysMonitor {
 	return &SysMonitor{
 		interval:   interval,
-		staleAfter: interval * 3, // e.g. 6s if interval is 2s
+		staleAfter: interval * 3,
 		startedAt:  time.Now(),
+		history:    make([]HistoryPoint, 0, 30),
 	}
 }
 
@@ -85,6 +93,14 @@ func (s *SysMonitor) Run(ctx interface{ Done() <-chan struct{} }) {
 			snap := s.collect()
 			s.mu.Lock()
 			s.latest = snap
+			s.history = append(s.history, HistoryPoint{
+				T:   snap.CollectedAt.Format("15:04:05"),
+				CPU: snap.CPU.UsedPercent,
+				Mem: float64(snap.Process.RSSBytes) / float64(snap.Memory.TotalBytes-snap.Memory.UsedBytes) * 100,
+			})
+			if len(s.history) > 30 {
+				s.history = s.history[1:]
+			}
 			s.mu.Unlock()
 		}
 	}
@@ -99,6 +115,14 @@ func (s *SysMonitor) GetStats() SystemStats {
 
 	snap.Stale = time.Since(snap.CollectedAt) > s.staleAfter
 	return snap
+}
+
+func (s *SysMonitor) GetHistory() []HistoryPoint {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	cp := make([]HistoryPoint, len(s.history))
+	copy(cp, s.history)
+	return cp
 }
 
 // IsStale is a lightweight check — useful for health-check endpoints.

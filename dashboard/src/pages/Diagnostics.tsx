@@ -1,15 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ChartCard, Heading, SectionLabel, StatCard } from 'components'
 import type { ConnStatus, DiagnosticData, HistoryPoint } from 'types'
 import { useAlert } from 'hooks'
 
-const MAX_HISTORY = 30
-const SESSION_KEY = 'diagnostics_history'
-
 const apiKey = import.meta.env.VITE_SERVER_API_KEY
-const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-const wsUrl = `${wsProtocol}//${window.location.host}/api/diagnostics/ws?api_key=${apiKey}`
 
 const toHHMMSS = (secs: number): string => {
   const h = Math.floor(secs / 3600)
@@ -24,38 +19,29 @@ const formatBytes = (bytes: number): string => {
   return `${(bytes / 1024).toFixed(1)} KB`
 }
 
-const nowLabel = (): string => {
-  return new Date().toLocaleTimeString('en-GB', { hour12: false })
-}
-
 const Diagnostics = () => {
   const { showAlert } = useAlert()
   const [diagnostics, setDiagnostics] = useState<DiagnosticData>()
   const [connStatus, setConnStatus] = useState<ConnStatus>('connecting')
-  const stored = sessionStorage.getItem(SESSION_KEY)
-  const initial: HistoryPoint[] = stored ? JSON.parse(stored) : []
-  const historyRef = useRef<HistoryPoint[]>(initial)
-  const [history, setHistory] = useState<HistoryPoint[]>(initial)
+  const [history, setHistory] = useState<HistoryPoint[]>([])
 
   useEffect(() => {
-    const ws = new WebSocket(wsUrl)
-    ws.onopen = () => setConnStatus('live')
-    ws.onmessage = (event) => {
-      const data: DiagnosticData = JSON.parse(event.data)
-      setDiagnostics(data)
-      const point: HistoryPoint = {
-        t: nowLabel(),
-        cpu: data.cpu.used_percent,
-        mem: (data.process.rss_bytes / (data.memory.total_bytes - data.memory.used_bytes)) * 100,
-      }
-      const next = [...historyRef.current, point].slice(-MAX_HISTORY)
-      historyRef.current = next
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(next))
-      setHistory(next)
+    const source = new EventSource(`/api/diagnostics/stream?api_key=${apiKey}`)
+
+    source.onmessage = (e) => {
+      const { stats, history } = JSON.parse(e.data)
+      setDiagnostics(stats)
+      setHistory(history)
+      setConnStatus('live')
     }
-    ws.onerror = () => showAlert({ title: 'Diagnostics connection error', type: 'error' })
-    ws.onclose = () => setConnStatus('disconnected')
-    return () => ws.close()
+
+    source.onerror = () => {
+      setConnStatus('disconnected')
+      showAlert({ title: 'Diagnostics connection error', type: 'error' })
+      source.close()
+    }
+
+    return () => source.close()
   }, [showAlert])
 
   if (connStatus === 'connecting' && !diagnostics)

@@ -1,11 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 
-import { getAccount } from 'api'
 import { BarLoader, Heading } from 'components'
 import { useAlert } from 'hooks'
 import type { AccountData } from 'types'
-
-const POLL_INTERVAL = 5000
 
 const Accounts = () => {
   const { showAlert } = useAlert()
@@ -13,26 +10,24 @@ const Accounts = () => {
   const [account, setAccount] = useState<AccountData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchAccount = useCallback(async () => {
-    try {
-      const data = await getAccount()
-      setAccount(data)
-    } catch {
-      showAlert({
-        title: 'Failed to load account',
-        type: 'error',
-      })
-    } finally {
+  useEffect(() => {
+    const source = new EventSource(
+      `/api/account/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+    )
+
+    source.onmessage = (e) => {
+      setAccount(JSON.parse(e.data))
       setLoading(false)
     }
+
+    source.onerror = () => {
+      showAlert({ title: 'Failed to load account', type: 'error' })
+      setLoading(false)
+      source.close()
+    }
+
+    return () => source.close()
   }, [showAlert])
-
-  useEffect(() => {
-    fetchAccount()
-
-    const interval = setInterval(fetchAccount, POLL_INTERVAL)
-    return () => clearInterval(interval)
-  }, [fetchAccount])
 
   if (loading) return <BarLoader fullscreen />
   if (!account) return null

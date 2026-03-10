@@ -42,20 +42,6 @@ func main() {
 	}
 	defer monitoring.ShutdownLogger()
 
-	sysmon := monitoring.NewSysMonitor(2 * time.Second)
-	go sysmon.Run(ctx)
-
-	// Initialize backend DB & API server
-	setup.InitDatabase(cfg)
-	server := setup.InitServer(cfg, sysmon)
-
-	// Run API server
-	go func() {
-		if err := server.Run(":" + cfg.Port); err != nil {
-			log.Fatal("Failed to start API server:", err)
-		}
-	}()
-
 	// Centralized errors channel
 	errors := make(chan string, 10)
 
@@ -78,7 +64,7 @@ func main() {
 	go marketManager.Run(ctx)
 
 	// Paper trading account
-	account := engine.NewPaperAccount("10000", "0.001")
+	account := engine.NewPaperAccount("10000", "0.01")
 
 	// Bot factory
 	botFactory := bot.BotFactory{
@@ -97,6 +83,20 @@ func main() {
 		Messenger:     messenger,
 		Errors:        errors,
 	}
+
+	sysmon := monitoring.NewSysMonitor(2 * time.Second)
+	go sysmon.Run(ctx)
+
+	// Initialize backend DB & API server
+	setup.InitDatabase(cfg)
+	server := setup.InitServer(cfg, sysmon)
+
+	// Run API server
+	go func() {
+		if err := server.Run(":" + cfg.Port); err != nil {
+			log.Fatal("Failed to start API server:", err)
+		}
+	}()
 
 	// Inject runtime into API handlers
 	api.InitAccountAPI(runtime)
@@ -158,16 +158,10 @@ func main() {
 
 	// Listener: send all errors to log + Telegram
 	go func() {
-		for errMsg := range errors {
-			log.Println(errMsg)
-			messenger.Notify(errMsg)
-		}
-	}()
-
-	go func() {
 		for {
 			select {
 			case err := <-runtime.Errors:
+				log.Println(err)
 				messenger.Notify(err)
 			case <-ctx.Done():
 				return

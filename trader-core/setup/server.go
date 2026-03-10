@@ -30,8 +30,6 @@ func InitServer(cfg Config, mon *monitoring.SysMonitor) *gin.Engine {
 		api.RegisterTradeRoutes(route.Group("/trades"))
 	}
 
-	route.GET("/diagnostics/ws", api.DiagnosticsWS(mon))
-
 	route.GET("/health/stream", func(c *gin.Context) {
 		c.Header("Content-Type", "text/event-stream")
 		c.Header("Cache-Control", "no-cache")
