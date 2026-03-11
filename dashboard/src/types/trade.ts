@@ -11,3 +11,12 @@ export type Trade = {
   timestamp: Date
   createdAt: Date // GORM convention
 }
+
+export type TradeFilters = {
+  limit: number
+  symbol: string
+  side: string
+  botId: string
+  dateFrom: string
+  dateTo: string
+}

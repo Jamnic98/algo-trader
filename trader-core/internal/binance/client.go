@@ -38,7 +38,55 @@ func NewClient(ctx context.Context) *Client {
 	}
 }
 
-func (c *Client) Run() error {
+func (c *Client) StartWithReconnect(onFatal func(string)) error {
+	log.Println("connecting to Binance websocket...")
+	if err := c.run(); err != nil {
+		return err
+	}
+
+	go func() {
+		const maxReconnects = 3
+		const reconnectDelay = 2 * time.Second
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+		reconnectAttempts := 0
+
+		for {
+			select {
+			case <-c.ctx.Done():
+				return
+			case <-ticker.C:
+				if !c.Started() {
+					continue
+				}
+				if c.IsAlive() {
+					reconnectAttempts = 0
+					continue
+				}
+				reconnectAttempts++
+				if reconnectAttempts > maxReconnects {
+					if onFatal != nil {
+						onFatal("CRITICAL: Binance WS could not reconnect after max attempts")
+					}
+					c.cancel()
+					return
+				}
+				log.Printf("WARNING: Binance WS disconnected, attempt %d/%d", reconnectAttempts, maxReconnects)
+				if err := c.run(); err != nil {
+					log.Printf("WARNING: reconnect failed: %v", err)
+				} else {
+					log.Println("Binance websocket reconnected")
+					reconnectAttempts = 0
+				}
+				time.Sleep(reconnectDelay)
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (c *Client) run() error {
 	conn, _, err := websocket.DefaultDialer.Dial(c.url, nil)
 	if err != nil {
 		c.connected.Store(false)
@@ -94,10 +142,9 @@ func (c *Client) pingLoop() {
 }
 
 func (c *Client) IsAlive() bool {
-	if !c.connected.Load() || !c.Started() {
-		return true // consider alive until actually started
+	if !c.connected.Load() {
+		return false
 	}
-
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.lastMessage.IsZero() {

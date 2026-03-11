@@ -99,52 +99,14 @@ func main() {
 	}()
 
 	// connect to binance websocket
-	go func() {
-		log.Println("connecting to Binance websocket...")
-		if err := binanceClient.Run(); err != nil {
-			runtime.Errors <- fmt.Sprintf("failed to connect to Binance: %v", err)
-			return
-		}
-		log.Println("Binance websocket connected")
-	}()
-
-	// binance websocket reconnect loop
-	go func() {
-		const maxReconnects = 3
-		const reconnectDelay = 2 * time.Second
-		ticker := time.NewTicker(10 * time.Second)
-		defer ticker.Stop()
-		reconnectAttempts := 0
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if !binanceClient.Started() {
-					continue
-				}
-				if binanceClient.IsAlive() {
-					reconnectAttempts = 0
-					continue
-				}
-				reconnectAttempts++
-				if reconnectAttempts > maxReconnects {
-					runtime.Errors <- "CRITICAL: Binance WS could not reconnect after max attempts"
-					cancel()
-					return
-				}
-				log.Printf("WARNING: Binance WS disconnected, attempt %d/%d", reconnectAttempts, maxReconnects)
-				if err := binanceClient.Run(); err != nil {
-					runtime.Errors <- fmt.Sprintf("WARNING: reconnect failed: %v", err)
-				} else {
-					log.Println("Binance websocket reconnected")
-					reconnectAttempts = 0
-				}
-				time.Sleep(reconnectDelay)
-			}
-		}
-	}()
+	if err := binanceClient.StartWithReconnect(func(msg string) {
+		runtime.Errors <- msg
+		cancel()
+	}); err != nil {
+		runtime.Errors <- fmt.Sprintf("failed to connect to Binance: %v", err)
+		return
+	}
+	log.Println("Binance websocket connected")
 
 	// forward errors to log and Telegram
 	go func() {
