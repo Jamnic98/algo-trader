@@ -8,6 +8,8 @@ type Trade struct {
 	ID     uint `gorm:"primaryKey"`
 	BotID  string
 	Symbol string
+	Base   string
+	Quote  string
 	Side   string
 
 	PriceInt    int64 // scaled, e.g. 1e8

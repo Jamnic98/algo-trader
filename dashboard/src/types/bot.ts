@@ -5,7 +5,8 @@ type BotStatus = 'created' | 'attached' | 'running'
 export type BotCreateData = {
   id?: string
   interval: string
-  symbol: string
+  base: string
+  quote: string
   lookback: string
   quantity: string
 }

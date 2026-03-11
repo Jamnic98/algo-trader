@@ -1,7 +1,8 @@
+import { Plus } from 'lucide-react'
+
 type CreateBotFormData = {
-  baseAsset: string
-  quoteAsset: string
-  symbol: string
+  base: string
+  quote: string
   interval: string
   lookback: string
   quantity: string
@@ -25,17 +26,17 @@ const BotForm = ({ form, onChange, onSubmit }: BotFormProps) => {
           <input
             tabIndex={0}
             autoFocus
-            name="baseAsset"
-            value={form.baseAsset}
+            name="base"
+            value={form.base}
             onChange={onChange}
             placeholder="BTC"
             className="bg-transparent px-3 py-1.5 w-16 text-center uppercase text-content-primary focus:outline-none placeholder:text-content-secondary/40 text-sm"
             required
           />
-          <span className="text-border px-0.5">/ </span>
+          <span className="text-gray-500 px-0.5">| </span>
           <input
-            name="quoteAsset"
-            value={form.quoteAsset}
+            name="quote"
+            value={form.quote}
             className="bg-transparent px-3 py-1.5 w-16 text-center text-content-secondary uppercase text-sm"
             disabled
           />
@@ -89,9 +90,9 @@ const BotForm = ({ form, onChange, onSubmit }: BotFormProps) => {
 
       <button
         type="submit"
-        className="px-5 py-1.5 rounded bg-accent text-surface-primary font-semibold text-sm uppercase tracking-wider cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+        className="flex flex-row flex-nowra gap-2 p px-2 py-1.5 rounded bg-accent text-surface-primary font-semibold text-sm uppercase tracking-wider cursor-pointer hover:opacity-90 active:scale-95 transition-all"
       >
-        Create
+        New <Plus size={18} />
       </button>
     </form>
   )

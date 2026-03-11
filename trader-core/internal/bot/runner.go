@@ -49,11 +49,6 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				continue
 			}
 
-			// need enough history
-			if len(b.Candles) < 2 {
-				continue
-			}
-
 			side := b.Strategy.OnCandles(b.Candles)
 			if side == engine.NONE {
 				continue
@@ -61,7 +56,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 
 			order := engine.Order{
 				BotID:  b.ID,
-				Symbol: b.Symbol,
+				Symbol: b.Symbol(),
 				Side:   side,
 				Price:  candle.Close,
 				Qty:    b.Quantity,
@@ -76,12 +71,14 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			trade := models.Trade{
 				BotID:       fill.BotID,
 				Symbol:      fill.Symbol,
+				Base:        b.Base,
+				Quote:       b.Quote,
 				Side:        string(fill.Side),
 				PriceInt:    ToInt64(fill.Price, priceScale),
 				QuantityInt: ToInt64(fill.Qty, quantityScale),
 				FeeInt:      ToInt64(fill.Fee, feeScale),
+				FeeAsset:    b.Quote,
 				// TODO: remove from hardcoding
-				FeeAsset:  "USDT",
 				Exchange:  "binance",
 				Timestamp: fill.Time,
 			}

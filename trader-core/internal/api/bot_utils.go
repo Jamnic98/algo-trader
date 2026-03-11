@@ -43,7 +43,7 @@ func fetchBotTrades(botID string, page, limit int) ([]dto.TradeDTO, int64, int, 
 	return dtos, total, totalPages, nil
 }
 
-func parseBotCreateRequest(symbol, interval, lookback, quantity string) (bot.BotConfig, error) {
+func parseBotCreateRequest(base, quote, interval, lookback, quantity string) (bot.BotConfig, error) {
 	qty, err := decimal.NewFromString(quantity)
 	if err != nil || qty.LessThan(decimal.NewFromFloat(0)) {
 		return bot.BotConfig{}, fmt.Errorf("invalid quantity")
@@ -60,7 +60,8 @@ func parseBotCreateRequest(symbol, interval, lookback, quantity string) (bot.Bot
 	}
 
 	return bot.BotConfig{
-		Symbol:   symbol,
+		Base:     base,
+		Quote:    quote,
 		Interval: iv,
 		Lookback: dur,
 		Quantity: qty,

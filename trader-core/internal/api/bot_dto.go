@@ -8,7 +8,8 @@ import (
 
 type BotDTO struct {
 	ID       string             `json:"id"`
-	Symbol   string             `json:"symbol"`
+	Base     string             `json:"base"`
+	Quote    string             `json:"quote"`
 	Interval string             `json:"interval"`
 	Status   bot.BotStatus      `json:"status"`
 	Started  *string            `json:"started,omitempty"`
@@ -35,7 +36,8 @@ func botToDTO(b *bot.Bot) BotDTO {
 		Lookback: b.Lookback.String(),
 		Started:  started,
 		Status:   b.Status,
-		Symbol:   b.Symbol,
+		Base:     b.Base,
+		Quote:    b.Quote,
 		Quantity: b.Quantity.String(),
 		Candles:  candles,
 	}

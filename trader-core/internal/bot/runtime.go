@@ -33,15 +33,15 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	intervalDur := b.Interval.Duration()
 	b.MaxCandles = max(int(b.Lookback/intervalDur), 1)
 
-	candles, err := rt.MarketManager.FetchCandles(b.Symbol, b.Interval, b.MaxCandles+1)
+	candles, err := rt.MarketManager.FetchCandles(b.Symbol(), b.Interval, b.MaxCandles+1)
 	if err != nil {
 		return fmt.Errorf("failed to fetch historical candles: %w", err)
 	}
-	log.Printf("fetched %d candles for %s %s (maxCandles=%d)", len(candles), b.Symbol, b.Interval, b.MaxCandles)
+	log.Printf("fetched %d candles for %s %s (maxCandles=%d)", len(candles), b.Symbol(), b.Interval, b.MaxCandles)
 	b.Candles = candles
 
-	rt.Dispatcher.Subscribe(b.Symbol, b.Interval, b)
-	rt.MarketManager.Subscribe(b.Symbol, b.Interval)
+	rt.Dispatcher.Subscribe(b.Symbol(), b.Interval, b)
+	rt.MarketManager.Subscribe(b.Symbol(), b.Interval)
 
 	// goroutine starts here — drains candles, won't trade until Running
 	b.ctx, b.cancel = context.WithCancel(context.Background())
@@ -60,8 +60,8 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 		return fmt.Errorf("cannot detach bot: MarketManager not running")
 	}
 
-	rt.Dispatcher.Unsubscribe(b.Symbol, b.Interval, b)
-	rt.MarketManager.Unsubscribe(b.Symbol, b.Interval)
+	rt.Dispatcher.Unsubscribe(b.Symbol(), b.Interval, b)
+	rt.MarketManager.Unsubscribe(b.Symbol(), b.Interval)
 
 	if b.cancel != nil {
 		b.cancel()

@@ -110,7 +110,8 @@ func streamBotTradesHandler(c *gin.Context) {
 
 func createBotHandler(c *gin.Context) {
 	var req struct {
-		Symbol   string `json:"symbol"`
+		Base     string `json:"base"`
+		Quote    string `json:"quote"`
 		Interval string `json:"interval"`
 		Lookback string `json:"lookback"`
 		Quantity string `json:"quantity"`
@@ -120,7 +121,7 @@ func createBotHandler(c *gin.Context) {
 		return
 	}
 
-	cfg, err := parseBotCreateRequest(req.Symbol, req.Interval, req.Lookback, req.Quantity)
+	cfg, err := parseBotCreateRequest(req.Base, req.Quote, req.Interval, req.Lookback, req.Quantity)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

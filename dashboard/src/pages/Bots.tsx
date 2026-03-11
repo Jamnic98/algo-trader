@@ -6,9 +6,9 @@ import { useAlert } from 'hooks'
 import type { Bot, LoadingAction } from 'types'
 
 type CreateBotFormData = {
-  baseAsset: string
-  quoteAsset: string
-  symbol: string
+  base: string
+  quote: string
+
   interval: string
   lookback: string
   quantity: string
@@ -16,9 +16,8 @@ type CreateBotFormData = {
 
 const candleIntervals = ['1m', '5m', '15m', '1h', '4h', '1d']
 const defaultFormData = {
-  baseAsset: '',
-  quoteAsset: 'USDT',
-  symbol: '',
+  base: '',
+  quote: 'USDT',
   interval: candleIntervals[0],
   lookback: '24h',
   quantity: '0',
@@ -31,7 +30,7 @@ const validateCreateBotForm = (formData: CreateBotFormData): boolean => {
   }
 
   // Check that all symbol data filled
-  if (![formData.baseAsset, formData.quoteAsset, formData.symbol].every((d) => d.trim() !== '')) {
+  if (![formData.base, formData.quote].every((d) => d.trim() !== '')) {
     return false
   }
 
@@ -72,12 +71,14 @@ const Bots = () => {
   }, [showAlert])
 
   // Handle form input change
+  // Handle form input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
 
     setForm((prev) => {
       const next = { ...prev, [name]: value }
-      next.symbol = `${next.baseAsset}${next.quoteAsset}`.toUpperCase()
+      next.base = next.base.toUpperCase()
+      next.quote = next.quote.toUpperCase()
 
       return next
     })

@@ -23,7 +23,8 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		ID:     cfg.ID,
 		Status: BotCreated,
 
-		Symbol:   cfg.Symbol,
+		Base:     cfg.Base,
+		Quote:    cfg.Quote,
 		Quantity: cfg.Quantity,
 
 		Interval: cfg.Interval,

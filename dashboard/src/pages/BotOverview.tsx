@@ -37,22 +37,49 @@ const BotOverview = () => {
     {
       label: 'Info',
       content: (
-        <div className="space-y-1 text-sm text-content-secondary font-mono select-none">
-          <span className="flex items-center gap-2">
-            <p className="">Id: {bot.id}</p>
+        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm font-mono select-none">
+          <span className="text-content-tertiary">Id</span>
+          <span className="flex items-center gap-2 text-content-secondary">
+            <span className="truncate">{bot.id}</span>
             <Copy
-              size={14}
-              className="cursor-pointer hover:text-content-primary transition-colors"
+              size={12}
+              className="cursor-pointer shrink-0 hover:text-content-primary transition-colors"
               onClick={() => {
                 navigator.clipboard.writeText(bot.id)
                 showAlert({ type: 'info', message: 'Bot id copied' })
               }}
             />
           </span>
-          <p>Interval: {bot.interval}</p>
-          <p>Lookback: {bot.lookback}</p>
-          {bot?.quantity && <p>Quantity: {bot.quantity}</p>}
-          {bot?.candles ? <p>Candles: {bot.candles.length}</p> : null}
+
+          <span className="text-content-tertiary">Interval</span>
+          <span className="text-content-secondary">{bot.interval}</span>
+
+          <span className="text-content-tertiary">Lookback</span>
+          <span className="text-content-secondary">{bot.lookback}</span>
+
+          {bot.quantity && (
+            <>
+              <span className="text-content-tertiary">Quantity</span>
+              <span className="text-content-secondary">{bot.quantity}</span>
+            </>
+          )}
+
+          {bot.candles && (
+            <>
+              <span className="text-content-tertiary">Candles</span>
+              <span className="text-content-secondary">{bot.candles.length}</span>
+            </>
+          )}
+
+          <span className="text-content-tertiary">Started</span>
+          <span className="text-content-secondary">
+            {bot.started
+              ? new Date(Date.parse(bot.started)).toLocaleString('en-GB', { timeZone: 'UTC' })
+              : '-'}
+          </span>
+
+          <span className="text-content-tertiary">Running for</span>
+          <span className="text-content-secondary">{bot.started ? runningFor : '-'}</span>
         </div>
       ),
     },
@@ -77,7 +104,7 @@ const BotOverview = () => {
       content: (
         <>
           {bot.candles ? (
-            <CandlestickChart data={bot.candles} symbol={bot.symbol} height={400} />
+            <CandlestickChart data={bot.candles} symbol={`${bot.base}/${bot.quote}`} height={400} />
           ) : (
             <div className="space-y-3 text-gray-500">
               <p>No candles yet.</p>
@@ -223,15 +250,8 @@ const BotOverview = () => {
         <>
           <div className="flex flex-row justify-between gap-4 select-none">
             <div className="space-y-1 text-sm text-content-secondary font-mono">
-              <p>Symbol: {bot.symbol}</p>
+              <p>Symbol: {`${bot.base}/${bot.quote}`}</p>
               <p>Status: {bot.status}</p>
-              <p>
-                Started:{' '}
-                {bot?.started
-                  ? new Date(Date.parse(bot.started)).toLocaleString('en-GB', { timeZone: 'UTC' })
-                  : '-'}
-              </p>
-              {bot.started ? <p>Running for: {runningFor}</p> : null}
             </div>
 
             <div className="flex gap-2">

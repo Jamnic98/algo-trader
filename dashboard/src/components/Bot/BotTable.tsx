@@ -62,13 +62,15 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
               hour12: false,
             }).format(new Date(bot.started))
           : '-'
+      case 'symbol':
+        return `${bot.base}/${bot.quote}`
       default:
-        return bot[key] as string
+        return bot[key]
     }
   }
 
   return (
-    <table className="border-collapse w-full select-none">
+    <table className="border-collapse w-full select-none text-nowrap">
       <thead>
         <tr className="bg-table-header text-accent font-semibold text-sm uppercase tracking-wider">
           {visibleColumns.map((col) => (

@@ -24,7 +24,8 @@ const (
 
 type BotConfig struct {
 	ID       string          `gorm:"primaryKey" json:"id"`
-	Symbol   string          `json:"symbol"`
+	Base     string          `json:"base"`
+	Quote    string          `json:"quote"`
 	Interval engine.Interval `json:"interval"`
 	Lookback time.Duration   `json:"lookback"`
 	Quantity decimal.Decimal `json:"quantity"`
@@ -33,7 +34,8 @@ type BotConfig struct {
 type Bot struct {
 	ID       string                     `json:"id"`
 	Interval engine.Interval            `json:"interval"`
-	Symbol   string                     `json:"symbol"`
+	Base     string                     `json:"base"`
+	Quote    string                     `json:"quote"`
 	Status   BotStatus                  `json:"status"`
 	Started  time.Time                  `json:"started"`
 	Strategy *strategies.SimpleStrategy `json:"strategy"`
@@ -82,4 +84,8 @@ func (b *Bot) Stop() {
 // TODO: review usage
 func (b *Bot) SetCancel(c context.CancelFunc) {
 	b.cancel = c
+}
+
+func (b *Bot) Symbol() string {
+	return b.Base + b.Quote
 }

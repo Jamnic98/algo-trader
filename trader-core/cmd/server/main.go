@@ -67,7 +67,7 @@ func main() {
 	go marketManager.Run(ctx)
 
 	// paper trading account and bot factory
-	account := engine.NewPaperAccount("10000", "0.01")
+	account := engine.NewPaperAccount("10000", "0.001")
 	botFactory := bot.BotFactory{
 		Account: account,
 		Engine: func() engine.ExecutionEngine {
