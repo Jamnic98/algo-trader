@@ -3,10 +3,19 @@ import { useNavigate } from 'react-router-dom'
 
 import { BotActionButtons } from 'components'
 import type { Bot, LoadingAction } from 'types'
+import { GlobeIcon, GlobeOff } from 'lucide-react'
 
 type BotStatus = 'running' | 'attached' | 'created'
 type BotFilters = { status?: BotStatus }
-type ColumnKey = 'id' | 'symbol' | 'quantity' | 'interval' | 'lookback' | 'status' | 'started'
+type ColumnKey =
+  | 'id'
+  | 'mode'
+  | 'symbol'
+  | 'quantity'
+  | 'interval'
+  | 'lookback'
+  | 'status'
+  | 'started'
 
 type BotTableProps = {
   bots: Bot[]
@@ -24,6 +33,7 @@ type BotTableProps = {
 
 const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
   { key: 'id', label: 'Id' },
+  { key: 'mode', label: 'Mode' },
   { key: 'symbol', label: 'Symbol' },
   { key: 'quantity', label: 'Quantity' },
   { key: 'interval', label: 'Interval' },
@@ -49,8 +59,26 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
     switch (key) {
       case 'id':
         return <span className="font-mono text-sm truncate">{bot.id.split('-')[0]}</span>
+      case 'mode':
+        return bot.mode === 'paper' ? (
+          <GlobeOff size={18} className="text-content-tertiary" />
+        ) : (
+          <GlobeIcon size={18} className="text-accent" />
+        )
       case 'status':
-        return <span className="capitalize">{bot.status}</span>
+        return (
+          <span
+            className={`text-xs px-1.5 py-0.5 rounded-full font-mono ${
+              bot.status === 'running'
+                ? 'bg-green-500/10 text-green-400'
+                : bot.status === 'attached'
+                  ? 'bg-yellow-500/10 text-yellow-400'
+                  : 'bg-surface-secondary text-content-tertiary'
+            }`}
+          >
+            {bot.status}
+          </span>
+        )
       case 'started':
         return bot.started
           ? new Intl.DateTimeFormat('en-GB', {

@@ -2,8 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Activity,
+  ArrowLeftRight,
   Bot,
-  ChartCandlestick,
   Coins,
   Home,
   PanelLeftClose,
@@ -17,7 +17,7 @@ type SidebarLink = { label: string; url: string; icon: ReactNode }
 const sidebarLinks: SidebarLink[] = [
   { label: 'dashboard', url: '/', icon: <Home size={18} /> },
   { label: 'bots', url: '/bots', icon: <Bot size={18} /> },
-  { label: 'trades', url: '/trades', icon: <ChartCandlestick size={18} /> },
+  { label: 'trades', url: '/trades', icon: <ArrowLeftRight size={18} /> },
   { label: 'accounts', url: '/accounts', icon: <Coins size={18} /> },
   { label: 'diagnostics', url: '/diagnostics', icon: <Activity size={18} /> },
 ]

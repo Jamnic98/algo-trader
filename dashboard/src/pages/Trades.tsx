@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
-import { BarLoader, Heading } from 'components'
+
+import { Heading, SpinnerLoader, TradesTable, TradesFilters } from 'components'
 import { getAllTrades } from 'api'
 import { useAlert } from 'hooks'
-import { TradesTable, TradesFilters } from 'components'
 import type { Trade, Pagination, TradeFilters } from 'types'
 
 const DEFAULT_FILTERS: TradeFilters = {
@@ -59,7 +59,7 @@ const Trades = () => {
       <Heading title="Trades" />
       <TradesFilters filters={filters} onChange={handleFilterChange} onClear={handleClear} />
       {loading ? (
-        <BarLoader />
+        <SpinnerLoader />
       ) : (
         <TradesTable trades={trades} pagination={pagination} page={page} onPageChange={setPage} />
       )}

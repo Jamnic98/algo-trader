@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Copy } from 'lucide-react'
+import { ArrowLeftRight, BarChart2, Copy, CandlestickChart as CChart, Info } from 'lucide-react'
 
 import { attachBot, deleteBot, detachBot, getBot, startBot, stopBot } from 'api'
 import { BarLoader, BotActionButtons, BotTrades, CandlestickChart, Heading, Tabs } from 'components'
@@ -36,6 +36,7 @@ const BotOverview = () => {
   const tabs: Tab[] | null = bot && [
     {
       label: 'Info',
+      icon: <Info size={13} />,
       content: (
         <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm font-mono select-none">
           <span className="text-content-tertiary">Id</span>
@@ -50,6 +51,9 @@ const BotOverview = () => {
               }}
             />
           </span>
+
+          <span className="text-content-tertiary">Mode</span>
+          <span className="text-content-secondary">{bot.mode}</span>
 
           <span className="text-content-tertiary">Interval</span>
           <span className="text-content-secondary">{bot.interval}</span>
@@ -85,6 +89,7 @@ const BotOverview = () => {
     },
     {
       label: 'Stats',
+      icon: <BarChart2 size={13} />,
       content: (
         <div className="space-y-3 text-gray-500">
           <p>No stats yet.</p>
@@ -93,6 +98,7 @@ const BotOverview = () => {
     },
     {
       label: 'Trades',
+      icon: <ArrowLeftRight size={13} />,
       content: (
         <div className="space-y-3 text-gray-500">
           <BotTrades id={bot!.id} />
@@ -101,6 +107,7 @@ const BotOverview = () => {
     },
     {
       label: 'Candles',
+      icon: <CChart size={13} />,
       content: (
         <>
           {bot.candles ? (
@@ -113,6 +120,79 @@ const BotOverview = () => {
         </>
       ),
     },
+    // {
+    //   label: 'Config',
+    //   icon: <Settings size={13} />,
+    //   content: (
+    //     <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-3 text-sm font-mono select-none max-w-64">
+    //       {/* Mode */}
+    //       <span className="text-content-tertiary self-center">Mode</span>
+    //       <div className="flex items-center py-1">
+    //         <div
+    //           onClick={() => handleUpdateBot({ mode: bot.mode === 'live' ? 'paper' : 'live' })}
+    //           className={`relative w-11 h-6 rounded-full cursor-pointer transition-colors duration-200 ${
+    //             bot.mode === 'live' ? 'bg-accent' : 'bg-surface-secondary border border-border'
+    //           }`}
+    //         >
+    //           <div
+    //             className={`absolute top-0.5 w-5 h-5 rounded-full bg-surface-primary shadow transition-all duration-200 ${
+    //               bot.mode === 'live' ? 'left-5.5' : 'left-0.5'
+    //             }`}
+    //           />
+    //         </div>
+    //       </div>
+
+    //       {/* Strategy */}
+    //       <span className="text-content-tertiary self-center">Strategy</span>
+    //       <select
+    //         defaultValue={bot.strategy}
+    //         disabled={bot.status === 'running'}
+    //         onChange={(e) => handleUpdateBot({ strategy: e.target.value })}
+    //         className="border border-border bg-surface-secondary text-content-secondary px-2 py-1 rounded text-xs focus:outline-none focus:border-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+    //       >
+    //         {strategies.map((s) => (
+    //           <option key={s} value={s}>
+    //             {s}
+    //           </option>
+    //         ))}
+    //       </select>
+
+    //       {/* Quantity */}
+    //       <span className="text-content-tertiary self-center">Quantity</span>
+    //       <input
+    //         type="number"
+    //         defaultValue={bot.quantity}
+    //         disabled={bot.status === 'running'}
+    //         onBlur={(e) => handleUpdateBot({ quantity: e.target.value })}
+    //         className="border border-border bg-surface-secondary text-content-secondary px-2 py-1 rounded text-xs w-24 focus:outline-none focus:border-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+    //       />
+
+    //       {/* Interval */}
+    //       <span className="text-content-tertiary self-center">Interval</span>
+    //       <select
+    //         defaultValue={bot.interval}
+    //         disabled={bot.status === 'running'}
+    //         onChange={(e) => handleUpdateBot({ interval: e.target.value })}
+    //         className="border border-border bg-surface-secondary text-content-secondary px-2 py-1 rounded text-xs focus:outline-none focus:border-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+    //       >
+    //         {candleIntervals.map((i) => (
+    //           <option key={i} value={i}>
+    //             {i}
+    //           </option>
+    //         ))}
+    //       </select>
+
+    //       {/* Lookback */}
+    //       <span className="text-content-tertiary self-center">Lookback</span>
+    //       <input
+    //         defaultValue={bot.lookback}
+    //         disabled={bot.status === 'running'}
+    //         onBlur={(e) => handleUpdateBot({ lookback: e.target.value })}
+    //         className="border border-border bg-surface-secondary text-content-secondary px-2 py-1 rounded text-xs w-24 focus:outline-none focus:border-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+    //       />
+    //     </div>
+    //   ),
+    // },
   ]
 
   const tabLabels = tabs ? tabs.map((t) => t.label.toLowerCase()) : []
@@ -247,11 +327,24 @@ const BotOverview = () => {
     <div className="space-y-4">
       <Heading title="Bot Overview" />
       {bot && (
-        <>
+        <div className="max-w-80">
           <div className="flex flex-row justify-between gap-4 select-none">
-            <div className="space-y-1 text-sm text-content-secondary font-mono">
-              <p>Symbol: {`${bot.base}/${bot.quote}`}</p>
-              <p>Status: {bot.status}</p>
+            <div className="space-y-1.5 text-sm text-content-secondary font-mono">
+              <p>{`${bot.base}/${bot.quote}`}</p>
+              <div className="flex items-center gap-2">
+                <span>Status:</span>
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full ${
+                    bot.status === 'running'
+                      ? 'bg-green-500/10 text-green-400'
+                      : bot.status === 'attached'
+                        ? 'bg-yellow-500/10 text-yellow-400'
+                        : 'bg-surface-secondary text-content-tertiary'
+                  }`}
+                >
+                  {bot.status}
+                </span>
+              </div>
             </div>
 
             <div className="flex gap-2">
@@ -267,7 +360,7 @@ const BotOverview = () => {
               />
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {tabs && <Tabs tabs={tabs} activeTab={activeTab} onTabChange={handleTabChange} />}

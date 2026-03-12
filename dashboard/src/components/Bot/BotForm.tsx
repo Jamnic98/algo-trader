@@ -1,6 +1,9 @@
 import { Plus } from 'lucide-react'
 
+import type { BotMode } from 'types'
+
 type CreateBotFormData = {
+  mode: BotMode
   base: string
   quote: string
   interval: string
@@ -13,12 +16,32 @@ const candleIntervals = ['1m', '5m', '15m', '1h', '4h', '1d']
 type BotFormProps = {
   form: CreateBotFormData
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
+  onModeToggle: () => void
   onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void
 }
 
-const BotForm = ({ form, onChange, onSubmit }: BotFormProps) => {
+const BotForm = ({ form, onChange, onModeToggle, onSubmit }: BotFormProps) => {
   return (
     <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-4">
+      {/* Mode */}
+      <div className="flex flex-col gap-1">
+        <label className="text-content-secondary text-xs uppercase tracking-wider">Live</label>
+        <div className="flex items-center py-1.5">
+          <div
+            onClick={onModeToggle}
+            className={`relative w-11 h-6 rounded-full cursor-pointer transition-colors duration-200 ${
+              form.mode === 'live' ? 'bg-accent' : 'bg-surface-secondary border border-border'
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 w-5 h-5 rounded-full bg-surface-primary shadow transition-all duration-200 ${
+                form.mode === 'live' ? 'left-5.5' : 'left-0.5'
+              }`}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Symbol */}
       <div className="flex flex-col gap-1">
         <label className="text-content-secondary text-xs uppercase tracking-wider">Symbol</label>

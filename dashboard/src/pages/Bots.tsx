@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react'
 import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, attachBot, detachBot, createBot, deleteBot } from 'api'
 import { useAlert } from 'hooks'
-import type { Bot, LoadingAction } from 'types'
+import type { Bot, BotMode, LoadingAction } from 'types'
 
 type CreateBotFormData = {
+  mode: BotMode
   base: string
   quote: string
 
@@ -15,11 +16,12 @@ type CreateBotFormData = {
 }
 
 const candleIntervals = ['1m', '5m', '15m', '1h', '4h', '1d']
-const defaultFormData = {
+const defaultFormData: CreateBotFormData = {
   base: '',
   quote: 'USDT',
   interval: candleIntervals[0],
   lookback: '24h',
+  mode: 'paper',
   quantity: '0',
 }
 
@@ -191,7 +193,12 @@ const Bots = () => {
   return (
     <div className="space-y-8">
       <Heading title="Bots" />
-      <BotForm form={form} onChange={handleChange} onSubmit={handleCreateBot} />
+      <BotForm
+        form={form}
+        onChange={handleChange}
+        onModeToggle={() => setForm((f) => ({ ...f, mode: f.mode === 'live' ? 'paper' : 'live' }))}
+        onSubmit={handleCreateBot}
+      />
 
       {bots.length > 0 ? (
         <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">

@@ -2,10 +2,13 @@ import type { OHLCVCandle } from 'types'
 
 type BotStatus = 'created' | 'attached' | 'running'
 
+export type BotMode = 'paper' | 'live'
+
 export type BotCreateData = {
   id?: string
   interval: string
   base: string
+  mode: BotMode
   quote: string
   lookback: string
   quantity: string

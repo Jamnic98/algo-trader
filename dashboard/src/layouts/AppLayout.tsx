@@ -14,12 +14,14 @@ const AppLayout = () => {
   }, [isMobile])
 
   return (
-    <div className="flex flex-row h-screen bg-surface-page overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+    <div className="flex flex-row h-screen bg-surface-page">
       <Sidebar isOpen={isOpen} onToggle={() => setIsOpen((open) => !open)} />
-      <main className="flex flex-col grow w-full mx-auto py-8 px-8 md:px-16 overflow-y-auto">
-        <Breadcrumbs />
-        <Outlet />
-      </main>
+      <div className="flex flex-col grow overflow-y-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+        <main className="flex flex-col w-full max-w-7xl py-8 px-8 mx-auto">
+          <Breadcrumbs />
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }
