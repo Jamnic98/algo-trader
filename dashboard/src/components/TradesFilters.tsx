@@ -51,7 +51,7 @@ const TradesFilters = ({
         <div className="flex items-center justify-between gap-3">
           <label className="text-content-secondary text-xs uppercase tracking-wider">Bot</label>
           <div className="flex items-center gap-1.5">
-            <label className="text-content-tertiary text-xs">incl. dead</label>
+            <label className="text-content-primary/20 italic text-xs">incl. dead</label>
             <div
               onClick={() => onIncludeDeadChange(!includeDead)}
               className={`relative w-7 h-4 rounded-full cursor-pointer transition-colors duration-200 ${
@@ -70,7 +70,7 @@ const TradesFilters = ({
           name="botId"
           value={filters.botId}
           onChange={handleChange}
-          className="border border-border bg-surface-secondary text-content-secondary px-3 py-1.5 rounded text-sm font-mono focus:outline-none focus:border-accent transition-colors"
+          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm font-mono focus:outline-none focus:border-accent transition-colors"
         >
           <option value="">All</option>
           {bots.map((b) => (
@@ -89,7 +89,7 @@ const TradesFilters = ({
           name="side"
           value={filters.side}
           onChange={handleChange}
-          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
+          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm font-mono focus:outline-none focus:border-accent transition-colors"
         >
           {SIDES.map((s) => (
             <option key={s} value={s}>
@@ -107,7 +107,7 @@ const TradesFilters = ({
           value={filters.symbol}
           onChange={handleChange}
           placeholder="BTCUSDT"
-          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-28 text-sm uppercase focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/10"
+          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-28 text-sm uppercase focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/20"
         />
       </div>
 
@@ -120,7 +120,7 @@ const TradesFilters = ({
           value={filters.dateFrom}
           onChange={handleChange}
           className={`border border-border bg-surface-secondary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors ${
-            filters.dateFrom ? 'text-content-primary' : 'text-content-secondary/10'
+            filters.dateFrom ? 'text-content-primary' : 'text-content-secondary/20'
           }`}
         />
       </div>
@@ -134,7 +134,7 @@ const TradesFilters = ({
           value={filters.dateTo}
           onChange={handleChange}
           className={`border border-border bg-surface-secondary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors ${
-            filters.dateTo ? 'text-content-primary' : 'text-content-secondary/10'
+            filters.dateTo ? 'text-content-primary' : 'text-content-secondary/20'
           }`}
         />
       </div>

@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { getBotTrades } from 'api'
 import { BarLoader } from 'components'
+import { useAlert } from 'hooks'
 import type { Trade, Pagination } from 'types'
 
 type BotTradesProps = {
@@ -45,11 +46,11 @@ const renderCell = (trade: Trade, key: string) => {
 }
 
 const BotTrades = ({ id }: BotTradesProps) => {
+  const { showAlert } = useAlert()
   const [trades, setTrades] = useState<Trade[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   // initial fetch
   useEffect(() => {
@@ -61,7 +62,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
         setPagination(res.pagination)
       } catch (err) {
         console.error(err)
-        setError('Failed to load trades')
+        showAlert({ title: 'Failed to load trades', type: 'error' })
       } finally {
         setLoading(false)
       }
@@ -91,7 +92,6 @@ const BotTrades = ({ id }: BotTradesProps) => {
   }, [id, page])
 
   if (loading) return <BarLoader fullscreen />
-  if (error) return <div>{error} 😢</div>
   if (!trades.length) return <div className="text-gray-500">No trades yet.</div>
 
   return (

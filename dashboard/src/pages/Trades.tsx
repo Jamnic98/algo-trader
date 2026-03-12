@@ -22,7 +22,6 @@ const Trades = () => {
   const [page, setPage] = useState(1)
   const [filters, setFilters] = useState<TradeFilters>(DEFAULT_FILTERS)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   const { showAlert } = useAlert()
   const debouncedFilters = useDebounce(filters, 400)
@@ -37,10 +36,9 @@ const Trades = () => {
       const res = await getAllTrades({ page, ...debouncedFilters })
       setTrades(res.trades)
       setPagination(res.pagination)
-    } catch {
-      const errorMsg = 'Failed to load trades'
-      setError(errorMsg)
-      showAlert({ title: errorMsg, type: 'error' })
+    } catch (err) {
+      console.log(err)
+      showAlert({ title: 'Failed to load trades', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -71,6 +69,7 @@ const Trades = () => {
 
   const handleClear = () => {
     setFilters(DEFAULT_FILTERS)
+    setIncludeDead(false)
     setPage(1)
   }
 
@@ -78,8 +77,6 @@ const Trades = () => {
     setIncludeDead(val)
     setFilters((f) => ({ ...f, botId: '' }))
   }
-
-  if (error) return <div>{error}</div>
 
   return (
     <div className="space-y-6">

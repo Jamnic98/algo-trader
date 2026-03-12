@@ -53,7 +53,7 @@ const BotForm = ({ form, onChange, onModeToggle, onSubmit }: BotFormProps) => {
             value={form.base}
             onChange={onChange}
             placeholder="BTC"
-            className="bg-transparent px-3 py-1.5 w-16 text-center uppercase text-content-primary focus:outline-none placeholder:text-content-secondary/10 text-sm"
+            className="bg-transparent px-3 py-1.5 w-16 text-center uppercase text-content-primary focus:outline-none placeholder:text-content-secondary/20 text-sm"
             required
           />
           <span className="text-gray-500 px-0.5">| </span>
@@ -75,7 +75,7 @@ const BotForm = ({ form, onChange, onModeToggle, onSubmit }: BotFormProps) => {
           value={form.quantity}
           onChange={onChange}
           placeholder="0"
-          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-28 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/10"
+          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-28 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/20"
           required
         />
       </div>
@@ -106,7 +106,7 @@ const BotForm = ({ form, onChange, onModeToggle, onSubmit }: BotFormProps) => {
           value={form.lookback}
           onChange={onChange}
           placeholder="24h"
-          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-20 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/10"
+          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-20 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/20"
           required
         />
       </div>

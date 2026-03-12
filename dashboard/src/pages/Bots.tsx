@@ -43,7 +43,6 @@ const Bots = () => {
   const { showAlert } = useAlert()
   const [bots, setBots] = useState<Bot[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState(defaultFormData)
   const [botLoadingActions, setBotLoadingActions] = useState<Record<string, LoadingAction>>({})
 
@@ -58,10 +57,8 @@ const Bots = () => {
         setBots(bots)
       } catch (err) {
         console.error(err)
-        const errorMsg = 'Failed to load bots'
-        setError(errorMsg)
         showAlert({
-          title: errorMsg,
+          title: 'Failed to load bots',
           type: 'error',
         })
       } finally {
@@ -100,9 +97,8 @@ const Bots = () => {
       setForm(defaultFormData)
     } catch (err) {
       console.error(err)
-      const errorMsg = 'Failed to create bot'
       showAlert({
-        title: errorMsg,
+        title: 'Failed to create bot',
         type: 'error',
       })
     }
@@ -116,7 +112,6 @@ const Bots = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to start bot with id: ${id}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setBotLoading(id, null)
@@ -133,7 +128,6 @@ const Bots = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to stop bot with id: ${id}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setBotLoading(id, null)
@@ -148,7 +142,6 @@ const Bots = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to attach bot with id: ${id}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setBotLoading(id, null)
@@ -163,7 +156,6 @@ const Bots = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to detach bot with id: ${id}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setBotLoading(id, null)
@@ -180,7 +172,6 @@ const Bots = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to delete bot with id: ${id}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setBotLoading(id, null)
@@ -188,7 +179,6 @@ const Bots = () => {
   }
 
   if (loading) return <BarLoader fullscreen />
-  if (error) return <div>{error}</div>
 
   return (
     <div className="space-y-8">

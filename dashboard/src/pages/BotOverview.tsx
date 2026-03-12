@@ -31,7 +31,6 @@ const BotOverview = () => {
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null)
 
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   const tabs: Tab[] | null = bot && [
     {
@@ -231,7 +230,6 @@ const BotOverview = () => {
       } catch (err) {
         console.error(err)
         const errorMsg = `Failed to load bot with id: ${id}`
-        setError(errorMsg)
         showAlert({ title: errorMsg, type: 'error' })
       } finally {
         setLoading(false)
@@ -249,7 +247,6 @@ const BotOverview = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to start bot with id: ${botId}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setLoadingAction(null)
@@ -266,7 +263,6 @@ const BotOverview = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to stop bot with id: ${botId}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setLoadingAction(null)
@@ -281,7 +277,6 @@ const BotOverview = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to attach bot with id: ${botId}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setLoadingAction(null)
@@ -296,7 +291,6 @@ const BotOverview = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to detach bot with id: ${botId}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setLoadingAction(null)
@@ -313,7 +307,6 @@ const BotOverview = () => {
     } catch (err) {
       console.error(err)
       const errorMsg = `Failed to delete bot with id: ${botId}`
-      setError(errorMsg)
       showAlert({ title: errorMsg, type: 'error' })
     } finally {
       setLoadingAction(null)
@@ -321,7 +314,6 @@ const BotOverview = () => {
   }
 
   if (loading) return <BarLoader fullscreen />
-  if (error) return <div>{error} 😢</div>
 
   return (
     <div className="space-y-4">
