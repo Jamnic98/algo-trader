@@ -63,18 +63,31 @@ func getBotByIDHandler(c *gin.Context) {
 }
 
 func getBotsHandler(c *gin.Context) {
-	activeBotsMu.RLock()
-	bots := make([]*bot.Bot, 0, len(activeBots))
-	for _, b := range activeBots {
-		bots = append(bots, b)
-	}
-	activeBotsMu.RUnlock()
+	includeDeleted := c.Query("deleted") == "true"
 
-	dtos := make([]BotDTO, len(bots))
-	for i, b := range bots {
-		dtos[i] = botToDTO(b)
+	var cfgs []bot.BotConfig
+	if includeDeleted {
+		runtime.DB.Unscoped().Where("deleted_at IS NOT NULL").Find(&cfgs)
+	} else {
+		activeBotsMu.RLock()
+		bots := make([]*bot.Bot, 0, len(activeBots))
+		for _, b := range activeBots {
+			bots = append(bots, b)
+		}
+		activeBotsMu.RUnlock()
+
+		dtos := make([]BotDTO, len(bots))
+		for i, b := range bots {
+			dtos[i] = botToDTO(b)
+		}
+		c.JSON(http.StatusOK, gin.H{"bots": dtos})
+		return
 	}
 
+	dtos := make([]BotDTO, len(cfgs))
+	for i, cfg := range cfgs {
+		dtos[i] = configToDTO(cfg)
+	}
 	c.JSON(http.StatusOK, gin.H{"bots": dtos})
 }
 

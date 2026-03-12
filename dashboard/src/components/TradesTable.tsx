@@ -4,8 +4,8 @@ import type { Trade, Pagination } from 'types'
 
 const COLUMNS = [
   { key: 'botID', label: 'Bot' },
-  { key: 'symbol', label: 'Symbol' },
   { key: 'side', label: 'Side' },
+  { key: 'symbol', label: 'Symbol' },
   { key: 'quantity', label: 'Quantity' },
   { key: 'price', label: 'Price' },
   { key: 'fee', label: 'Fee' },

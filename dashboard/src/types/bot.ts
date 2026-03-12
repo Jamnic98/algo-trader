@@ -18,6 +18,6 @@ export interface Bot extends BotCreateData {
   id: string
   status: BotStatus
   started?: string
-
-  candles?: OHLCVCandle[] | null
+  candles?: OHLCVCandle[]
+  deletedAt?: string
 }

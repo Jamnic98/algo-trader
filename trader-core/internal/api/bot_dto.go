@@ -44,3 +44,16 @@ func botToDTO(b *bot.Bot) BotDTO {
 		Candles:  candles,
 	}
 }
+
+func configToDTO(cfg bot.BotConfig) BotDTO {
+	return BotDTO{
+		ID:       cfg.ID,
+		Mode:     string(cfg.Mode),
+		Base:     cfg.Base,
+		Quote:    cfg.Quote,
+		Interval: cfg.Interval.String(),
+		Lookback: cfg.Lookback.String(),
+		Quantity: cfg.Quantity.String(),
+		Status:   "dead",
+	}
+}

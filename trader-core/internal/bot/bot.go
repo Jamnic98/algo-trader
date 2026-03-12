@@ -12,6 +12,7 @@ import (
 	"trader-core/internal/strategies"
 
 	"github.com/shopspring/decimal"
+	"gorm.io/gorm"
 )
 
 type BotStatus string
@@ -30,13 +31,14 @@ const (
 )
 
 type BotConfig struct {
-	ID       string          `gorm:"primaryKey" json:"id"`
-	Mode     BotMode         `json:"mode"`
-	Base     string          `json:"base"`
-	Quote    string          `json:"quote"`
-	Interval engine.Interval `json:"interval"`
-	Lookback time.Duration   `json:"lookback"`
-	Quantity decimal.Decimal `json:"quantity"`
+	ID        string          `gorm:"primaryKey" json:"id"`
+	Mode      BotMode         `json:"mode"`
+	Base      string          `json:"base"`
+	Quote     string          `json:"quote"`
+	Interval  engine.Interval `json:"interval"`
+	Lookback  time.Duration   `json:"lookback"`
+	Quantity  decimal.Decimal `json:"quantity"`
+	DeletedAt gorm.DeletedAt  `gorm:"index" json:"-"`
 }
 
 type Bot struct {

@@ -1,9 +1,13 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
+	"trader-core/internal/bot"
 	"trader-core/internal/db"
 	"trader-core/internal/db/models"
 	"trader-core/internal/dto"
@@ -13,6 +17,7 @@ import (
 
 func RegisterTradeRoutes(rg *gin.RouterGroup) {
 	rg.GET("/", getTradesHandler)
+	rg.GET("/stream", streamAllTradesHandler)
 }
 
 type TradeQuery struct {
@@ -61,7 +66,7 @@ func getTradesHandler(c *gin.Context) {
 		query = query.Where("bot_id = ?", q.BotID)
 	}
 	if q.Symbol != "" {
-		query = query.Where("symbol = ?", q.Symbol)
+		query = query.Where("symbol LIKE ?", "%"+strings.ToUpper(q.Symbol)+"%")
 	}
 	if q.Side != "" {
 		query = query.Where("side = ?", q.Side)
@@ -122,4 +127,50 @@ func getTradesHandler(c *gin.Context) {
 		Limit:      q.Limit,
 		TotalPages: pages,
 	})
+}
+
+func streamAllTradesHandler(c *gin.Context) {
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	// subscribe to all active bots
+	type sub struct {
+		bot *bot.Bot
+		ch  chan dto.TradeDTO
+	}
+	var subs []sub
+
+	activeBotsMu.RLock()
+	for _, b := range activeBots {
+		subs = append(subs, sub{bot: b, ch: b.TradeBroadcaster.Subscribe()})
+	}
+	activeBotsMu.RUnlock()
+
+	defer func() {
+		for _, s := range subs {
+			s.bot.TradeBroadcaster.Unsubscribe(s.ch)
+		}
+	}()
+
+	// merge all channels into one
+	merged := make(chan dto.TradeDTO)
+	for _, s := range subs {
+		go func(ch <-chan dto.TradeDTO) {
+			for trade := range ch {
+				merged <- trade
+			}
+		}(s.ch)
+	}
+
+	for {
+		select {
+		case trade := <-merged:
+			data, _ := json.Marshal(trade)
+			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+			c.Writer.Flush()
+		case <-c.Request.Context().Done():
+			return
+		}
+	}
 }

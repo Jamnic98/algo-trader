@@ -50,7 +50,7 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
 
   return (
     <div
-      className={`flex flex-col justify-between h-full bg-zinc-900 border-r select-none border-zinc-800 transition-all duration-300 ${isOpen ? 'w-48' : 'w-16'}`}
+      className={`flex flex-col justify-between h-full bg-zinc-900 border-r select-none border-zinc-800 transition-all duration-300 ${isOpen ? 'min-w-42' : 'w-16'}`}
     >
       {/* Logo mark */}
       <div>

@@ -3,8 +3,8 @@ import type { BotCreateData, Bot, Pagination, Trade } from 'types'
 
 const botsEndpoint = '/bots'
 
-export const getAllBots = async (): Promise<Bot[]> =>
-  (await api.fetchJson<{ bots: Bot[] }>(botsEndpoint)).bots
+export const getAllBots = async ({ deleted } = { deleted: false }): Promise<Bot[]> =>
+  (await api.fetchJson<{ bots: Bot[] }>(`${botsEndpoint}${deleted ? '?deleted=true' : ''}`)).bots
 
 export const getBot = async (id: string): Promise<Bot> =>
   (await api.fetchJson<{ bot: Bot }>(`${botsEndpoint}/${id}`)).bot

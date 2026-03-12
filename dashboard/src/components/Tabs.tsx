@@ -24,9 +24,6 @@ const Tabs = ({ tabs, activeTab, onTabChange }: TabsProps) => {
                     : 'bg-transparent text-content-secondary border-transparent hover:text-content-primary hover:bg-white/4'
                 }`}
             >
-              {/* {isActive && (
-                <span className="absolute top-1/2 left-2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent shadow-[0_0_6px_var(--color-accent)]" />
-              )} */}
               <span className={`flex items-center gap-1.5`}>
                 {tab.icon && (
                   <span

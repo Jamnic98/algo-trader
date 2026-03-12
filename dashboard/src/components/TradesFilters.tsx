@@ -1,16 +1,27 @@
-import { X } from 'lucide-react'
-import type { TradeFilters } from 'types'
+import { RefreshCcw } from 'lucide-react'
+
+import type { Bot, TradeFilters } from 'types'
 
 type TradesFiltersProps = {
+  bots: Bot[]
   filters: TradeFilters
   onChange: (filters: TradeFilters) => void
   onClear: () => void
+  includeDead: boolean
+  onIncludeDeadChange: (includeDead: boolean) => void
 }
 
-const LIMITS = [5, 15, 25, 50]
+const LIMITS = [15, 25, 50]
 const SIDES = ['', 'BUY', 'SELL']
 
-const TradesFilters = ({ filters, onChange, onClear }: TradesFiltersProps) => {
+const TradesFilters = ({
+  bots,
+  filters,
+  onChange,
+  onClear,
+  includeDead,
+  onIncludeDeadChange,
+}: TradesFiltersProps) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     onChange({ ...filters, [e.target.name]: e.target.value })
   }
@@ -35,16 +46,40 @@ const TradesFilters = ({ filters, onChange, onClear }: TradesFiltersProps) => {
         </select>
       </div>
 
-      {/* Symbol */}
+      {/* Bot */}
       <div className="flex flex-col gap-1">
-        <label className="text-content-secondary text-xs uppercase tracking-wider">Symbol</label>
-        <input
-          name="symbol"
-          value={filters.symbol}
+        <div className="flex items-center justify-between gap-3">
+          <label className="text-content-secondary text-xs uppercase tracking-wider">Bot</label>
+          <div className="flex items-center gap-1.5">
+            <label className="text-content-tertiary text-xs">incl. dead</label>
+            <div
+              onClick={() => onIncludeDeadChange(!includeDead)}
+              className={`relative w-7 h-4 rounded-full cursor-pointer transition-colors duration-200 ${
+                includeDead ? 'bg-accent' : 'bg-surface-secondary border border-border'
+              }`}
+            >
+              <div
+                className={`absolute top-0.5 w-3 h-3 rounded-full bg-surface-primary shadow transition-all duration-200 ${
+                  includeDead ? 'left-3.5' : 'left-0.5'
+                }`}
+              />
+            </div>
+          </div>
+        </div>
+        <select
+          name="botId"
+          value={filters.botId}
           onChange={handleChange}
-          placeholder="SOLUSDT"
-          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-28 text-sm uppercase focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/40"
-        />
+          className="border border-border bg-surface-secondary text-content-secondary px-3 py-1.5 rounded text-sm font-mono focus:outline-none focus:border-accent transition-colors"
+        >
+          <option value="">All</option>
+          {bots.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.id.split('-')[0]}
+              {includeDead && b.deletedAt ? ' · dead' : ''}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Side */}
@@ -64,15 +99,15 @@ const TradesFilters = ({ filters, onChange, onClear }: TradesFiltersProps) => {
         </select>
       </div>
 
-      {/* Bot ID */}
+      {/* Symbol */}
       <div className="flex flex-col gap-1">
-        <label className="text-content-secondary text-xs uppercase tracking-wider">Bot ID</label>
+        <label className="text-content-secondary text-xs uppercase tracking-wider">Symbol</label>
         <input
-          name="botId"
-          value={filters.botId}
+          name="symbol"
+          value={filters.symbol}
           onChange={handleChange}
-          placeholder="abc123"
-          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-28 text-sm font-mono focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/40"
+          placeholder="BTCUSDT"
+          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-28 text-sm uppercase focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/10"
         />
       </div>
 
@@ -84,7 +119,9 @@ const TradesFilters = ({ filters, onChange, onClear }: TradesFiltersProps) => {
           type="date"
           value={filters.dateFrom}
           onChange={handleChange}
-          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
+          className={`border border-border bg-surface-secondary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors ${
+            filters.dateFrom ? 'text-content-primary' : 'text-content-secondary/10'
+          }`}
         />
       </div>
 
@@ -96,7 +133,9 @@ const TradesFilters = ({ filters, onChange, onClear }: TradesFiltersProps) => {
           type="date"
           value={filters.dateTo}
           onChange={handleChange}
-          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
+          className={`border border-border bg-surface-secondary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors ${
+            filters.dateTo ? 'text-content-primary' : 'text-content-secondary/10'
+          }`}
         />
       </div>
 
@@ -106,7 +145,7 @@ const TradesFilters = ({ filters, onChange, onClear }: TradesFiltersProps) => {
           onClick={onClear}
           className="flex items-center gap-1.5 px-2 py-1.5 rounded border border-border text-content-secondary text-sm hover:text-content-primary hover:bg-white/4 transition-all cursor-pointer"
         >
-          <X size={14} /> Clear
+          <RefreshCcw size={14} /> Reset
         </button>
       )}
     </div>
