@@ -8,6 +8,7 @@ import (
 
 type BotDTO struct {
 	ID       string             `json:"id"`
+	Mode     string             `json:"mode"`
 	Base     string             `json:"base"`
 	Quote    string             `json:"quote"`
 	Interval string             `json:"interval"`
@@ -32,6 +33,7 @@ func botToDTO(b *bot.Bot) BotDTO {
 
 	return BotDTO{
 		ID:       b.ID,
+		Mode:     string(b.Mode),
 		Interval: b.Interval.String(),
 		Lookback: b.Lookback.String(),
 		Started:  started,
