@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"sync"
@@ -20,6 +21,22 @@ var (
 
 func InitBotAPI(rt *bot.Runtime) {
 	runtime = rt
+
+	cfgs, err := runtime.LoadBots()
+	if err != nil {
+		log.Printf("failed to load bots: %v", err)
+		return
+	}
+	for _, cfg := range cfgs {
+		b, err := runtime.RestoreBot(cfg)
+		if err != nil {
+			log.Printf("failed to restore bot %s: %v", cfg.ID, err)
+			continue
+		}
+		activeBotsMu.Lock()
+		activeBots[b.ID] = b
+		activeBotsMu.Unlock()
+	}
 }
 
 func RegisterBotRoutes(rg *gin.RouterGroup) {
@@ -110,24 +127,25 @@ func streamBotTradesHandler(c *gin.Context) {
 
 func createBotHandler(c *gin.Context) {
 	var req struct {
-		Base     string `json:"base"`
-		Quote    string `json:"quote"`
-		Interval string `json:"interval"`
-		Lookback string `json:"lookback"`
-		Quantity string `json:"quantity"`
+		Base     string      `json:"base"`
+		Quote    string      `json:"quote"`
+		Interval string      `json:"interval"`
+		Lookback string      `json:"lookback"`
+		Quantity string      `json:"quantity"`
+		Mode     bot.BotMode `json:"mode"`
 	}
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	cfg, err := parseBotCreateRequest(req.Base, req.Quote, req.Interval, req.Lookback, req.Quantity)
+	cfg, err := parseBotCreateRequest(req.Base, req.Quote, req.Interval, req.Lookback, req.Quantity, req.Mode)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	b, err := runtime.BotFactory.NewPaperBot(cfg)
+	b, err := runtime.CreateBot(cfg)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -204,6 +222,11 @@ func deleteBotHandler(c *gin.Context) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
+	}
+
+	if err := runtime.DeleteBot(b); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
 	activeBotsMu.Lock()

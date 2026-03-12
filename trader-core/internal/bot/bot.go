@@ -22,8 +22,16 @@ const (
 	BotRunning  BotStatus = "running"
 )
 
+type BotMode string
+
+const (
+	BotModePaper BotMode = "paper"
+	BotModeLive  BotMode = "live"
+)
+
 type BotConfig struct {
 	ID       string          `gorm:"primaryKey" json:"id"`
+	Mode     BotMode         `json:"mode"`
 	Base     string          `json:"base"`
 	Quote    string          `json:"quote"`
 	Interval engine.Interval `json:"interval"`
@@ -32,17 +40,13 @@ type BotConfig struct {
 }
 
 type Bot struct {
-	ID       string                     `json:"id"`
-	Interval engine.Interval            `json:"interval"`
-	Base     string                     `json:"base"`
-	Quote    string                     `json:"quote"`
+	BotConfig
+
 	Status   BotStatus                  `json:"status"`
 	Started  time.Time                  `json:"started"`
 	Strategy *strategies.SimpleStrategy `json:"strategy"`
-	Quantity decimal.Decimal            `json:"quantity"`
 
 	Engine     engine.ExecutionEngine
-	Lookback   time.Duration
 	MaxCandles int
 
 	CandleCh chan models.Candle

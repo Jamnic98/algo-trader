@@ -12,12 +12,12 @@ type BotTradesProps = {
 const COLUMNS = [
   // { key: 'botID', label: 'Bot ID' },
   // { key: 'symbol', label: 'Symbol' },
+  { key: 'timestamp', label: 'Timestamp' },
   { key: 'side', label: 'Side' },
   { key: 'quantity', label: 'Quantity' },
   { key: 'price', label: 'Price' },
   { key: 'fee', label: 'Fee' },
-  { key: 'feeAsset', label: 'Fee Asset' },
-  { key: 'timestamp', label: 'Timestamp' },
+  // { key: 'feeAsset', label: 'Fee Asset' },
 ]
 
 const renderCell = (trade: Trade, key: string) => {

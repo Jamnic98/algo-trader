@@ -44,7 +44,7 @@ func main() {
 	defer monitoring.ShutdownLogger()
 
 	// database
-	setup.InitDatabase(cfg)
+	db := setup.InitDatabase(cfg)
 
 	// system monitor
 	sysmon := monitoring.NewSysMonitor(2 * time.Second)
@@ -79,6 +79,7 @@ func main() {
 	runtime := &bot.Runtime{
 		Account:       account,
 		BotFactory:    &botFactory,
+		DB:            db,
 		Dispatcher:    dispatcher,
 		MarketManager: marketManager,
 		Messenger:     messenger,

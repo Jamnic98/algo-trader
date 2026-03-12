@@ -6,15 +6,56 @@ import (
 	"log"
 	"trader-core/internal/engine"
 	"trader-core/internal/monitoring"
+
+	"gorm.io/gorm"
 )
 
 type Runtime struct {
 	Account       engine.Account
 	BotFactory    *BotFactory
+	DB            *gorm.DB
 	Dispatcher    *Dispatcher
 	MarketManager *MarketDataManager
 	Messenger     *monitoring.Messenger
 	Errors        chan string
+}
+
+func (r *Runtime) newBot(cfg BotConfig) (*Bot, error) {
+	switch cfg.Mode {
+	// TODO: live implementation
+	// case BotModeLive:
+	// 	return r.BotFactory.NewLiveBot(cfg)
+	default:
+		return r.BotFactory.NewPaperBot(cfg)
+	}
+}
+
+func (r *Runtime) CreateBot(cfg BotConfig) (*Bot, error) {
+	b, err := r.newBot(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return b, r.DB.Save(&b.BotConfig).Error
+}
+
+func (r *Runtime) RestoreBot(cfg BotConfig) (*Bot, error) {
+	return r.newBot(cfg)
+}
+
+func (r *Runtime) DeleteBot(b *Bot) error {
+	result := r.DB.Delete(&BotConfig{}, "id = ?", b.ID)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("bot %s not found in db", b.ID)
+	}
+	return nil
+}
+
+func (r *Runtime) LoadBots() ([]BotConfig, error) {
+	var cfgs []BotConfig
+	return cfgs, r.DB.Find(&cfgs).Error
 }
 
 func (rt *Runtime) AttachBot(b *Bot) error {

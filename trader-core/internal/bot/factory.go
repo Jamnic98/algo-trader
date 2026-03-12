@@ -20,15 +20,8 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 	}
 
 	b := &Bot{
-		ID:     cfg.ID,
-		Status: BotCreated,
-
-		Base:     cfg.Base,
-		Quote:    cfg.Quote,
-		Quantity: cfg.Quantity,
-
-		Interval: cfg.Interval,
-		Lookback: cfg.Lookback,
+		BotConfig: cfg,
+		Status:    BotCreated,
 
 		Strategy: &strategies.SimpleStrategy{},
 		Engine:   f.Engine(),
