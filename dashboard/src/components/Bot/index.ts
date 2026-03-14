@@ -1,4 +1,5 @@
 export { default as BotActionButtons } from './BotActionButtons'
 export { default as BotForm } from './BotForm'
+export { default as BotTabs } from './BotTabs'
 export { default as BotTable } from './BotTable'
 export { default as BotTrades } from './BotTrades'

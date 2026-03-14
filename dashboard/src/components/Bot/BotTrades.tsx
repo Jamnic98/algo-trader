@@ -64,7 +64,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
         setPagination(res.pagination)
       } catch (err) {
         console.error(err)
-        showAlert({ title: 'Failed to load trades', type: 'error' })
+        showAlert({ title: 'Failed to load bot trades', type: 'error' })
       } finally {
         setLoading(false)
       }
