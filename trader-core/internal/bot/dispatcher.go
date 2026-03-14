@@ -51,11 +51,10 @@ func (d *Dispatcher) Dispatch(key string, candle models.Candle) {
 	for _, b := range bots {
 		select {
 		case b.CandleCh <- candle:
-			log.Printf("Dispatched candle to bot %s", b.ID)
 		default:
 			<-b.CandleCh // drop oldest
 			b.CandleCh <- candle
-			log.Printf("Dropped oldest candle for bot %s", b.ID)
+			b.Logger.Warn("candle channel full, dropped oldest")
 		}
 	}
 }

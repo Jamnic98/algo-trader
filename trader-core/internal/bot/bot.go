@@ -44,6 +44,8 @@ type BotConfig struct {
 type Bot struct {
 	BotConfig
 
+	Logger *BotLogger
+
 	Status   BotStatus                  `json:"status"`
 	Started  time.Time                  `json:"started"`
 	Strategy *strategies.SimpleStrategy `json:"strategy"`

@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"fmt"
-	"log"
 	"trader-core/internal/engine"
 	"trader-core/internal/monitoring"
 
@@ -78,7 +77,7 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch historical candles: %w", err)
 	}
-	log.Printf("fetched %d candles for %s %s (maxCandles=%d)", len(candles), b.Symbol(), b.Interval, b.MaxCandles)
+	b.Logger.Info("fetched %d candles for %s %s (maxCandles=%d)", len(candles), b.Symbol(), b.Interval, b.MaxCandles)
 	b.Candles = candles
 
 	rt.Dispatcher.Subscribe(b.Symbol(), b.Interval, b)

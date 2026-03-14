@@ -23,8 +23,9 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		BotConfig: cfg,
 		Status:    BotCreated,
 
-		Strategy: &strategies.SimpleStrategy{},
 		Engine:   f.Engine(),
+		Logger:   NewBotLogger(cfg.ID),
+		Strategy: &strategies.SimpleStrategy{},
 		CandleCh: make(chan models.Candle, 100),
 
 		TradeBroadcaster: &Broadcaster[dto.TradeDTO]{},

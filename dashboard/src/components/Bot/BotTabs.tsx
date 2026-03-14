@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { ArrowLeftRight, BarChart2, Copy, CandlestickChart as CChart, Info } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  BarChart2,
+  Copy,
+  CandlestickChart as CChart,
+  Info,
+  ScrollText,
+} from 'lucide-react'
 
-import { BotTrades, CandlestickChart, Tabs } from 'components'
+import { BotLogs, BotTrades, CandlestickChart, Tabs } from 'components'
 import { useAlert } from 'hooks'
 import type { Bot, Tab } from 'types'
 
@@ -122,6 +129,11 @@ const BotTabs = ({ bot }: BotTabsProps) => {
           )}
         </>
       ),
+    },
+    {
+      label: 'Logs',
+      icon: <ScrollText size={13} />,
+      content: <BotLogs id={bot.id} />,
     },
   ]
 

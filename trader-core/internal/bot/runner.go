@@ -90,11 +90,10 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			// broadcast to SSE subscribers
 			b.TradeBroadcaster.Publish(dto.TradeToDTO(&trade))
 
-			log.Printf(
-				"Bot %s executed %s %s %s @ %s (fee %s)\n",
-				fill.BotID,
-				fill.Symbol,
+			b.Logger.Info(
+				"%s %s %s @ %s (fee %s)\n",
 				fill.Side,
+				fill.Symbol,
 				fill.Qty.String(),
 				fill.Price.String(),
 				fill.Fee.String(),

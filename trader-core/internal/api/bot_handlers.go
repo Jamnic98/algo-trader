@@ -44,6 +44,7 @@ func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("/:id", getBotByIDHandler)
 	rg.GET("/:id/trades", getBotTradesHandler)
 	rg.GET("/:id/trades/stream", streamBotTradesHandler)
+	rg.GET("/:id/logs/stream", streamBotLogsHandler)
 
 	rg.POST("", createBotHandler)
 	rg.POST("/:id/start", startBotHandler)
@@ -130,6 +131,42 @@ func streamBotTradesHandler(c *gin.Context) {
 		select {
 		case trade := <-ch:
 			data, _ := json.Marshal(trade)
+			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+			c.Writer.Flush()
+		case <-c.Request.Context().Done():
+			return
+		}
+	}
+}
+
+func streamBotLogsHandler(c *gin.Context) {
+	b := getBot(c.Param("id"))
+	if b == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	snapshot, ch := b.Logger.Subscribe()
+	defer b.Logger.Unsubscribe(ch)
+
+	// send catch-up buffer first
+	for _, entry := range snapshot {
+		data, _ := json.Marshal(entry)
+		fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+	}
+	c.Writer.Flush()
+
+	for {
+		select {
+		case entry, ok := <-ch:
+			if !ok {
+				return
+			}
+			data, _ := json.Marshal(entry)
 			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 			c.Writer.Flush()
 		case <-c.Request.Context().Done():
