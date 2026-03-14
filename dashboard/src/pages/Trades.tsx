@@ -38,7 +38,7 @@ const Trades = () => {
       setPagination(res.pagination)
     } catch (err) {
       console.log(err)
-      showAlert({ title: 'Failed to load trades', type: 'error' })
+      showAlert({ type: 'error', title: 'Failed to load trades' })
     } finally {
       setLoading(false)
     }
@@ -52,15 +52,41 @@ const Trades = () => {
     const es = new EventSource(`/api/trades/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`)
     es.onmessage = (e) => {
       const trade: Trade = JSON.parse(e.data)
-      const { symbol, side, botId } = debouncedFilters
+      const { symbol, side, botId, limit } = debouncedFilters
+
       if (symbol && !trade.symbol.includes(symbol.toUpperCase())) return
       if (side && trade.side !== side) return
       if (botId && trade.botID !== botId) return
-      setTrades((prev) => [trade, ...prev])
+
+      // Only inject into the live view if the user is on page 1.
+      // On other pages the new trade is out of scope — let a
+      // manual refresh or page navigation pick it up.
+      if (page !== 1) return
+
+      setTrades((prev) => {
+        const next = [trade, ...prev]
+        // keep trimmed to page size
+        return next.slice(0, limit)
+      })
+
+      // Bump the total count so pagination recalculates correctly
+      setPagination((prev) => {
+        if (!prev) return prev
+        const total = prev.total + 1
+        const total_pages = Math.ceil(total / filters.limit)
+        return { ...prev, total, total_pages }
+      })
     }
-    es.onerror = () => es.close()
+
+    es.onerror = () => {
+      const errorMsg = 'Trades stream error'
+      console.error(errorMsg)
+      showAlert({ type: 'error', title: errorMsg })
+      es.close()
+    }
+
     return () => es.close()
-  }, [debouncedFilters])
+  }, [debouncedFilters, filters.limit, page, showAlert])
 
   const handleFilterChange = (newFilters: TradeFilters) => {
     setFilters(newFilters)

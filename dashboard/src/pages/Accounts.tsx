@@ -21,8 +21,10 @@ const Accounts = () => {
     }
 
     source.onerror = () => {
-      showAlert({ title: 'Failed to load account', type: 'error' })
       setLoading(false)
+      const errorMsg = 'Failed to load account'
+      console.error(errorMsg)
+      showAlert({ type: 'error', title: errorMsg })
       source.close()
     }
 

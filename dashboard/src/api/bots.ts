@@ -33,7 +33,7 @@ export const detachBot = async (id: string): Promise<Bot> =>
 export const deleteBot = async (id: string) =>
   await api.fetchVoid(`${botsEndpoint}/${id}`, { method: 'DELETE' })
 
-export const getBotTrades = async (id: string, page = 1, limit = 10) =>
+export const getBotTrades = async (id: string, page = 1, limit = 15) =>
   await api.fetchJson<{ data: Trade[]; pagination: Pagination }>(
     `${botsEndpoint}/${id}/trades?page=${page}&limit=${limit}`,
     { method: 'GET' }

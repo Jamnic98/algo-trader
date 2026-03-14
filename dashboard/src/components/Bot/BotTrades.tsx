@@ -10,6 +10,8 @@ type BotTradesProps = {
   id: string
 }
 
+const TRADES_LIMIT = 15
+
 const COLUMNS = [
   // { key: 'botID', label: 'Bot ID' },
   // { key: 'symbol', label: 'Symbol' },
@@ -57,7 +59,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
     const fetchTrades = async () => {
       try {
         setLoading(true)
-        const res = await getBotTrades(id, page)
+        const res = await getBotTrades(id, page, TRADES_LIMIT)
         setTrades(res.data)
         setPagination(res.pagination)
       } catch (err) {
@@ -68,7 +70,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
       }
     }
     fetchTrades()
-  }, [id, page])
+  }, [showAlert, id, page])
 
   useEffect(() => {
     if (page !== 1) return
@@ -79,17 +81,27 @@ const BotTrades = ({ id }: BotTradesProps) => {
 
     source.onmessage = (e) => {
       const trade: Trade = JSON.parse(e.data)
-      setTrades((prev) => [trade, ...prev])
-      setPagination((prev) => (prev ? { ...prev, total: prev.total + 1 } : prev))
+      setTrades((prev) => {
+        const next = [trade, ...prev]
+        return next.slice(0, TRADES_LIMIT) // or whatever your page size is
+      })
+      setPagination((prev) => {
+        if (!prev) return prev
+        const total = prev.total + 1
+        const total_pages = Math.ceil(total / TRADES_LIMIT)
+        return { ...prev, total, total_pages }
+      })
     }
 
     source.onerror = () => {
-      console.error('trade stream error')
+      const errorMsg = 'Trade stream error'
+      console.error(errorMsg)
+      showAlert({ type: 'error', title: errorMsg })
       source.close()
     }
 
     return () => source.close()
-  }, [id, page])
+  }, [id, page, showAlert])
 
   if (loading) return <BarLoader fullscreen />
   if (!trades.length) return <div className="text-gray-500">No trades yet.</div>

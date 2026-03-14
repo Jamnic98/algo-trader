@@ -69,9 +69,13 @@ func (b *Bot) Start() error {
 		return errors.New("lookback must be > 0")
 	}
 
-	// drain candles accumulated while attached
+	// drain candles accumulated while attached and sync
 	for len(b.CandleCh) > 0 {
-		<-b.CandleCh
+		candle := <-b.CandleCh
+		b.Candles = append(b.Candles, candle)
+		if len(b.Candles) > b.MaxCandles {
+			b.Candles = b.Candles[len(b.Candles)-b.MaxCandles:]
+		}
 	}
 
 	b.Started = time.Now()

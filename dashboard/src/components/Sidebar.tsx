@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { StatusIndicator } from 'components'
+import { useAlert } from 'hooks'
 
 type SidebarLink = { label: string; url: string; icon: ReactNode }
 
@@ -22,13 +23,15 @@ const sidebarLinks: SidebarLink[] = [
   { label: 'diagnostics', url: '/diagnostics', icon: <Activity size={18} /> },
 ]
 
+type ApiHealthStatus = 'ok' | 'error'
 type SidebarProps = { isOpen: boolean; onToggle: () => void }
 
 const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
+  const { showAlert } = useAlert()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [healthStatus, setHealthStatus] = useState('')
+  const [healthStatus, setHealthStatus] = useState<ApiHealthStatus>('ok')
 
   useEffect(() => {
     const source = new EventSource(
@@ -42,11 +45,14 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
 
     source.onerror = () => {
       setHealthStatus('error')
+      const errorMsg = 'Health stream error'
+      console.error(errorMsg)
+      showAlert({ type: 'error', title: errorMsg })
       source.close()
     }
 
     return () => source.close()
-  }, [])
+  }, [showAlert])
 
   return (
     <div

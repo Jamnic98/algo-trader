@@ -34,7 +34,6 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 
 		case candle, ok := <-b.CandleCh:
 			if !ok {
-
 				return
 			}
 
