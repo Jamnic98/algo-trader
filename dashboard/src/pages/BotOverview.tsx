@@ -13,6 +13,8 @@ const BotOverview = () => {
 
   const [bot, setBot] = useState<Bot | null>(null)
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null)
+  const [positionsTick, setPositionsTick] = useState(0)
+  const onNewTrade = () => setPositionsTick((t) => t + 1)
 
   const [loading, setLoading] = useState(true)
 
@@ -150,7 +152,7 @@ const BotOverview = () => {
               </div>
             </div>
           </div>
-          <BotTabs bot={bot} />
+          <BotTabs bot={bot} onNewTrade={onNewTrade} positionsTick={positionsTick} />
         </>
       )}
     </div>

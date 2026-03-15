@@ -8,6 +8,7 @@ import type { Trade, Pagination } from 'types'
 
 type BotTradesProps = {
   id: string
+  onNewTrade: () => void
 }
 
 const TRADES_LIMIT = 15
@@ -47,7 +48,7 @@ const renderCell = (trade: Trade, key: string) => {
   }
 }
 
-const BotTrades = ({ id }: BotTradesProps) => {
+const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
   const { showAlert } = useAlert()
   const [trades, setTrades] = useState<Trade[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
@@ -91,6 +92,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
         const total_pages = Math.ceil(total / TRADES_LIMIT)
         return { ...prev, total, total_pages }
       })
+      onNewTrade()
     }
 
     source.onerror = () => {
@@ -101,7 +103,7 @@ const BotTrades = ({ id }: BotTradesProps) => {
     }
 
     return () => source.close()
-  }, [id, page, showAlert])
+  }, [id, page, showAlert, onNewTrade])
 
   if (loading) return <BarLoader fullscreen />
   if (!trades.length) return <div className="text-gray-500">No trades yet.</div>

@@ -42,6 +42,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			if len(b.Candles) > b.MaxCandles {
 				b.Candles = b.Candles[len(b.Candles)-b.MaxCandles:]
 			}
+			b.CandleBroadcaster.Publish(candle)
 
 			// only trade when running
 			if b.Status != BotRunning {

@@ -28,7 +28,8 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		Strategy: &strategies.SimpleStrategy{},
 		CandleCh: make(chan models.Candle, 100),
 
-		TradeBroadcaster: &Broadcaster[dto.TradeDTO]{},
+		TradeBroadcaster:  &Broadcaster[dto.TradeDTO]{},
+		CandleBroadcaster: &Broadcaster[models.Candle]{},
 	}
 
 	return b, nil

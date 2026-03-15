@@ -1,5 +1,5 @@
 import { api } from 'api'
-import type { BotCreateData, Bot, Pagination, Trade } from 'types'
+import type { BotCreateData, Bot, Pagination, Trade, Position } from 'types'
 
 const botsEndpoint = '/bots'
 
@@ -38,3 +38,6 @@ export const getBotTrades = async (id: string, page = 1, limit = 15) =>
     `${botsEndpoint}/${id}/trades?page=${page}&limit=${limit}`,
     { method: 'GET' }
   )
+
+export const getBotPositions = async (id: string): Promise<Position[]> =>
+  await api.fetchJson<Position[]>(`${botsEndpoint}/${id}/positions`)

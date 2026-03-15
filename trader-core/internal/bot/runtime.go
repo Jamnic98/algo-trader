@@ -34,6 +34,7 @@ func (r *Runtime) CreateBot(cfg BotConfig) (*Bot, error) {
 	if err != nil {
 		return nil, err
 	}
+	b.Logger.Info("created")
 	return b, r.DB.Save(&b.BotConfig).Error
 }
 
@@ -49,6 +50,7 @@ func (r *Runtime) DeleteBot(b *Bot) error {
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("bot %s not found in db", b.ID)
 	}
+	b.Logger.Info("deleted")
 	return nil
 }
 
@@ -77,7 +79,7 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	if err != nil {
 		return fmt.Errorf("failed to fetch historical candles: %w", err)
 	}
-	b.Logger.Info("fetched %d candles for %s %s (maxCandles=%d)", len(candles), b.Symbol(), b.Interval, b.MaxCandles)
+	b.Logger.Info("fetched %d candles", len(candles))
 	b.Candles = candles
 
 	rt.Dispatcher.Subscribe(b.Symbol(), b.Interval, b)
@@ -88,6 +90,7 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	go RunBotStrategy(b.ctx, b)
 
 	b.Status = BotAttached
+	b.Logger.Info("attached")
 	return nil
 }
 
@@ -111,5 +114,6 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 	b.Candles = nil
 
 	b.Status = BotCreated
+	b.Logger.Info("detached")
 	return nil
 }

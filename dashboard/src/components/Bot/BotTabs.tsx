@@ -9,7 +9,7 @@ import {
   ScrollText,
 } from 'lucide-react'
 
-import { BotLogs, BotTrades, CandlestickChart, Tabs } from 'components'
+import { BotCandleChart, BotLogs, BotStats, BotTrades, Tabs } from 'components'
 import { useAlert } from 'hooks'
 import type { Bot, Tab } from 'types'
 
@@ -28,9 +28,11 @@ const makeBotRunDurationStr = (botStart: string): string => {
 
 interface BotTabsProps {
   bot: Bot
+  onNewTrade: () => void
+  positionsTick: number
 }
 
-const BotTabs = ({ bot }: BotTabsProps) => {
+const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
   const { showAlert } = useAlert()
   const [searchParams, setSearchParams] = useSearchParams()
   const [runningFor, setRunningFor] = useState<string>(
@@ -100,18 +102,14 @@ const BotTabs = ({ bot }: BotTabsProps) => {
     {
       label: 'Stats',
       icon: <BarChart2 size={13} />,
-      content: (
-        <div className="space-y-3 text-gray-500">
-          <p>No stats yet.</p>
-        </div>
-      ),
+      content: <BotStats id={bot.id} tick={positionsTick} />,
     },
     {
       label: 'Trades',
       icon: <ArrowLeftRight size={13} />,
       content: (
         <div className="space-y-3 text-gray-500">
-          <BotTrades id={bot.id} />
+          <BotTrades id={bot.id} onNewTrade={onNewTrade} />
         </div>
       ),
     },
@@ -119,15 +117,7 @@ const BotTabs = ({ bot }: BotTabsProps) => {
       label: 'Candles',
       icon: <CChart size={13} />,
       content: (
-        <>
-          {bot.candles ? (
-            <CandlestickChart data={bot.candles} symbol={`${bot.base}/${bot.quote}`} height={400} />
-          ) : (
-            <div className="space-y-3 text-gray-500">
-              <p>No candles yet.</p>
-            </div>
-          )}
-        </>
+        <BotCandleChart id={bot.id} symbol={`${bot.base}/${bot.quote}`} status={bot.status} />
       ),
     },
     {

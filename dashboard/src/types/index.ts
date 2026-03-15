@@ -16,3 +16,12 @@ export type Pagination = {
 }
 
 export type LoadingAction = 'attach' | 'detach' | 'start' | 'stop' | 'delete' | null
+
+export type Position = {
+  symbol: string
+  qty: string
+  avg_entry: string
+  total_spent: string
+  realised_pnl: string
+  total_fees: string
+}

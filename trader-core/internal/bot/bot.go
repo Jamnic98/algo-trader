@@ -56,7 +56,8 @@ type Bot struct {
 	CandleCh chan models.Candle
 	Candles  []models.Candle
 
-	TradeBroadcaster *Broadcaster[dto.TradeDTO]
+	TradeBroadcaster  *Broadcaster[dto.TradeDTO]
+	CandleBroadcaster *Broadcaster[models.Candle]
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -82,6 +83,7 @@ func (b *Bot) Start() error {
 
 	b.Started = time.Now()
 	b.Status = BotRunning
+	b.Logger.Info("started")
 	return nil
 }
 
@@ -91,6 +93,7 @@ func (b *Bot) Stop() {
 	}
 	b.Status = BotAttached
 	b.Started = time.Time{}
+	b.Logger.Info("stopped")
 }
 
 // TODO: review usage
