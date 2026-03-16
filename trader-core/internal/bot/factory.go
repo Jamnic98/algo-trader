@@ -30,6 +30,7 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 
 		TradeBroadcaster:  &Broadcaster[dto.TradeDTO]{},
 		CandleBroadcaster: &Broadcaster[models.Candle]{},
+		TickBroadcaster:   &Broadcaster[models.Candle]{},
 	}
 
 	return b, nil

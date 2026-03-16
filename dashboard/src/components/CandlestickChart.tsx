@@ -21,6 +21,7 @@ type CandlestickChartProps = {
   symbol?: string
   height?: number
   newCandle?: OHLCVCandle | null
+  initialPrice?: number
 }
 
 type TooltipData = {
@@ -41,40 +42,41 @@ const fmtTime = (t: number) =>
     hour: '2-digit',
     minute: '2-digit',
   })
+const fmtChange = (n: number) => {
+  if (Math.abs(n) < 0.01) return n.toFixed(4)
+  return n.toFixed(2)
+}
+const fmtPrice = (n: number) => {
+  if (n < 0.01) return n.toFixed(6)
+  if (n < 1) return n.toFixed(4)
+  if (n < 10) return n.toFixed(3)
+  if (n < 100) return n.toFixed(2)
+  return n.toFixed(0)
+}
+const getPricePrecision = (n: number): { precision: number; minMove: number } => {
+  if (n < 0.01) return { precision: 7, minMove: 0.0000001 }
+  if (n < 1) return { precision: 5, minMove: 0.00001 }
+  if (n < 10) return { precision: 4, minMove: 0.0001 }
+  if (n < 100) return { precision: 3, minMove: 0.001 }
+  return { precision: 1, minMove: 0.1 }
+}
 
 const CandlestickChart = ({
   data,
   newCandle,
   symbol = 'CHART',
   height = 400,
+  initialPrice,
 }: CandlestickChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
+  const hasSeeded = useRef(false)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
-
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [containerWidth, setContainerWidth] = useState(0)
 
-  // Candle stream update
-  useEffect(() => {
-    if (!newCandle || !candleSeriesRef.current || !volumeSeriesRef.current) return
-
-    candleSeriesRef.current.update({
-      time: Math.floor(newCandle.openTime / 1000) as unknown as Time,
-      open: newCandle.open,
-      high: newCandle.high,
-      low: newCandle.low,
-      close: newCandle.close,
-    })
-
-    volumeSeriesRef.current.update({
-      time: Math.floor(newCandle.openTime / 1000) as unknown as Time,
-      value: newCandle.volume,
-      color: newCandle.close >= newCandle.open ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)',
-    })
-  }, [newCandle])
-
+  // Chart init — once on mount
   useEffect(() => {
     if (!chartContainerRef.current) return
 
@@ -86,33 +88,24 @@ const CandlestickChart = ({
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: bg || '#111114' },
-        textColor: contentSecondary || '#666',
+        background: { type: ColorType.Solid, color: bg },
+        textColor: contentSecondary,
         fontFamily: 'monospace',
         fontSize: 10,
       },
-      grid: {
-        vertLines: { color: 'transparent' },
-        horzLines: { color: border || '#1e1e22' },
-      },
+      grid: { vertLines: { color: 'transparent' }, horzLines: { color: border } },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: {
-          color: border || '#333',
-          labelBackgroundColor: bgPrimary || '#0a0a0a',
-        },
-        horzLine: {
-          color: border || '#333',
-          labelBackgroundColor: bgPrimary || '#0a0a0a',
-        },
+        vertLine: { color: border, labelBackgroundColor: bgPrimary },
+        horzLine: { color: border, labelBackgroundColor: bgPrimary },
       },
       rightPriceScale: {
-        borderColor: border || '#1e1e22',
-        textColor: contentSecondary || '#666',
+        borderColor: border,
+        textColor: contentSecondary,
         scaleMargins: { top: 0.08, bottom: 0.28 },
       },
       timeScale: {
-        borderColor: border || '#1e1e22',
+        borderColor: border,
         timeVisible: true,
         secondsVisible: false,
         fixLeftEdge: true,
@@ -126,63 +119,39 @@ const CandlestickChart = ({
 
     chartRef.current = chart
 
-    const candleOptions: DeepPartial<CandlestickSeriesOptions> = {
+    const { precision, minMove } = getPricePrecision(initialPrice ?? 100)
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',
       downColor: '#ef4444',
       borderUpColor: '#22c55e',
       borderDownColor: '#ef4444',
       wickUpColor: '#22c55e',
       wickDownColor: '#ef4444',
-    }
-    const candleSeries = chart.addSeries(CandlestickSeries, candleOptions)
+      priceFormat: { type: 'price', precision, minMove },
+    } as DeepPartial<CandlestickSeriesOptions>)
     candleSeriesRef.current = candleSeries
 
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
     })
-    chart.priceScale('volume').applyOptions({
-      scaleMargins: { top: 0.78, bottom: 0 },
-    })
+    chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.78, bottom: 0 } })
     volumeSeriesRef.current = volumeSeries
-
-    const sorted = [...data].sort((a, b) => a.openTime - b.openTime)
-    const latestClose = sorted.length > 0 ? sorted[sorted.length - 1].close : 0
-
-    const candleData = sorted.map((c) => ({
-      time: Math.floor(c.openTime / 1000) as unknown as Time,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }))
-
-    const volumeData = sorted.map((c) => ({
-      time: Math.floor(c.openTime / 1000) as unknown as Time,
-      value: c.volume,
-      color: c.close >= c.open ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)',
-    }))
-
-    candleSeries.setData(candleData)
-    volumeSeries.setData(volumeData)
-    chart.timeScale().fitContent()
 
     chart.subscribeCrosshairMove((param) => {
       if (!param.time || !param.point || !param.seriesData) {
         setTooltip(null)
         return
       }
-
       const candle = param.seriesData.get(candleSeries) as CandlestickData<Time> | undefined
       const vol = param.seriesData.get(volumeSeries) as HistogramData<Time> | undefined
-
       if (!candle) {
         setTooltip(null)
         return
       }
 
-      const amountChange = latestClose - candle.close
-      const pctChange = ((latestClose - candle.close) / candle.close) * 100
+      const amountChange = candle.close - candle.open
+      const pctChange = ((candle.close - candle.open) / candle.open) * 100
 
       setTooltip({
         x: param.point.x,
@@ -207,43 +176,109 @@ const CandlestickChart = ({
     return () => {
       ro.disconnect()
       chart.remove()
+      hasSeeded.current = false
     }
-  }, [data, height])
+  }, [height, initialPrice])
 
-  const latest = data.length > 0 ? data[data.length - 1] : null
-  const isUp = latest ? latest.close >= latest.open : true
+  // Seed/reseed data when it changes
+  useEffect(() => {
+    if (!candleSeriesRef.current || !volumeSeriesRef.current || !data.length) return
+
+    const sorted = [...data].sort((a, b) => a.openTime - b.openTime)
+
+    const latestPrice = sorted[sorted.length - 1].close
+    const { precision, minMove } = getPricePrecision(latestPrice)
+
+    candleSeriesRef.current.applyOptions({
+      priceFormat: { type: 'price', precision, minMove },
+    })
+
+    candleSeriesRef.current.setData(
+      sorted.map((c) => ({
+        time: Math.floor(c.openTime / 1000) as unknown as Time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }))
+    )
+
+    volumeSeriesRef.current.setData(
+      sorted.map((c) => ({
+        time: Math.floor(c.openTime / 1000) as unknown as Time,
+        value: c.volume,
+        color: c.close >= c.open ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)',
+      }))
+    )
+
+    if (!hasSeeded.current) {
+      chartRef.current?.timeScale().fitContent()
+      hasSeeded.current = true
+    }
+  }, [data])
+
+  // Live tick update
+  useEffect(() => {
+    if (!newCandle || !candleSeriesRef.current || !volumeSeriesRef.current) return
+
+    candleSeriesRef.current.update({
+      time: Math.floor(newCandle.openTime / 1000) as unknown as Time,
+      open: newCandle.open,
+      high: newCandle.high,
+      low: newCandle.low,
+      close: newCandle.close,
+    })
+
+    volumeSeriesRef.current.update({
+      time: Math.floor(newCandle.openTime / 1000) as unknown as Time,
+      value: newCandle.volume,
+      color: newCandle.close >= newCandle.open ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)',
+    })
+  }, [newCandle])
+
+  const isUp = newCandle ? newCandle.close >= newCandle.open : true
   const priceColor = isUp ? '#22c55e' : '#ef4444'
-  const pctChange = latest
-    ? (((latest.close - latest.open) / latest.open) * 100).toFixed(2)
-    : '0.00'
-
+  const first = data.length > 0 ? data[0] : null
+  const pctChange =
+    first && newCandle ? (((newCandle.close - first.close) / first.close) * 100).toFixed(2) : '0.00'
   const tooltipIsUp = tooltip ? tooltip.amountChange >= 0 : true
   const tooltipColor = tooltipIsUp ? '#22c55e' : '#ef4444'
 
   return (
     <div className="bg-surface-secondary border border-table-border rounded-lg overflow-hidden">
-      {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b border-table-border">
         <div className="flex items-center gap-3">
           <span className="text-content-secondary text-[11px] font-mono uppercase tracking-widest">
             {symbol}
           </span>
-          {latest && (
+          {newCandle && (
             <span className="text-[11px] font-mono text-content-secondary">
-              O <span className="text-content-primary">${latest.open.toFixed(2)}</span>
-              {'  '}H <span className="text-content-primary">${latest.high.toFixed(2)}</span>
-              {'  '}L <span className="text-content-primary">${latest.low.toFixed(2)}</span>
-              {'  '}C <span className="text-content-primary">${latest.close.toFixed(2)}</span>
+              {' '}
+              <span className="text-nowrap">
+                O <span className="text-content-primary">${fmtPrice(newCandle.open)}</span>
+              </span>
+              {'  '}
+              <span className="text-nowrap">
+                H <span className="text-content-primary">${fmtPrice(newCandle.high)}</span>
+              </span>
+              {'  '}
+              <span className="text-nowrap">
+                L <span className="text-content-primary">${fmtPrice(newCandle.low)}</span>
+              </span>
+              {'  '}
+              <span className="text-nowrap">
+                C <span className="text-content-primary">${fmtPrice(newCandle.close)}</span>
+              </span>
             </span>
           )}
         </div>
-        {latest && (
+        {newCandle && (
           <div className="flex items-center gap-2">
             <span
               className="text-[20px] font-semibold tracking-tight"
               style={{ color: priceColor }}
             >
-              ${latest.close.toFixed(2)}
+              ${fmtPrice(newCandle?.close)}
             </span>
             <span
               className="text-[11px] font-mono px-1.5 py-0.5 rounded"
@@ -259,15 +294,12 @@ const CandlestickChart = ({
         )}
       </div>
 
-      {/* Chart + Tooltip */}
       <div className="relative">
         <div
           ref={chartContainerRef}
           className="w-full [&_.tv-lightweight-charts_table_tr:last-child_td:last-child]:hidden cursor-crosshair"
           style={{ height }}
         />
-
-        {/* Tooltip */}
         {tooltip && (
           <div
             className="absolute pointer-events-none z-10 border border-table-border rounded px-2.5 py-2 text-[11px] font-mono flex flex-col gap-1"
@@ -284,7 +316,7 @@ const CandlestickChart = ({
             <span className="text-content-secondary">{fmtTime(tooltip.time)}</span>
             <span style={{ color: tooltipColor }}>
               {tooltipIsUp ? '+' : ''}
-              {tooltip.amountChange.toFixed(2)}{' '}
+              {fmtChange(tooltip.amountChange)}{' '}
               <span className="opacity-70">
                 ({tooltipIsUp ? '+' : ''}
                 {tooltip.pctChange.toFixed(2)}%)
@@ -297,14 +329,13 @@ const CandlestickChart = ({
         )}
       </div>
 
-      {/* Footer */}
-      {latest && (
+      {newCandle && (
         <div className="flex items-center gap-4 px-5 py-2 border-t border-table-border">
           <span className="text-[10px] font-mono text-content-secondary uppercase tracking-widest">
             Vol
           </span>
           <span className="text-[11px] font-mono text-content-primary">
-            {latest.volume.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+            {newCandle.volume.toLocaleString(undefined, { maximumFractionDigits: 3 })}
           </span>
         </div>
       )}

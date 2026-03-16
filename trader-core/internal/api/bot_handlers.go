@@ -122,6 +122,7 @@ func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("/:id/logs/stream", streamBotLogsHandler)
 	rg.GET("/:id/positions", getBotPositionsHandler)
 	rg.GET("/:id/candles/stream", streamBotCandlesHandler)
+	rg.GET("/:id/ticks/stream", streamBotTicksHandler)
 
 	rg.POST("", createBotHandler)
 	rg.POST("/:id/start", startBotHandler)
@@ -294,6 +295,32 @@ func streamBotCandlesHandler(c *gin.Context) {
 		fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 	}
 	c.Writer.Flush()
+
+	for {
+		select {
+		case candle := <-ch:
+			data, _ := json.Marshal(models.CandleToDTO(candle))
+			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+			c.Writer.Flush()
+		case <-c.Request.Context().Done():
+			return
+		}
+	}
+}
+
+func streamBotTicksHandler(c *gin.Context) {
+	b := getBot(c.Param("id"))
+	if b == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+
+	ch := b.TickBroadcaster.Subscribe()
+	defer b.TickBroadcaster.Unsubscribe(ch)
 
 	for {
 		select {

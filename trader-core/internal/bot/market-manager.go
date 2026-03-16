@@ -74,16 +74,18 @@ func (m *MarketDataManager) Run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case msg := <-m.client.Messages():
-			candle, key, ok := engine.ParseKline(msg)
-			if !ok {
-				continue
+			// closed candle
+			if candle, key, ok := engine.ParseKline(msg); ok {
+				m.mu.Lock()
+				m.lastClose[key] = candle.CloseTime
+				m.mu.Unlock()
+				m.dispatcher.Dispatch(key, candle)
 			}
 
-			m.mu.Lock()
-			m.lastClose[key] = candle.CloseTime
-			m.mu.Unlock()
-
-			m.dispatcher.Dispatch(key, candle)
+			// open candle tick
+			if candle, key, ok := engine.ParseKlineTick(msg); ok {
+				m.dispatcher.DispatchTick(key, candle)
+			}
 		}
 	}
 }

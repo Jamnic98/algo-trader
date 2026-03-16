@@ -58,3 +58,13 @@ func (d *Dispatcher) Dispatch(key string, candle models.Candle) {
 		}
 	}
 }
+
+func (d *Dispatcher) DispatchTick(key string, candle models.Candle) {
+	d.mu.RLock()
+	bots := d.subscriptions[key]
+	d.mu.RUnlock()
+
+	for _, b := range bots {
+		b.TickBroadcaster.Publish(candle)
+	}
+}

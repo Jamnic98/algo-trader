@@ -55,7 +55,7 @@ const Diagnostics = () => {
     source.onerror = () => {
       setConnStatus('disconnected')
       const errorMsg = 'Diagnostics connection error'
-      console.log(errorMsg)
+      console.error(errorMsg)
       showAlert({ type: 'error', title: errorMsg })
       source.close()
     }

@@ -50,3 +50,47 @@ func ParseKline(msg []byte) (models.Candle, string, bool) {
 	key := evt.K.Symbol + "_" + evt.K.Interval
 	return candle, key, true
 }
+
+func ParseKlineTick(msg []byte) (models.Candle, string, bool) {
+	var evt KlineEvent
+	if err := json.Unmarshal(msg, &evt); err != nil {
+		return models.Candle{}, "", false
+	}
+
+	if evt.K.IsClosed {
+		return models.Candle{}, "", false
+	}
+
+	open, err := decimal.NewFromString(evt.K.Open.String())
+	if err != nil {
+		return models.Candle{}, "", false
+	}
+	high, err := decimal.NewFromString(evt.K.High.String())
+	if err != nil {
+		return models.Candle{}, "", false
+	}
+	low, err := decimal.NewFromString(evt.K.Low.String())
+	if err != nil {
+		return models.Candle{}, "", false
+	}
+	close, err := decimal.NewFromString(evt.K.Close.String())
+	if err != nil {
+		return models.Candle{}, "", false
+	}
+	volume, err := decimal.NewFromString(evt.K.Volume.String())
+	if err != nil {
+		return models.Candle{}, "", false
+	}
+
+	candle := models.Candle{
+		Open:      open,
+		High:      high,
+		Low:       low,
+		Close:     close,
+		Volume:    volume,
+		OpenTime:  evt.K.StartTime,
+		CloseTime: evt.K.CloseTime,
+	}
+	key := evt.K.Symbol + "_" + evt.K.Interval
+	return candle, key, true
+}

@@ -58,6 +58,7 @@ type Bot struct {
 
 	TradeBroadcaster  *Broadcaster[dto.TradeDTO]
 	CandleBroadcaster *Broadcaster[models.Candle]
+	TickBroadcaster   *Broadcaster[models.Candle]
 
 	ctx    context.Context
 	cancel context.CancelFunc

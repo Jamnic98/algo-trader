@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { CandlestickChart } from 'components'
+import { BarLoader, CandlestickChart } from 'components'
 import type { OHLCVCandle } from 'types'
 import { useAlert } from 'hooks'
 
@@ -8,8 +8,11 @@ type BotCandleChartProps = { id: string; symbol: string; status: string }
 
 const BotCandleChart = ({ id, symbol, status }: BotCandleChartProps) => {
   const { showAlert } = useAlert()
+  const snapshotDoneRef = useRef(false)
+  const candlesRef = useRef<OHLCVCandle[]>([])
   const [candles, setCandles] = useState<OHLCVCandle[]>([])
-  const newCandleRef = useRef<OHLCVCandle | null>(null)
+  const [latestTick, setLatestTick] = useState<OHLCVCandle | null>(null)
+  const [snapshotDone, setSnapshotDone] = useState(false)
 
   useEffect(() => {
     if (status === 'created') return
@@ -20,6 +23,7 @@ const BotCandleChart = ({ id, symbol, status }: BotCandleChartProps) => {
 
     es.onmessage = (e) => {
       const candle = JSON.parse(e.data)
+
       const mapped: OHLCVCandle = {
         open: candle.open,
         high: candle.high,
@@ -31,33 +35,82 @@ const BotCandleChart = ({ id, symbol, status }: BotCandleChartProps) => {
       }
 
       setCandles((prev) => {
-        // snapshot — initial bulk load
-        if (prev.length === 0 || mapped.openTime > prev[prev.length - 1].openTime) {
-          return [...prev, mapped]
-        }
-        return prev
+        const next = [...prev, mapped]
+        candlesRef.current = next
+        return next
       })
-
-      newCandleRef.current = mapped
     }
 
+    const timeout = setTimeout(() => {
+      snapshotDoneRef.current = true
+      setSnapshotDone(true)
+    }, 10000)
+
+    es.addEventListener('ready', () => {
+      clearTimeout(timeout)
+      snapshotDoneRef.current = true
+      setSnapshotDone(true)
+    })
+
     es.onerror = () => {
-      const errorMsg = 'Bot candles stream error'
-      console.error(errorMsg)
-      showAlert({ type: 'error', title: errorMsg })
+      showAlert({ type: 'error', title: 'Bot candles stream error' })
       es.close()
     }
 
     return () => {
+      clearTimeout(timeout)
       es.close()
       setCandles([])
+      candlesRef.current = []
+      snapshotDoneRef.current = false
+      setSnapshotDone(false)
     }
   }, [id, status, showAlert])
 
-  if (status === 'created') return <div className="text-gray-500">Bot not attached.</div>
-  if (!candles.length) return <div className="text-gray-500">No candles yet.</div>
+  useEffect(() => {
+    if (status === 'created') return
 
-  return <CandlestickChart data={candles} symbol={symbol} height={400} />
+    const es = new EventSource(
+      `/api/bots/${id}/ticks/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+    )
+
+    es.onmessage = (e) => {
+      const candle = JSON.parse(e.data)
+      if (!snapshotDoneRef.current) {
+        snapshotDoneRef.current = true
+        setSnapshotDone(true)
+      }
+
+      setLatestTick({
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume,
+        openTime: candle.openTime,
+        closeTime: candle.closeTime,
+      })
+    }
+
+    es.onerror = () => es.close()
+    return () => {
+      es.close()
+      setLatestTick(null)
+    }
+  }, [id, status])
+
+  if (status === 'created') return <div className="text-gray-500">Bot not attached.</div>
+  if (!snapshotDone) return <BarLoader />
+
+  return (
+    <CandlestickChart
+      data={candles}
+      newCandle={latestTick}
+      symbol={symbol}
+      height={400}
+      initialPrice={candles[0]?.close}
+    />
+  )
 }
 
 export default BotCandleChart

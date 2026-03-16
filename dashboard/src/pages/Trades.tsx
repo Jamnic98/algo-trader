@@ -37,7 +37,7 @@ const Trades = () => {
       setTrades(res.trades)
       setPagination(res.pagination)
     } catch (err) {
-      console.log(err)
+      console.error(err)
       showAlert({ type: 'error', title: 'Failed to load trades' })
     } finally {
       setLoading(false)
