@@ -88,7 +88,7 @@ const Diagnostics = () => {
           }`}
         >
           <span
-            className={`w-1.5 h-1.5 rounded-full ${
+            className={`w-1.5 h-1 rounded-full ${
               isStale ? 'bg-red-400' : 'bg-accent shadow-[0_0_6px_var(--color-accent)]'
             }`}
           />

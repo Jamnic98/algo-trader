@@ -50,10 +50,10 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
       label: 'Info',
       icon: <Info size={13} />,
       content: (
-        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm font-mono select-none">
+        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm font-mono select-none min-w-0 max-w-full">
           <span className="text-content-tertiary">Id</span>
-          <span className="flex items-center gap-2 text-content-secondary">
-            <span className="truncate">{bot.id}</span>
+          <span className="flex items-center gap-2 text-content-secondary min-w-0">
+            <span className="truncate min-w-0">{bot.id}</span>
             <Copy
               size={12}
               className="cursor-pointer shrink-0 hover:text-content-primary transition-colors"
@@ -63,6 +63,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
               }}
             />
           </span>
+          {/* rest unchanged */}
 
           <span className="text-content-tertiary">Mode</span>
           <span className="text-content-secondary">{bot.mode}</span>

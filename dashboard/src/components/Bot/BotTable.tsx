@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-import { BotActionButtons } from 'components'
+import { BotActionButtons, BotStatusPill } from 'components'
 import type { Bot, LoadingAction } from 'types'
 import { GlobeIcon, GlobeOff } from 'lucide-react'
 
@@ -24,8 +24,6 @@ type BotTableProps = {
   botActions?: {
     startBot: (id: string) => void
     stopBot: (id: string) => void
-    attachBot: (id: string) => void
-    detachBot: (id: string) => void
     deleteBot: (id: string) => void
   }
   columns?: ColumnKey[]
@@ -66,19 +64,7 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
           <GlobeIcon size={18} className="text-accent" />
         )
       case 'status':
-        return (
-          <span
-            className={`text-xs px-1.5 py-0.5 rounded-full font-mono ${
-              bot.status === 'running'
-                ? 'bg-green-500/10 text-green-400'
-                : bot.status === 'attached'
-                  ? 'bg-yellow-500/10 text-yellow-400'
-                  : 'bg-surface-secondary text-content-tertiary'
-            }`}
-          >
-            {bot.status}
-          </span>
-        )
+        return <BotStatusPill status={bot.status} />
       case 'started':
         return bot.started
           ? new Intl.DateTimeFormat('en-GB', {

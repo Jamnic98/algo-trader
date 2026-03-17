@@ -15,7 +15,7 @@ export type Pagination = {
   total_pages: number
 }
 
-export type LoadingAction = 'attach' | 'detach' | 'start' | 'stop' | 'delete' | null
+export type LoadingAction = 'start' | 'stop' | 'delete' | null
 
 export type Position = {
   symbol: string

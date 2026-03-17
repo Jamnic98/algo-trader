@@ -8,9 +8,9 @@ type TabsProps = {
 
 const Tabs = ({ tabs, activeTab, onTabChange }: TabsProps) => {
   return (
-    <>
+    <div className="space-y-4">
       {/* Tab Bar */}
-      <div className="flex gap-0.5 bg-surface-secondary p-1 rounded-lg w-fit border border-border select-none">
+      <div className="flex gap-0.5 bg-surface-secondary p-1 rounded-lg w-fit overflow-x-auto border border-border select-none [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
         {tabs.map((tab, index) => {
           const isActive = activeTab === index
           return (
@@ -44,11 +44,11 @@ const Tabs = ({ tabs, activeTab, onTabChange }: TabsProps) => {
       </div>
 
       {/* Divider */}
-      <div className="h-px my-4 opacity-50 bg-linear-to-r from-accent via-border to-transparent" />
+      <div className="h-px opacity-50 bg-linear-to-r from-accent via-border to-transparent" />
 
       {/* Content */}
       <div className="text-content-secondary animate-fade-in">{tabs[activeTab].content}</div>
-    </>
+    </div>
   )
 }
 

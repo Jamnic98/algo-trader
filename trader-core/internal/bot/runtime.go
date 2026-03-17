@@ -85,17 +85,14 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	rt.Dispatcher.Subscribe(b.Symbol(), b.Interval, b)
 	rt.MarketManager.Subscribe(b.Symbol(), b.Interval)
 
-	// goroutine starts here — drains candles, won't trade until Running
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 	go RunBotStrategy(b.ctx, b)
 
-	b.Status = BotAttached
-	b.Logger.Info("attached")
-	return nil
+	return b.Start() // sets status, timestamp, drains candle buffer
 }
 
 func (rt *Runtime) DetachBot(b *Bot) error {
-	if b.Status != BotAttached {
+	if b.Status != BotRunning {
 		return fmt.Errorf("cannot detach bot from %s", b.Status)
 	}
 
@@ -113,7 +110,7 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 	b.ctx = nil
 	b.Candles = nil
 
-	b.Status = BotCreated
+	b.Status = BotCreated // was BotRunning — bug fixed
 	b.Logger.Info("detached")
 	return nil
 }

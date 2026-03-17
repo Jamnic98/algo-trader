@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"trader-core/internal/db/models"
@@ -17,10 +16,10 @@ import (
 
 type BotStatus string
 
+// Bot statuses
 const (
-	BotCreated  BotStatus = "created"
-	BotAttached BotStatus = "attached"
-	BotRunning  BotStatus = "running"
+	BotCreated BotStatus = "created"
+	BotRunning BotStatus = "running"
 )
 
 type BotMode string
@@ -65,15 +64,10 @@ type Bot struct {
 }
 
 func (b *Bot) Start() error {
-	if b.Status != BotAttached {
-		return fmt.Errorf("cannot start bot from %s", b.Status)
-	}
-
 	if b.Lookback <= 0 {
 		return errors.New("lookback must be > 0")
 	}
 
-	// drain candles accumulated while attached and sync
 	for len(b.CandleCh) > 0 {
 		candle := <-b.CandleCh
 		b.Candles = append(b.Candles, candle)
@@ -88,20 +82,7 @@ func (b *Bot) Start() error {
 	return nil
 }
 
-func (b *Bot) Stop() {
-	if b.Status != BotRunning {
-		return
-	}
-	b.Status = BotAttached
-	b.Started = time.Time{}
-	b.Logger.Info("stopped")
-}
-
-// TODO: review usage
-func (b *Bot) SetCancel(c context.CancelFunc) {
-	b.cancel = c
-}
-
+// Recreate the asset symbol
 func (b *Bot) Symbol() string {
 	return b.Base + b.Quote
 }

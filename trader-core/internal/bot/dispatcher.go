@@ -28,7 +28,7 @@ func (d *Dispatcher) Subscribe(symbol string, interval engine.Interval, b *Bot) 
 	d.subscriptions[key] = append(d.subscriptions[key], b)
 }
 
-// Unsubscribe a bot
+// Unsubscribe a bot from the candles stream
 func (d *Dispatcher) Unsubscribe(symbol string, interval engine.Interval, b *Bot) {
 	key := symbol + "_" + interval.String()
 	d.mu.Lock()

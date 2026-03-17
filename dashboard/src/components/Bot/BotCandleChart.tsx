@@ -108,7 +108,7 @@ const BotCandleChart = ({ id, symbol, status }: BotCandleChartProps) => {
       newCandle={latestTick}
       symbol={symbol}
       height={400}
-      initialPrice={candles[0]?.close}
+      initialPrice={candles ? candles[0]?.close : 0}
     />
   )
 }

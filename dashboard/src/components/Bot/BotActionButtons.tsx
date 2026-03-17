@@ -1,17 +1,6 @@
-import { ArrowDownFromLine, ArrowUpFromLine, Play, Square, X } from 'lucide-react'
+import { Play, Square, X } from 'lucide-react'
 
 import type { LoadingAction } from 'types'
-
-type BotActionButtonsProps = {
-  botId: string
-  botStatus: string
-  loadingAction: LoadingAction
-  startBot: (id: string) => void
-  stopBot: (id: string) => void
-  attachBot: (id: string) => void
-  detachBot: (id: string) => void
-  deleteBot: (id: string) => void
-}
 
 type ActionButtonProps = {
   onClick: (e: React.MouseEvent) => void
@@ -37,14 +26,21 @@ const ActionButton = ({ onClick, className, title, loading, children }: ActionBu
   </button>
 )
 
+type BotActionButtonsProps = {
+  botId: string
+  botStatus: string
+  loadingAction: LoadingAction
+  startBot: (id: string) => void
+  stopBot: (id: string) => void
+  deleteBot: (id: string) => void
+}
+
 const BotActionButtons = ({
   botId,
   botStatus,
   loadingAction,
   startBot,
   stopBot,
-  attachBot,
-  detachBot,
   deleteBot,
 }: BotActionButtonsProps) => (
   <>
@@ -52,55 +48,13 @@ const BotActionButtons = ({
       <ActionButton
         onClick={(e) => {
           e.stopPropagation()
-          attachBot(botId)
+          startBot(botId)
         }}
-        className="bg-action-attach hover:bg-action-attach-hover"
-        title="Attach"
-        loading={loadingAction === 'attach'}
+        className="bg-action-start hover:bg-action-start-hover"
+        title="Start"
+        loading={loadingAction === 'start'}
       >
-        <ArrowUpFromLine size={16} />
-      </ActionButton>
-    )}
-
-    {botStatus === 'attached' && (
-      <>
-        <ActionButton
-          onClick={(e) => {
-            e.stopPropagation()
-            startBot(botId)
-          }}
-          className="bg-action-start hover:bg-action-start-hover"
-          title="Start"
-          loading={loadingAction === 'start'}
-        >
-          <Play size={16} />
-        </ActionButton>
-
-        <ActionButton
-          onClick={(e) => {
-            e.stopPropagation()
-            detachBot(botId)
-          }}
-          className="bg-action-detach hover:bg-action-detach-hover"
-          title="Detach"
-          loading={loadingAction === 'detach'}
-        >
-          <ArrowDownFromLine size={16} />
-        </ActionButton>
-      </>
-    )}
-
-    {botStatus === 'running' && (
-      <ActionButton
-        onClick={(e) => {
-          e.stopPropagation()
-          stopBot(botId)
-        }}
-        className="bg-action-stop hover:bg-stop-hover"
-        title="Stop"
-        loading={loadingAction === 'stop'}
-      >
-        <Square size={16} />
+        <Play size={16} />
       </ActionButton>
     )}
 
@@ -115,6 +69,20 @@ const BotActionButtons = ({
         loading={loadingAction === 'delete'}
       >
         <X size={16} />
+      </ActionButton>
+    )}
+
+    {botStatus === 'running' && (
+      <ActionButton
+        onClick={(e) => {
+          e.stopPropagation()
+          stopBot(botId)
+        }}
+        className="bg-action-stop hover:bg-stop-hover"
+        title="Stop"
+        loading={loadingAction === 'stop'}
+      >
+        <Square size={16} />
       </ActionButton>
     )}
   </>

@@ -124,11 +124,9 @@ func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("/:id/candles/stream", streamBotCandlesHandler)
 	rg.GET("/:id/ticks/stream", streamBotTicksHandler)
 
-	rg.POST("", createBotHandler)
 	rg.POST("/:id/start", startBotHandler)
 	rg.POST("/:id/stop", stopBotHandler)
-	rg.POST("/:id/attach", attachBotHandler)
-	rg.POST("/:id/detach", detachBotHandler)
+	rg.POST("", createBotHandler)
 	rg.DELETE("/:id", deleteBotHandler)
 }
 
@@ -147,6 +145,11 @@ func getBotsHandler(c *gin.Context) {
 	var cfgs []bot.BotConfig
 	if includeDeleted {
 		runtime.DB.Unscoped().Where("deleted_at IS NOT NULL").Find(&cfgs)
+		dtos := make([]BotDTO, len(cfgs))
+		for i, cfg := range cfgs {
+			dtos[i] = configToDTO(cfg)
+		}
+		c.JSON(http.StatusOK, gin.H{"bots": dtos})
 	} else {
 		activeBotsMu.RLock()
 		bots := make([]*bot.Bot, 0, len(activeBots))
@@ -160,14 +163,7 @@ func getBotsHandler(c *gin.Context) {
 			dtos[i] = botToDTO(b)
 		}
 		c.JSON(http.StatusOK, gin.H{"bots": dtos})
-		return
 	}
-
-	dtos := make([]BotDTO, len(cfgs))
-	for i, cfg := range cfgs {
-		dtos[i] = configToDTO(cfg)
-	}
-	c.JSON(http.StatusOK, gin.H{"bots": dtos})
 }
 
 func getBotTradesHandler(c *gin.Context) {
@@ -378,33 +374,12 @@ func startBotHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-	if err := b.Start(); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
-}
-
-func attachBotHandler(c *gin.Context) {
-	b := getBot(c.Param("id"))
-	if b == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
-		return
-	}
-	if err := runtime.AttachBot(b); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
-}
-
-func detachBotHandler(c *gin.Context) {
-	b := getBot(c.Param("id"))
-	if b == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
-		return
-	}
-	if err := runtime.DetachBot(b); err != nil {
+	if b.Status == bot.BotCreated {
+		if err := runtime.AttachBot(b); err != nil {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+	} else if err := b.Start(); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}
@@ -417,7 +392,10 @@ func stopBotHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-	b.Stop()
+	if err := runtime.DetachBot(b); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
 }
 
@@ -429,13 +407,7 @@ func deleteBotHandler(c *gin.Context) {
 	}
 
 	if b.Status == bot.BotRunning {
-		b.Stop()
-	}
-	if b.Status == bot.BotAttached {
-		if err := runtime.DetachBot(b); err != nil {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-			return
-		}
+		runtime.DetachBot(b)
 	}
 
 	if err := runtime.DeleteBot(b); err != nil {

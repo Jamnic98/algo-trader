@@ -1,6 +1,6 @@
 import type { OHLCVCandle } from 'types'
 
-type BotStatus = 'created' | 'attached' | 'running'
+export type BotStatus = 'created' | 'running'
 
 export type BotMode = 'paper' | 'live'
 

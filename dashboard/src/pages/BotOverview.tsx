@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { attachBot, deleteBot, detachBot, getBot, startBot, stopBot } from 'api'
-import { BarLoader, BotActionButtons, BotTabs, Heading } from 'components'
+import { getBot, startBot, stopBot, deleteBot } from 'api'
+import { BarLoader, BotActionButtons, BotStatusPill, BotTabs, Heading } from 'components'
 import { useAlert } from 'hooks'
 import type { Bot, LoadingAction } from 'types'
 
@@ -18,6 +18,7 @@ const BotOverview = () => {
 
   const [loading, setLoading] = useState(true)
 
+  // fetch bot data on page load
   useEffect(() => {
     const fetchBot = async () => {
       try {
@@ -67,34 +68,6 @@ const BotOverview = () => {
     }
   }
 
-  const handleAttachBot = async (botId: string) => {
-    try {
-      setLoadingAction('attach')
-      const updatedBot = await attachBot(botId)
-      setBot(updatedBot)
-    } catch (err) {
-      console.error(err)
-      const errorMsg = `Failed to attach bot with id: ${botId}`
-      showAlert({ title: errorMsg, type: 'error' })
-    } finally {
-      setLoadingAction(null)
-    }
-  }
-
-  const handleDetachBot = async (botId: string) => {
-    try {
-      setLoadingAction('detach')
-      const updatedBot = await detachBot(botId)
-      setBot(updatedBot)
-    } catch (err) {
-      console.error(err)
-      const errorMsg = `Failed to detach bot with id: ${botId}`
-      showAlert({ title: errorMsg, type: 'error' })
-    } finally {
-      setLoadingAction(null)
-    }
-  }
-
   const handleDeleteBot = async (botId: string) => {
     try {
       if (confirm(`Delete bot ${botId}?`) === true) {
@@ -114,30 +87,18 @@ const BotOverview = () => {
   if (loading) return <BarLoader fullscreen />
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       <Heading title="Bot Overview" />
       {bot && (
         <>
-          <div className="max-w-80">
-            <div className="flex flex-row justify-between gap-4 select-none">
+          <div className="w-fit">
+            <div className="flex flex-row justify-between items-center gap-4 select-none mb-8 pr-4">
               <div className="space-y-1.5 text-sm text-content-secondary font-mono">
                 <p>{`${bot.base}/${bot.quote}`}</p>
                 <div className="flex items-center gap-2">
-                  <span>Status:</span>
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      bot.status === 'running'
-                        ? 'bg-green-500/10 text-green-400'
-                        : bot.status === 'attached'
-                          ? 'bg-yellow-500/10 text-yellow-400'
-                          : 'bg-surface-secondary text-content-tertiary'
-                    }`}
-                  >
-                    {bot.status}
-                  </span>
+                  <BotStatusPill status={bot.status} />
                 </div>
               </div>
-
               <div className="flex gap-2">
                 <BotActionButtons
                   botId={bot.id}
@@ -145,8 +106,6 @@ const BotOverview = () => {
                   loadingAction={loadingAction}
                   startBot={handleStartBot}
                   stopBot={handleStopBot}
-                  attachBot={handleAttachBot}
-                  detachBot={handleDetachBot}
                   deleteBot={handleDeleteBot}
                 />
               </div>
