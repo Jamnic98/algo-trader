@@ -24,7 +24,7 @@ const Diagnostics = () => {
   const [diagnostics, setDiagnostics] = useState<DiagnosticData>()
   const [connStatus, setConnStatus] = useState<ConnStatus>('connecting')
   const [history, setHistory] = useState<HistoryPoint[]>([])
-  const [uptime, setUptime] = useState('--:--:--')
+  const [uptime, setUptime] = useState<string | null>(null)
 
   const serverUptimeBaseRef = useRef<number | null>(null)
   const clientStartRef = useRef<number | null>(null)
@@ -63,25 +63,23 @@ const Diagnostics = () => {
     return () => source.close()
   }, [showAlert])
 
-  if (connStatus === 'connecting' && !diagnostics) return <BarLoader fullscreen />
-
-  if (connStatus === 'disconnected' && !diagnostics)
-    return (
-      <div className="text-content-secondary p-8 font-mono text-[13px]">
-        Failed to connect to diagnostics.
-      </div>
-    )
-
   if (!diagnostics) return null
-
   const { cpu, memory, process, go_runtime, stale } = diagnostics
   const available = memory.total_bytes - memory.used_bytes
   const isStale = stale || connStatus === 'disconnected'
 
+  if (connStatus === 'disconnected' && !diagnostics)
+    return (
+      <span className="inline-flex items-center w-16 h-[1em]">
+        {uptime ? uptime : <BarLoader width="narrow" />}
+      </span>
+    )
+
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading title="Diagnostics" />
+        {/* Page Title */}
         <div
           className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-mono border ${
             isStale
@@ -94,8 +92,15 @@ const Diagnostics = () => {
               isStale ? 'bg-red-400' : 'bg-accent shadow-[0_0_6px_var(--color-accent)]'
             }`}
           />
-          {connStatus === 'disconnected' ? 'Disconnected' : isStale ? 'Stale' : 'Live'} · uptime{' '}
-          {uptime}
+          <span className="inline-flex items-center gap-2 text-nowrap">
+            <span>
+              {connStatus === 'disconnected' ? 'Disconnected' : isStale ? 'Stale' : 'Live'} ·
+              uptime{' '}
+            </span>
+            <span className="inline-block w-[8ch] text-left">
+              {uptime ? uptime : <BarLoader width="uptime" />}
+            </span>
+          </span>
         </div>
       </div>
 
