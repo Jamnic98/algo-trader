@@ -93,22 +93,21 @@ const BotOverview = () => {
         <>
           <div className="w-fit">
             <div className="flex flex-row justify-between items-center gap-4 select-none mb-8 pr-4">
-              <div className="space-y-1.5 text-sm text-content-secondary font-mono">
-                <p>{`${bot.base}/${bot.quote}`}</p>
+              <div className="space-y-1.5 text-sm text-content-secondary">
+                <p className="tracking-wide">{`${bot.base}/${bot.quote}`}</p>
                 <div className="flex items-center gap-2">
                   <BotStatusPill status={bot.status} />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <BotActionButtons
-                  botId={bot.id}
-                  botStatus={bot.status}
-                  loadingAction={loadingAction}
-                  startBot={handleStartBot}
-                  stopBot={handleStopBot}
-                  deleteBot={handleDeleteBot}
-                />
-              </div>
+
+              <BotActionButtons
+                botId={bot.id}
+                botStatus={bot.status}
+                loadingAction={loadingAction}
+                startBot={handleStartBot}
+                stopBot={handleStopBot}
+                deleteBot={handleDeleteBot}
+              />
             </div>
           </div>
           <BotTabs bot={bot} onNewTrade={onNewTrade} positionsTick={positionsTick} />

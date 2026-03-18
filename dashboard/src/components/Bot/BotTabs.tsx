@@ -63,8 +63,8 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
               }}
             />
           </span>
-          {/* rest unchanged */}
 
+          {/* rest unchanged */}
           <span className="text-content-tertiary">Mode</span>
           <span className="text-content-secondary">{bot.mode}</span>
 
@@ -95,7 +95,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
               : '-'}
           </span>
 
-          <span className="text-content-tertiary">Running for</span>
+          <span className="text-content-tertiary">Run-time</span>
           <span className="text-content-secondary">{bot.started ? runningFor : '-'}</span>
         </div>
       ),

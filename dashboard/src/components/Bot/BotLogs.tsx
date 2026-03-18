@@ -34,7 +34,7 @@ const BotLogs = ({ id }: { id: string }) => {
   if (!logs.length) return <div className="text-gray-500">No logs yet.</div>
 
   return (
-    <div className="font-mono text-xs space-y-1 overflow-y-auto max-h-96">
+    <div className="font-mono text-xs space-y-1 overflow-y-auto max-h-96 overflow-x-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
       {logs.map((log, i) => (
         <div key={i} className="flex gap-3">
           <span className="text-content-secondary/50 shrink-0">

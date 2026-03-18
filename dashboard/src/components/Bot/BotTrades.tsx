@@ -109,7 +109,7 @@ const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
   if (!trades.length) return <div className="text-gray-500">No trades yet.</div>
 
   return (
-    <>
+    <div>
       <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
         <table className="border-collapse w-full select-none">
           <thead>
@@ -137,6 +137,7 @@ const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
           </tbody>
         </table>
       </div>
+
       {/* Pagination */}
       {pagination && pagination.total_pages > 1 && (
         <div className="flex items-center justify-between mt-4 text-xs font-mono text-content-secondary">
@@ -193,7 +194,7 @@ const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
           </span>
         </div>
       )}
-    </>
+    </div>
   )
 }
 

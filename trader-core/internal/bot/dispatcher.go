@@ -37,9 +37,11 @@ func (d *Dispatcher) Unsubscribe(symbol string, interval engine.Interval, b *Bot
 	for i, bot := range bots {
 		if bot == b {
 			d.subscriptions[key] = append(bots[:i], bots[i+1:]...)
-			break
+			b.Logger.Info("unsubscribed from %s", key)
+			return
 		}
 	}
+	b.Logger.Warn("bot not found in subscriptions for %s", key)
 }
 
 // Dispatch a candle to all bots subscribed to that feed

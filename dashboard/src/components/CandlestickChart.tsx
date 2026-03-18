@@ -236,11 +236,12 @@ const CandlestickChart = ({
     })
   }, [newCandle])
 
-  const isUp = newCandle ? newCandle.close >= newCandle.open : true
-  const priceColor = isUp ? '#22c55e' : '#ef4444'
   const first = data.length > 0 ? data[0] : null
-  const pctChange =
-    first && newCandle ? (((newCandle.close - first.close) / first.close) * 100).toFixed(2) : '0.00'
+  const pctChangeNum =
+    first && newCandle ? ((newCandle.close - first.close) / first.close) * 100 : 0
+  const pctChange = Math.abs(pctChangeNum).toFixed(2)
+  const isUp = pctChangeNum >= 0
+  const priceColor = isUp ? '#22c55e' : '#ef4444'
   const tooltipIsUp = tooltip ? tooltip.amountChange >= 0 : true
   const tooltipColor = tooltipIsUp ? '#22c55e' : '#ef4444'
 
@@ -287,7 +288,7 @@ const CandlestickChart = ({
                 backgroundColor: isUp ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
               }}
             >
-              {isUp ? '+' : ''}
+              {isUp ? '+' : '-'}
               {pctChange}%
             </span>
           </div>

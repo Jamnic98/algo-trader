@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { BarLoader, ChartCard, Heading, SectionLabel, StatCard } from 'components'
+import { BarLoader, ChartCard, Heading, PieCard, SectionLabel, StatCard } from 'components'
 import type { ConnStatus, DiagnosticData, HistoryPoint } from 'types'
 import { useAlert } from 'hooks'
 
@@ -76,10 +76,10 @@ const Diagnostics = () => {
     )
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-10">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <Heading title="Diagnostics" />
-        {/* Page Title */}
         <div
           className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-mono border ${
             isStale
@@ -88,7 +88,7 @@ const Diagnostics = () => {
           }`}
         >
           <span
-            className={`w-1.5 h-1 rounded-full ${
+            className={`w-1.5 h-1.5 rounded-full ${
               isStale ? 'bg-red-400' : 'bg-accent shadow-[0_0_6px_var(--color-accent)]'
             }`}
           />
@@ -104,9 +104,10 @@ const Diagnostics = () => {
         </div>
       </div>
 
-      <div>
+      {/* Usage over time */}
+      <div className="flex flex-col gap-4">
         <SectionLabel>Usage over time</SectionLabel>
-        <div className="space-y-8">
+        <div className="flex flex-col gap-6">
           <ChartCard
             label="CPU Usage"
             dataKey="cpu"
@@ -126,20 +127,23 @@ const Diagnostics = () => {
         </div>
       </div>
 
-      <div>
+      {/* CPU & Memory */}
+      <div className="flex flex-col gap-4">
         <SectionLabel>CPU &amp; Memory</SectionLabel>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
           <StatCard label="CPU Usage" value={`${cpu.used_percent.toFixed(1)}%`} accent />
           <StatCard label="CPU Cores" value={cpu.num_cpu} />
-          <StatCard
-            label="Memory Available"
-            value={formatBytes(memory.total_bytes - memory.used_bytes)}
-            sub={`of ${formatBytes(memory.total_bytes)}`}
-          />
         </div>
+        <PieCard
+          rssBytes={process.rss_bytes}
+          heapAllocMB={go_runtime.heap_alloc_mb}
+          totalBytes={memory.total_bytes}
+          usedBytes={memory.used_bytes}
+        />
       </div>
 
-      <div>
+      {/* Process */}
+      <div className="flex flex-col gap-4">
         <SectionLabel>Process</SectionLabel>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
           <StatCard label="PID" value={process.pid} />
@@ -148,7 +152,8 @@ const Diagnostics = () => {
         </div>
       </div>
 
-      <div>
+      {/* Go Runtime */}
+      <div className="flex flex-col gap-4">
         <SectionLabel>Go Runtime</SectionLabel>
         <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
           <StatCard label="Goroutines" value={go_runtime.goroutines} />

@@ -48,13 +48,13 @@ const TradesTable = ({ trades, pagination, page, onPageChange }: TradesTableProp
   if (!trades.length) return <div className="text-gray-500">No trades yet.</div>
 
   return (
-    <>
-      <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+    <div>
+      <div className="overflow-x-auto [&::-webkit-scrollbar]:h-0.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
         <table className="border-collapse w-full select-none">
           <thead>
             <tr className="bg-table-header text-accent font-semibold text-sm uppercase tracking-wider text-nowrap">
               {COLUMNS.map((col) => (
-                <th key={col.key} className="border-b border-table-border px-4 py-3 text-left">
+                <th key={col.key} className="border-b border-table-border px-4 py-2 text-left">
                   {col.label}
                 </th>
               ))}
@@ -127,7 +127,7 @@ const TradesTable = ({ trades, pagination, page, onPageChange }: TradesTableProp
           </span>
         </div>
       )}
-    </>
+    </div>
   )
 }
 

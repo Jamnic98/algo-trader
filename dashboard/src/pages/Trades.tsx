@@ -107,19 +107,21 @@ const Trades = () => {
   return (
     <div className="space-y-8">
       <Heading title="Trades" />
-      <TradesFilters
-        filters={filters}
-        onChange={handleFilterChange}
-        onClear={handleClear}
-        bots={bots}
-        includeDead={includeDead}
-        onIncludeDeadChange={handleIncludeDeadChange}
-      />
-      {loading ? (
-        <BarLoader />
-      ) : (
-        <TradesTable trades={trades} pagination={pagination} page={page} onPageChange={setPage} />
-      )}
+      <div className="space-y-4">
+        <TradesFilters
+          filters={filters}
+          onChange={handleFilterChange}
+          onClear={handleClear}
+          bots={bots}
+          includeDead={includeDead}
+          onIncludeDeadChange={handleIncludeDeadChange}
+        />
+        {loading ? (
+          <BarLoader />
+        ) : (
+          <TradesTable trades={trades} pagination={pagination} page={page} onPageChange={setPage} />
+        )}
+      </div>
     </div>
   )
 }

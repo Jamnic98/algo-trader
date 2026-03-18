@@ -50,6 +50,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			}
 
 			side := b.Strategy.OnCandles(b.Candles)
+			b.Logger.Info("strategy signal: %s", side)
 			if side == engine.NONE {
 				continue
 			}

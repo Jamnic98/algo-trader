@@ -3,6 +3,7 @@ package bot
 import (
 	"context"
 	"fmt"
+	"time"
 	"trader-core/internal/engine"
 	"trader-core/internal/monitoring"
 
@@ -83,12 +84,16 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	b.Candles = candles
 
 	rt.Dispatcher.Subscribe(b.Symbol(), b.Interval, b)
+	b.Logger.Info("subscribed to %s_%s", b.Symbol(), b.Interval.String())
 	rt.MarketManager.Subscribe(b.Symbol(), b.Interval)
 
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 	go RunBotStrategy(b.ctx, b)
 
-	return b.Start() // sets status, timestamp, drains candle buffer
+	b.Started = time.Now()
+	b.Status = BotRunning
+	b.Logger.Info("started")
+	return nil
 }
 
 func (rt *Runtime) DetachBot(b *Bot) error {
@@ -110,7 +115,13 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 	b.ctx = nil
 	b.Candles = nil
 
-	b.Status = BotCreated // was BotRunning — bug fixed
+	// drain and recreate
+	for len(b.CandleCh) > 0 {
+		<-b.CandleCh
+	}
+
+	b.Status = BotCreated
+	b.Started = time.Time{}
 	b.Logger.Info("detached")
 	return nil
 }

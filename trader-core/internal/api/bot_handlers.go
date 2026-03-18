@@ -374,12 +374,7 @@ func startBotHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-	if b.Status == bot.BotCreated {
-		if err := runtime.AttachBot(b); err != nil {
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-			return
-		}
-	} else if err := b.Start(); err != nil {
+	if err := runtime.AttachBot(b); err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	}

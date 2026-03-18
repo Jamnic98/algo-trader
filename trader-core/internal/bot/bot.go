@@ -2,7 +2,6 @@ package bot
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"trader-core/internal/db/models"
@@ -61,25 +60,6 @@ type Bot struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
-}
-
-func (b *Bot) Start() error {
-	if b.Lookback <= 0 {
-		return errors.New("lookback must be > 0")
-	}
-
-	for len(b.CandleCh) > 0 {
-		candle := <-b.CandleCh
-		b.Candles = append(b.Candles, candle)
-		if len(b.Candles) > b.MaxCandles {
-			b.Candles = b.Candles[len(b.Candles)-b.MaxCandles:]
-		}
-	}
-
-	b.Started = time.Now()
-	b.Status = BotRunning
-	b.Logger.Info("started")
-	return nil
 }
 
 // Recreate the asset symbol
