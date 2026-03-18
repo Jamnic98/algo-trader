@@ -8,6 +8,7 @@ import (
 	"trader-core/internal/db/models"
 	"trader-core/internal/dto"
 	"trader-core/internal/engine"
+	"trader-core/internal/strategies"
 
 	"github.com/shopspring/decimal"
 )
@@ -37,30 +38,35 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				return
 			}
 
-			// always update candle buffer regardless of status
 			b.Candles = append(b.Candles, candle)
 			if len(b.Candles) > b.MaxCandles {
 				b.Candles = b.Candles[len(b.Candles)-b.MaxCandles:]
 			}
 			b.CandleBroadcaster.Publish(candle)
 
-			// only trade when running
 			if b.Status != BotRunning {
 				continue
 			}
 
-			side := b.Strategy.OnCandles(b.Candles)
-			b.Logger.Info("strategy signal: %s", side)
-			if side == engine.NONE {
+			// strategy just signals, bot decides quantity
+			signal := b.Strategy.OnCandle(candle)
+			b.Logger.Info("strategy signal: %s", signal)
+			if signal == strategies.Hold {
+				continue
+			}
+
+			quantity, err := decimal.NewFromString(b.Quantity)
+			if err != nil {
+				log.Println("invalid quantity:", err)
 				continue
 			}
 
 			order := engine.Order{
 				BotID:  b.ID,
 				Symbol: b.Symbol(),
-				Side:   side,
+				Side:   engine.Side(signal), // Signal -> Side
 				Price:  candle.Close,
-				Qty:    b.Quantity,
+				Qty:    quantity,
 			}
 
 			fill, err := b.Engine.ExecuteTrade(order)

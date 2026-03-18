@@ -2,6 +2,7 @@ package bot
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"trader-core/internal/db/models"
@@ -9,13 +10,20 @@ import (
 	"trader-core/internal/engine"
 	"trader-core/internal/strategies"
 
-	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
-type BotStatus string
+// Asset types
+type AssetType string
+
+const (
+	Crypto AssetType = "crypto"
+	Stocks AssetType = "stocks"
+)
 
 // Bot statuses
+type BotStatus string
+
 const (
 	BotCreated BotStatus = "created"
 	BotRunning BotStatus = "running"
@@ -28,25 +36,40 @@ const (
 	BotModeLive  BotMode = "live"
 )
 
+type CreateBotData struct {
+	Mode      BotMode
+	Exchange  string
+	AssetType string
+	Base      string
+	Quote     string
+	Strategy  models.StrategyConfig
+	Interval  string
+	Lookback  string
+	Quantity  string
+}
+
+// BotConfig — owns all trading params + which strategy to use
 type BotConfig struct {
-	ID        string          `gorm:"primaryKey" json:"id"`
-	Mode      BotMode         `json:"mode"`
-	Base      string          `json:"base"`
-	Quote     string          `json:"quote"`
-	Interval  engine.Interval `json:"interval"`
-	Lookback  time.Duration   `json:"lookback"`
-	Quantity  decimal.Decimal `json:"quantity"`
-	DeletedAt gorm.DeletedAt  `gorm:"index" json:"-"`
+	ID             string                `gorm:"primaryKey" json:"id"`
+	Mode           BotMode               `json:"mode"`
+	Exchange       string                `json:"exchange"`
+	AssetType      string                `json:"assetType"`
+	Base           string                `json:"base"`
+	Quote          string                `json:"quote"`
+	StrategyConfig models.StrategyConfig `json:"strategy" gorm:"embedded;embeddedPrefix:strategy_"`
+	Interval       string                `json:"interval"` // e.g. "1h"
+	Lookback       string                `json:"lookback"` // e.g. "200h"
+	Quantity       string                `json:"quantity"` // e.g. "0.001"
+	DeletedAt      gorm.DeletedAt        `gorm:"index" json:"-"`
 }
 
 type Bot struct {
 	BotConfig
 
-	Logger *BotLogger
-
-	Status   BotStatus                  `json:"status"`
-	Started  time.Time                  `json:"started"`
-	Strategy *strategies.SimpleStrategy `json:"strategy"`
+	Logger   *BotLogger
+	Status   BotStatus `json:"status"`
+	Started  time.Time `json:"started"`
+	Strategy strategies.Strategy
 
 	Engine     engine.ExecutionEngine
 	MaxCandles int
@@ -64,5 +87,11 @@ type Bot struct {
 
 // Recreate the asset symbol
 func (b *Bot) Symbol() string {
-	return b.Base + b.Quote
+	switch b.Exchange {
+	case "binance":
+		return strings.ToUpper(b.Base + b.Quote) // "BTCUSDT"
+	}
+
+	// fallback
+	return strings.ToUpper(b.Base + b.Quote)
 }

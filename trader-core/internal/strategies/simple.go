@@ -2,31 +2,33 @@ package strategies
 
 import (
 	"trader-core/internal/db/models"
-	"trader-core/internal/engine"
 )
 
 type SimpleStrategy struct {
 	hasPosition bool
+	prev        *models.Candle
 }
 
 func NewSimpleStrategy() *SimpleStrategy {
 	return &SimpleStrategy{}
 }
 
-func (s *SimpleStrategy) OnCandles(candles []models.Candle) engine.Side {
-	candlesLen := len(candles)
-	last := candles[candlesLen-1]
-	prev := candles[candlesLen-2]
+func (s *SimpleStrategy) OnCandle(c models.Candle) Signal {
+	defer func() { s.prev = &c }()
 
-	if !s.hasPosition && last.Close.LessThan(prev.Close) {
+	if s.prev == nil {
+		return Hold // not enough data yet
+	}
+
+	if !s.hasPosition && c.Close.LessThan(s.prev.Close) {
 		s.hasPosition = true
-		return engine.BUY
+		return Buy
 	}
 
-	if s.hasPosition && last.Close.GreaterThan(prev.Close) {
+	if s.hasPosition && c.Close.GreaterThan(s.prev.Close) {
 		s.hasPosition = false
-		return engine.SELL
+		return Sell
 	}
 
-	return engine.NONE
+	return Hold
 }

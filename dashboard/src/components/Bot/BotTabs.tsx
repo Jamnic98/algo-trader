@@ -68,13 +68,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
           <span className="text-content-tertiary">Mode</span>
           <span className="text-content-secondary">{bot.mode}</span>
 
-          <span className="text-content-tertiary">Interval</span>
-          <span className="text-content-secondary">{bot.interval}</span>
-
-          <span className="text-content-tertiary">Lookback</span>
-          <span className="text-content-secondary">{bot.lookback}</span>
-
-          {bot.quantity && (
+          {bot?.quantity && (
             <>
               <span className="text-content-tertiary">Quantity</span>
               <span className="text-content-secondary">{bot.quantity}</span>
@@ -87,6 +81,12 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
               <span className="text-content-secondary">{bot.candles.length}</span>
             </>
           )}
+
+          <span className="text-content-tertiary">Interval</span>
+          <span className="text-content-secondary">{bot.interval}</span>
+
+          <span className="text-content-tertiary">Lookback</span>
+          <span className="text-content-secondary">{bot.lookback}</span>
 
           <span className="text-content-tertiary">Started</span>
           <span className="text-content-secondary">

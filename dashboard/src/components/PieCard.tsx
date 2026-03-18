@@ -86,7 +86,7 @@ const PieCard = ({ rssBytes, heapAllocMB, totalBytes, usedBytes }: PieCardProps)
             {usedPct}% · {fmt(usedBytes)} / {fmt(totalBytes)}
           </span>
         </div>
-        <div className="h-1.5 rounded-full bg-surface-tertiary overflow-hidden">
+        <div className="h-1.5 rounded-full bg-surface-page overflow-hidden">
           <div
             className="h-full rounded-full bg-blue-400 transition-all duration-500"
             style={{ width: `${usedPct}%` }}

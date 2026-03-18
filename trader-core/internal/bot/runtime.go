@@ -73,19 +73,30 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 		return fmt.Errorf("cannot attach bot: Binance client not connected")
 	}
 
-	intervalDur := b.Interval.Duration()
-	b.MaxCandles = max(int(b.Lookback/intervalDur), 1)
+	// Parse interval + lookback from config strings at attach time
+	interval, err := engine.ParseInterval(b.Interval)
+	if err != nil {
+		return fmt.Errorf("invalid interval %q: %w", b.Interval, err)
+	}
 
-	candles, err := rt.MarketManager.FetchCandles(b.Symbol(), b.Interval, b.MaxCandles+1)
+	lookback, err := time.ParseDuration(b.Lookback)
+	if err != nil {
+		return fmt.Errorf("invalid lookback %q: %w", b.Lookback, err)
+	}
+
+	intervalDur := interval.Duration()
+	b.MaxCandles = max(int(lookback/intervalDur), 1)
+
+	candles, err := rt.MarketManager.FetchCandles(b.Symbol(), interval, b.MaxCandles+1)
 	if err != nil {
 		return fmt.Errorf("failed to fetch historical candles: %w", err)
 	}
 	b.Logger.Info("fetched %d candles", len(candles))
 	b.Candles = candles
 
-	rt.Dispatcher.Subscribe(b.Symbol(), b.Interval, b)
-	b.Logger.Info("subscribed to %s_%s", b.Symbol(), b.Interval.String())
-	rt.MarketManager.Subscribe(b.Symbol(), b.Interval)
+	rt.Dispatcher.Subscribe(b.Symbol(), interval, b)
+	b.Logger.Info("subscribed to %s_%s", b.Symbol(), interval.String())
+	rt.MarketManager.Subscribe(b.Symbol(), interval)
 
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 	go RunBotStrategy(b.ctx, b)
@@ -105,8 +116,13 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 		return fmt.Errorf("cannot detach bot: MarketManager not running")
 	}
 
-	rt.Dispatcher.Unsubscribe(b.Symbol(), b.Interval, b)
-	rt.MarketManager.Unsubscribe(b.Symbol(), b.Interval)
+	interval, err := engine.ParseInterval(b.Interval)
+	if err != nil {
+		return fmt.Errorf("invalid interval %q: %w", b.Interval, err)
+	}
+
+	rt.Dispatcher.Unsubscribe(b.Symbol(), interval, b)
+	rt.MarketManager.Unsubscribe(b.Symbol(), interval)
 
 	if b.cancel != nil {
 		b.cancel()
@@ -115,7 +131,6 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 	b.ctx = nil
 	b.Candles = nil
 
-	// drain and recreate
 	for len(b.CandleCh) > 0 {
 		<-b.CandleCh
 	}

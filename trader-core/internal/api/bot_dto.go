@@ -7,16 +7,18 @@ import (
 )
 
 type BotDTO struct {
-	ID       string             `json:"id"`
-	Mode     string             `json:"mode"`
-	Base     string             `json:"base"`
-	Quote    string             `json:"quote"`
-	Interval string             `json:"interval"`
-	Status   bot.BotStatus      `json:"status"`
-	Started  *string            `json:"started,omitempty"`
-	Lookback string             `json:"lookback"`
-	Quantity string             `json:"quantity"`
-	Candles  []models.CandleDTO `json:"candles,omitempty"`
+	ID        string             `json:"id"`
+	Mode      string             `json:"mode"`
+	Exchange  string             `json:"exchange"`
+	AssetType string             `json:"assetType"`
+	Base      string             `json:"base"`
+	Quote     string             `json:"quote"`
+	Interval  string             `json:"interval"`
+	Lookback  string             `json:"lookback"`
+	Quantity  string             `json:"quantity"`
+	Status    bot.BotStatus      `json:"status"`
+	Started   *string            `json:"started,omitempty"`
+	Candles   []models.CandleDTO `json:"candles,omitempty"`
 }
 
 func botToDTO(b *bot.Bot) BotDTO {
@@ -32,28 +34,32 @@ func botToDTO(b *bot.Bot) BotDTO {
 	}
 
 	return BotDTO{
-		ID:       b.ID,
-		Mode:     string(b.Mode),
-		Interval: b.Interval.String(),
-		Lookback: b.Lookback.String(),
-		Started:  started,
-		Status:   b.Status,
-		Base:     b.Base,
-		Quote:    b.Quote,
-		Quantity: b.Quantity.String(),
-		Candles:  candles,
+		ID:        b.ID,
+		Mode:      string(b.Mode),
+		Exchange:  b.Exchange,
+		AssetType: b.AssetType,
+		Base:      b.Base,
+		Quote:     b.Quote,
+		Interval:  b.Interval,
+		Lookback:  b.Lookback,
+		Quantity:  b.Quantity,
+		Status:    b.Status,
+		Started:   started,
+		Candles:   candles,
 	}
 }
 
 func configToDTO(cfg bot.BotConfig) BotDTO {
 	return BotDTO{
-		ID:       cfg.ID,
-		Mode:     string(cfg.Mode),
-		Base:     cfg.Base,
-		Quote:    cfg.Quote,
-		Interval: cfg.Interval.String(),
-		Lookback: cfg.Lookback.String(),
-		Quantity: cfg.Quantity.String(),
-		Status:   "dead",
+		ID:        cfg.ID,
+		Mode:      string(cfg.Mode),
+		Exchange:  cfg.Exchange,
+		AssetType: cfg.AssetType,
+		Base:      cfg.Base,
+		Quote:     cfg.Quote,
+		Interval:  cfg.Interval,
+		Lookback:  cfg.Lookback,
+		Quantity:  cfg.Quantity,
+		Status:    "dead",
 	}
 }

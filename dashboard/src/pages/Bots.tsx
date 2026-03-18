@@ -3,41 +3,53 @@ import { useEffect, useState } from 'react'
 import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, createBot, deleteBot } from 'api'
 import { useAlert } from 'hooks'
-import type { Bot, BotMode, LoadingAction } from 'types'
+import type { Bot, CreateBot, CreateBotStrategy, LoadingAction } from 'types'
+import { lookbackToString, STRATEGY_CONFIG } from 'utils'
 
-type CreateBotFormData = {
-  mode: BotMode
-  base: string
-  quote: string
+// Strategy only has name now
+const botStrategyValidators: ((s: CreateBotStrategy) => ValidationResult)[] = [
+  (s) => (s.name ? { valid: true } : { valid: false, error: 'Strategy name is required' }),
+]
 
-  interval: string
-  lookback: string
-  quantity: string
+// interval, quantity, lookback live on the form now
+const createBotValidators: ((f: CreateBot) => ValidationResult)[] = [
+  (f) => (f.base ? { valid: true } : { valid: false, error: 'Base is required' }),
+  (f) => (f.exchange ? { valid: true } : { valid: false, error: 'Exchange is required' }),
+  (f) => (f.mode ? { valid: true } : { valid: false, error: 'Mode is required' }),
+  (f) => (f.interval ? { valid: true } : { valid: false, error: 'Interval is required' }),
+  (f) => (f.quantity ? { valid: true } : { valid: false, error: 'Quantity is required' }),
+  // no lookback validator — it's derived from lookbackCandles at submit time
+  (f) => {
+    for (const validator of botStrategyValidators) {
+      const result = validator(f.strategy)
+      if (!result.valid) return result
+    }
+    return { valid: true }
+  },
+]
+const validateCreateBotForm = (formData: CreateBot): ValidationResult => {
+  for (const validator of createBotValidators) {
+    const result = validator(formData)
+    if (!result.valid) return result // short-circuits on first failure
+  }
+  return { valid: true }
 }
 
-const candleIntervals = ['1m', '5m', '15m', '1h', '4h', '1d']
-const defaultFormData: CreateBotFormData = {
+const defaultStrategy: CreateBotStrategy = {
+  name: 'simple',
+}
+const defaultFormData: CreateBot = {
+  mode: 'paper',
+  exchange: 'binance',
+  assetType: 'crypto',
   base: '',
   quote: 'USDT',
-  interval: candleIntervals[0],
-  lookback: '24h',
-  mode: 'paper',
-  quantity: '0',
+  interval: '1h', //1h
+  quantity: '0.001',
+  strategy: defaultStrategy,
 }
 
-const validateCreateBotForm = (formData: CreateBotFormData): boolean => {
-  if (Number.parseFloat(formData.quantity) <= 0) {
-    alert('Quantity must be greater than 0')
-    return false
-  }
-
-  // Check that all symbol data filled
-  if (![formData.base, formData.quote].every((d) => d.trim() !== '')) {
-    return false
-  }
-
-  return true
-}
+type ValidationResult = { valid: true } | { valid: false; error: string }
 
 const Bots = () => {
   const { showAlert } = useAlert()
@@ -45,6 +57,7 @@ const Bots = () => {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(defaultFormData)
   const [botLoadingActions, setBotLoadingActions] = useState<Record<string, LoadingAction>>({})
+  const [lookbackCandles, setLookbackCandles] = useState(200)
 
   const setBotLoading = (id: string, action: LoadingAction) =>
     setBotLoadingActions((prev) => ({ ...prev, [id]: action }))
@@ -75,31 +88,43 @@ const Bots = () => {
 
     setForm((prev) => {
       const next = { ...prev, [name]: value }
-      next.base = next.base.toUpperCase()
-      next.quote = next.quote.toUpperCase()
+      next.base = next.base && next.base.toUpperCase()
+      next.quote = next.quote && next.quote.toUpperCase()
 
       return next
     })
   }
 
-  const handleCreateBot = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleCreateBot = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (!validateCreateBotForm(form)) {
+    if (lookbackCandles < 1) {
+      showAlert({
+        title: 'Invalid form',
+        message: 'Lookback must be at least 1 candle',
+        type: 'error',
+      })
+      return
+    }
+
+    const payload: CreateBot = {
+      ...form,
+      lookback: lookbackToString(lookbackCandles, form.interval),
+    }
+    const result = validateCreateBotForm(payload)
+    if (!result.valid) {
+      showAlert({ title: 'Invalid form', message: result.error, type: 'error' })
       return
     }
 
     try {
       const bot = await createBot(form)
-      setBots((prev) => prev && [...prev, bot])
-      // reset form
+      setBots((prev) => [...prev, bot])
       setForm(defaultFormData)
+      setLookbackCandles(200)
     } catch (err) {
       console.error(err)
-      showAlert({
-        title: 'Failed to create bot',
-        type: 'error',
-      })
+      showAlert({ title: 'Failed to create bot', type: 'error' })
     }
   }
 
@@ -149,6 +174,12 @@ const Bots = () => {
     }
   }
 
+  const handleStrategyChange = (strategy: CreateBotStrategy) => {
+    setForm((prev) => ({ ...prev, strategy }))
+    const config = STRATEGY_CONFIG[strategy.name]
+    if (config?.defaultLookback) setLookbackCandles(config.defaultLookback)
+  }
+
   if (loading) return <BarLoader fullscreen />
 
   return (
@@ -157,7 +188,10 @@ const Bots = () => {
       <div className="space-y-4">
         <BotForm
           form={form}
+          lookbackCandles={lookbackCandles}
+          onLookbackChange={setLookbackCandles}
           onChange={handleChange}
+          onStrategyChange={handleStrategyChange}
           onModeToggle={() =>
             setForm((f) => ({ ...f, mode: f.mode === 'live' ? 'paper' : 'live' }))
           }

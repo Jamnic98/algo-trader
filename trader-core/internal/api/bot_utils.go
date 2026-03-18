@@ -43,32 +43,68 @@ func fetchBotTrades(botID string, page, limit int) ([]dto.TradeDTO, int64, int, 
 	return dtos, total, totalPages, nil
 }
 
-func parseBotCreateRequest(base, quote, interval, lookback, quantity string, mode bot.BotMode) (bot.BotConfig, error) {
-	qty, err := decimal.NewFromString(quantity)
-	if err != nil || qty.LessThan(decimal.NewFromFloat(0)) {
-		return bot.BotConfig{}, fmt.Errorf("invalid quantity")
+func parseBotCreateRequest(data bot.CreateBotData) (bot.BotConfig, error) {
+	if data.Mode == "" {
+		data.Mode = bot.BotModePaper
+	}
+	if data.Exchange == "" {
+		data.Exchange = "binance"
+	}
+	if data.Interval == "" {
+		data.Interval = "1h"
+	}
+	if data.Lookback == "" {
+		data.Lookback = "200h"
+	}
+	if data.Quantity == "" {
+		data.Quantity = "0.001"
+	}
+	if data.AssetType == "" {
+		data.AssetType = "crypto"
 	}
 
-	dur, err := time.ParseDuration(lookback)
-	if err != nil || dur <= 0 {
-		dur = 24 * time.Hour
+	// now validate
+	switch data.Exchange {
+	case "binance":
+		switch data.AssetType {
+		case "crypto":
+			if data.Base == "" || data.Quote == "" {
+				return bot.BotConfig{}, fmt.Errorf("crypto requires base and quote")
+			}
+		case "stocks":
+			if data.Base == "" {
+				return bot.BotConfig{}, fmt.Errorf("stocks requires base (ticker)")
+			}
+			data.Quote = ""
+		default:
+			return bot.BotConfig{}, fmt.Errorf("unknown asset type %q", data.AssetType)
+		}
+	default:
+		return bot.BotConfig{}, fmt.Errorf("unknown exchange %q", data.Exchange)
 	}
 
-	iv, err := engine.ParseInterval(interval)
-	if err != nil {
-		iv = engine.Interval1m
+	if data.Strategy.Name == "" {
+		return bot.BotConfig{}, fmt.Errorf("strategy name is required")
 	}
-
-	if mode == "" {
-		mode = bot.BotModePaper
+	if _, err := engine.ParseInterval(data.Interval); err != nil {
+		return bot.BotConfig{}, fmt.Errorf("invalid interval %q: %w", data.Interval, err)
+	}
+	if _, err := time.ParseDuration(data.Lookback); err != nil {
+		return bot.BotConfig{}, fmt.Errorf("invalid lookback %q: %w", data.Lookback, err)
+	}
+	if _, err := decimal.NewFromString(data.Quantity); err != nil {
+		return bot.BotConfig{}, fmt.Errorf("invalid quantity %q: %w", data.Quantity, err)
 	}
 
 	return bot.BotConfig{
-		Base:     base,
-		Quote:    quote,
-		Interval: iv,
-		Lookback: dur,
-		Quantity: qty,
-		Mode:     mode,
+		Mode:           data.Mode,
+		Exchange:       data.Exchange,
+		AssetType:      data.AssetType,
+		Base:           data.Base,
+		Quote:          data.Quote,
+		StrategyConfig: data.Strategy,
+		Interval:       data.Interval,
+		Lookback:       data.Lookback,
+		Quantity:       data.Quantity,
 	}, nil
 }

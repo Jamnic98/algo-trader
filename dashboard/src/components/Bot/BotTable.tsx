@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { BotActionButtons, BotStatusPill } from 'components'
 import type { Bot, LoadingAction } from 'types'
 import { GlobeIcon, GlobeOff } from 'lucide-react'
+import { deriveSymbol } from 'utils'
 
 type BotStatus = 'running' | 'attached' | 'created'
 type BotFilters = { status?: BotStatus }
@@ -29,15 +30,15 @@ type BotTableProps = {
   columns?: ColumnKey[]
 }
 
-const ALL_COLUMNS: { key: ColumnKey; label: string }[] = [
-  { key: 'id', label: 'Id' },
-  { key: 'mode', label: 'Mode' },
-  { key: 'symbol', label: 'Symbol' },
-  { key: 'quantity', label: 'Quantity' },
-  { key: 'interval', label: 'Interval' },
-  { key: 'lookback', label: 'Lookback' },
-  { key: 'status', label: 'Status' },
-  { key: 'started', label: 'Started' },
+const ALL_COLUMNS: { key: ColumnKey; label: string; className?: string }[] = [
+  { key: 'id', label: 'Id', className: 'w-24' },
+  { key: 'mode', label: 'Mode', className: 'w-16' },
+  { key: 'symbol', label: 'Symbol', className: 'w-24' },
+  { key: 'quantity', label: 'Quantity', className: 'w-24' },
+  { key: 'interval', label: 'Interval', className: 'w-20' },
+  { key: 'lookback', label: 'Lookback', className: 'w-24' },
+  { key: 'status', label: 'Status', className: 'w-24' },
+  { key: 'started', label: 'Started', className: 'min-w-36 max-w-36' },
 ]
 
 const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: BotTableProps) => {
@@ -77,7 +78,7 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
             }).format(new Date(bot.started))
           : '-'
       case 'symbol':
-        return `${bot.base}/${bot.quote}`
+        return deriveSymbol(bot.exchange, bot.assetType, bot.base, bot.quote)
       default:
         return bot[key]
     }
@@ -88,7 +89,10 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
       <thead>
         <tr className="bg-table-header text-accent font-semibold text-sm uppercase tracking-wider">
           {visibleColumns.map((col) => (
-            <th key={col.key} className="border-b border-table-border px-4 py-3 text-left">
+            <th
+              key={col.key}
+              className={`border-b border-table-border px-4 py-3 text-left ${col.className ?? ''}`}
+            >
               {col.label}
             </th>
           ))}
@@ -106,7 +110,7 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
             onClick={() => navigate(`/bots/${bot.id}`)}
           >
             {visibleColumns.map((col) => (
-              <td key={col.key} className="px-4 text-content-secondary">
+              <td key={col.key} className={`px-4 text-content-secondary ${col.className ?? ''}`}>
                 {renderCell(bot, col.key)}
               </td>
             ))}

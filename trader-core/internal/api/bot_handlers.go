@@ -332,24 +332,27 @@ func streamBotTicksHandler(c *gin.Context) {
 
 func createBotHandler(c *gin.Context) {
 	var req struct {
-		Base     string      `json:"base"`
-		Quote    string      `json:"quote"`
-		Interval string      `json:"interval"`
-		Lookback string      `json:"lookback"`
-		Quantity string      `json:"quantity"`
-		Mode     bot.BotMode `json:"mode"`
+		Mode      bot.BotMode           `json:"mode"`
+		Exchange  string                `json:"exchange"`
+		AssetType string                `json:"asset_type"`
+		Base      string                `json:"base"`
+		Quote     string                `json:"quote"`
+		Symbol    string                `json:"symbol"`
+		Strategy  models.StrategyConfig `json:"strategy"`
 	}
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if req.Base == "" || req.Quote == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "base and quote are required"})
-		return
-	}
-
-	cfg, err := parseBotCreateRequest(req.Base, req.Quote, req.Interval, req.Lookback, req.Quantity, req.Mode)
+	cfg, err := parseBotCreateRequest(bot.CreateBotData{
+		Mode:      req.Mode,
+		Exchange:  req.Exchange,
+		AssetType: req.AssetType,
+		Base:      req.Base,
+		Quote:     req.Quote,
+		Strategy:  req.Strategy,
+	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
