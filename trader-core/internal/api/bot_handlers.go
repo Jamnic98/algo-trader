@@ -331,33 +331,31 @@ func streamBotTicksHandler(c *gin.Context) {
 }
 
 func createBotHandler(c *gin.Context) {
-	var req struct {
-		Mode      bot.BotMode           `json:"mode"`
-		Exchange  string                `json:"exchange"`
-		AssetType string                `json:"asset_type"`
-		Base      string                `json:"base"`
-		Quote     string                `json:"quote"`
-		Symbol    string                `json:"symbol"`
-		Strategy  models.StrategyConfig `json:"strategy"`
-		Interval  string                `json:"interval"`
-		Lookback  string                `json:"lookback"`
-		Quantity  string                `json:"quantity"`
-	}
+	var req bot.CreateBotData
+
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// Check quantity value
+	if req.Quantity != "" {
+		if _, err := decimal.NewFromString(req.Quantity); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid quantity %q: must be a valid number", req.Quantity)})
+			return
+		}
+	}
+
 	cfg, err := parseBotCreateRequest(bot.CreateBotData{
-		Mode:      req.Mode,
-		Exchange:  req.Exchange,
-		AssetType: req.AssetType,
-		Base:      req.Base,
-		Quote:     req.Quote,
-		Strategy:  req.Strategy,
-		Interval:  req.Interval,
-		Lookback:  req.Lookback,
-		Quantity:  req.Quantity,
+		Mode:       req.Mode,
+		Strategy:   req.Strategy,
+		Exchange:   req.Exchange,
+		AssetType:  req.AssetType,
+		Base:       req.Base,
+		Quote:      req.Quote,
+		Quantity:   req.Quantity,
+		Interval:   req.Interval,
+		MaxCandles: req.MaxCandles,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

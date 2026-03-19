@@ -37,29 +37,30 @@ const (
 )
 
 type CreateBotData struct {
-	Mode      BotMode
-	Exchange  string
-	AssetType string
-	Base      string
-	Quote     string
-	Strategy  models.StrategyConfig
-	Interval  string
-	Lookback  string
-	Quantity  string
+	Mode       BotMode               `json:"mode"`
+	Strategy   models.StrategyConfig `json:"strategy"`
+	Exchange   string                `json:"exchange"`
+	AssetType  string                `json:"assetType"`
+	Base       string                `json:"base"`
+	Quote      string                `json:"quote"`
+	Interval   string                `json:"interval"`
+	MaxCandles int                   `json:"maxCandles"`
+	Quantity   string                `json:"quantity"`
 }
 
 // BotConfig — owns all trading params + which strategy to use
 type BotConfig struct {
 	ID             string                `gorm:"primaryKey" json:"id"`
 	Mode           BotMode               `json:"mode"`
+	StrategyConfig models.StrategyConfig `json:"strategy" gorm:"embedded;embeddedPrefix:strategy_"`
 	Exchange       string                `json:"exchange"`
 	AssetType      string                `json:"assetType"`
 	Base           string                `json:"base"`
 	Quote          string                `json:"quote"`
-	StrategyConfig models.StrategyConfig `json:"strategy" gorm:"embedded;embeddedPrefix:strategy_"`
-	Interval       string                `json:"interval"` // e.g. "1h"
-	Lookback       string                `json:"lookback"` // e.g. "200h"
-	Quantity       string                `json:"quantity"` // e.g. "0.001"
+	Interval       string                `json:"interval"`                             // e.g. "1h"
+	MaxCandles     int                   `gorm:"column:max_candles" json:"maxCandles"` // e.g. 200
+	Lookback       string                `json:"lookback"`                             // e.g. "200h"
+	Quantity       string                `json:"quantity"`                             // e.g. "0.001"
 	DeletedAt      gorm.DeletedAt        `gorm:"index" json:"-"`
 }
 
@@ -71,8 +72,7 @@ type Bot struct {
 	Started  time.Time `json:"started"`
 	Strategy strategies.Strategy
 
-	Engine     engine.ExecutionEngine
-	MaxCandles int
+	Engine engine.ExecutionEngine
 
 	CandleCh chan models.Candle
 	Candles  []models.Candle

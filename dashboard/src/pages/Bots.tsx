@@ -3,22 +3,21 @@ import { useEffect, useState } from 'react'
 import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, createBot, deleteBot } from 'api'
 import { useAlert } from 'hooks'
+import { MAX_CANDLES, STRATEGY_CONFIG } from 'utils'
 import type { Bot, CreateBot, CreateBotStrategy, LoadingAction } from 'types'
-import { lookbackToString, STRATEGY_CONFIG } from 'utils'
 
 // Strategy only has name now
 const botStrategyValidators: ((s: CreateBotStrategy) => ValidationResult)[] = [
   (s) => (s.name ? { valid: true } : { valid: false, error: 'Strategy name is required' }),
 ]
 
-// interval, quantity, lookback live on the form now
+// interval, quantity, maxCandles live on the form now
 const createBotValidators: ((f: CreateBot) => ValidationResult)[] = [
   (f) => (f.base ? { valid: true } : { valid: false, error: 'Base is required' }),
   (f) => (f.exchange ? { valid: true } : { valid: false, error: 'Exchange is required' }),
   (f) => (f.mode ? { valid: true } : { valid: false, error: 'Mode is required' }),
   (f) => (f.interval ? { valid: true } : { valid: false, error: 'Interval is required' }),
   (f) => (f.quantity ? { valid: true } : { valid: false, error: 'Quantity is required' }),
-  // no lookback validator — it's derived from lookbackCandles at submit time
   (f) => {
     for (const validator of botStrategyValidators) {
       const result = validator(f.strategy)
@@ -45,6 +44,7 @@ const defaultFormData: CreateBot = {
   base: '',
   quote: 'USDT',
   interval: '1h', //1h
+  maxCandles: 200,
   quantity: '0.001',
   strategy: defaultStrategy,
 }
@@ -57,7 +57,7 @@ const Bots = () => {
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(defaultFormData)
   const [botLoadingActions, setBotLoadingActions] = useState<Record<string, LoadingAction>>({})
-  const [lookbackCandles, setLookbackCandles] = useState(200)
+  const [maxCandles, setMaxCandles] = useState(200)
 
   const setBotLoading = (id: string, action: LoadingAction) =>
     setBotLoadingActions((prev) => ({ ...prev, [id]: action }))
@@ -91,21 +91,24 @@ const Bots = () => {
 
       if (name === 'base') next.base = value.toUpperCase()
       if (name === 'quote') next.quote = value.toUpperCase()
-
-      // reset quote when switching away from crypto
       if (name === 'assetType' && value !== 'crypto') next.quote = undefined
 
       return next
     })
+
+    if (name === 'interval') {
+      const max = MAX_CANDLES[value] ?? 500
+      if (maxCandles > max) setMaxCandles(max)
+    }
   }
 
   const handleCreateBot = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (lookbackCandles < 1) {
+    if (maxCandles < 1) {
       showAlert({
         title: 'Invalid form',
-        message: 'Lookback must be at least 1 candle',
+        message: 'Candles must be at least 1',
         type: 'error',
       })
       return
@@ -113,7 +116,6 @@ const Bots = () => {
 
     const payload: CreateBot = {
       ...form,
-      lookback: lookbackToString(lookbackCandles, form.interval),
     }
     const result = validateCreateBotForm(payload)
     if (!result.valid) {
@@ -125,7 +127,7 @@ const Bots = () => {
       const bot = await createBot(payload)
       setBots((prev) => [...prev, bot])
       setForm(defaultFormData)
-      setLookbackCandles(200)
+      setMaxCandles(200)
     } catch (err) {
       console.error(err)
       showAlert({ title: 'Failed to create bot', type: 'error' })
@@ -181,7 +183,7 @@ const Bots = () => {
   const handleStrategyChange = (strategy: CreateBotStrategy) => {
     setForm((prev) => ({ ...prev, strategy }))
     const config = STRATEGY_CONFIG[strategy.name]
-    if (config?.defaultLookback) setLookbackCandles(config.defaultLookback)
+    if (config?.defaultLookback) setMaxCandles(config.defaultLookback)
   }
 
   if (loading) return <BarLoader fullscreen />
@@ -192,8 +194,8 @@ const Bots = () => {
       <div className="space-y-4">
         <BotForm
           form={form}
-          lookbackCandles={lookbackCandles}
-          onLookbackChange={setLookbackCandles}
+          maxCandles={maxCandles}
+          onLookbackChange={setMaxCandles}
           onChange={handleChange}
           onStrategyChange={handleStrategyChange}
           onModeToggle={() =>

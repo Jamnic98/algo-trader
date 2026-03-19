@@ -12,11 +12,10 @@ const BotOverview = () => {
   const navigate = useNavigate()
 
   const [bot, setBot] = useState<Bot | null>(null)
-  const [loadingAction, setLoadingAction] = useState<LoadingAction>(null)
   const [positionsTick, setPositionsTick] = useState(0)
-  const onNewTrade = () => setPositionsTick((t) => t + 1)
 
   const [loading, setLoading] = useState(true)
+  const [loadingAction, setLoadingAction] = useState<LoadingAction>(null)
 
   // fetch bot data on page load
   useEffect(() => {
@@ -37,6 +36,8 @@ const BotOverview = () => {
 
     fetchBot()
   }, [id, showAlert])
+
+  const onNewTrade = () => setPositionsTick((t) => t + 1)
 
   const handleStartBot = async (botId: string) => {
     try {

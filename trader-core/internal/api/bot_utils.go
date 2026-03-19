@@ -3,15 +3,12 @@ package api
 import (
 	"fmt"
 	"math"
-	"time"
 
 	"trader-core/internal/bot"
 	"trader-core/internal/db"
 	"trader-core/internal/db/models"
 	"trader-core/internal/dto"
 	"trader-core/internal/engine"
-
-	"github.com/shopspring/decimal"
 )
 
 func getBot(id string) *bot.Bot {
@@ -53,11 +50,8 @@ func parseBotCreateRequest(data bot.CreateBotData) (bot.BotConfig, error) {
 	if data.Interval == "" {
 		data.Interval = "1h"
 	}
-	if data.Lookback == "" {
-		data.Lookback = "200h"
-	}
-	if data.Quantity == "" {
-		data.Quantity = "0.001"
+	if data.MaxCandles == 0 {
+		data.MaxCandles = 200
 	}
 	if data.AssetType == "" {
 		data.AssetType = "crypto"
@@ -71,11 +65,12 @@ func parseBotCreateRequest(data bot.CreateBotData) (bot.BotConfig, error) {
 			if data.Base == "" || data.Quote == "" {
 				return bot.BotConfig{}, fmt.Errorf("crypto requires base and quote")
 			}
-		case "stocks":
-			if data.Base == "" {
-				return bot.BotConfig{}, fmt.Errorf("stocks requires base (ticker)")
-			}
-			data.Quote = ""
+			// TODO: Stocks Implementation
+		// case "stocks":
+		// 	if data.Base == "" {
+		// 		return bot.BotConfig{}, fmt.Errorf("stocks requires base (ticker)")
+		// 	}
+		// 	data.Quote = ""
 		default:
 			return bot.BotConfig{}, fmt.Errorf("unknown asset type %q", data.AssetType)
 		}
@@ -86,15 +81,13 @@ func parseBotCreateRequest(data bot.CreateBotData) (bot.BotConfig, error) {
 	if data.Strategy.Name == "" {
 		return bot.BotConfig{}, fmt.Errorf("strategy name is required")
 	}
-	if _, err := engine.ParseInterval(data.Interval); err != nil {
+
+	interval, err := engine.ParseInterval(data.Interval)
+	if err != nil {
 		return bot.BotConfig{}, fmt.Errorf("invalid interval %q: %w", data.Interval, err)
 	}
-	if _, err := time.ParseDuration(data.Lookback); err != nil {
-		return bot.BotConfig{}, fmt.Errorf("invalid lookback %q: %w", data.Lookback, err)
-	}
-	if _, err := decimal.NewFromString(data.Quantity); err != nil {
-		return bot.BotConfig{}, fmt.Errorf("invalid quantity %q: %w", data.Quantity, err)
-	}
+
+	lookback := interval.Lookback(data.MaxCandles).String()
 
 	return bot.BotConfig{
 		Mode:           data.Mode,
@@ -104,7 +97,8 @@ func parseBotCreateRequest(data bot.CreateBotData) (bot.BotConfig, error) {
 		Quote:          data.Quote,
 		StrategyConfig: data.Strategy,
 		Interval:       data.Interval,
-		Lookback:       data.Lookback,
+		MaxCandles:     data.MaxCandles,
 		Quantity:       data.Quantity,
+		Lookback:       lookback,
 	}, nil
 }

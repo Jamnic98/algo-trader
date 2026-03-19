@@ -16,7 +16,7 @@ type ColumnKey =
   | 'strategy'
   | 'quantity'
   | 'interval'
-  | 'lookback'
+  | 'maxCandles'
   | 'status'
   | 'started'
 
@@ -40,7 +40,7 @@ const ALL_COLUMNS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'symbol', label: 'Symbol', className: 'w-24' },
   { key: 'quantity', label: 'Quantity', className: 'w-24' },
   { key: 'interval', label: 'Interval', className: 'w-20' },
-  { key: 'lookback', label: 'Lookback', className: 'w-24' },
+  { key: 'maxCandles', label: 'Max Candles', className: 'w-24' },
   { key: 'status', label: 'Status', className: 'w-24' },
   { key: 'started', label: 'Started', className: 'min-w-36 max-w-36' },
 ]

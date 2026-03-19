@@ -20,7 +20,7 @@ export interface CreateBot {
   base: string
   quote?: string
   interval: string
-  lookback?: string
+  maxCandles: number
   quantity?: string
   strategy: CreateBotStrategy
   candles?: OHLCVCandle[]

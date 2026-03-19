@@ -27,23 +27,23 @@ export const STRATEGY_CONFIG: Record<string, StrategyFieldConfig> = {
   // },
 }
 
-// TODO: add more valid intervals
 export const candleIntervals = [
   '1m',
-  // '3m',
+  '3m',
   '5m',
   '15m',
-  // '30m',
+  '30m',
   '1h',
-  // '2h',
-  // '4h',
-  // '6h',
-  // '8h',
-  // '12h',
-  // '1d',
-  // '3d',
+  '2h',
+  '4h',
+  '6h',
+  '8h',
+  '12h',
+  '1d',
+  '3d',
+  // TODO: include these
   // '1w',
-  // '1M'
+  // '1M',
 ]
 
 // --- Config ---
@@ -78,4 +78,22 @@ export const getStrategyLabel = (name: string): string => {
 
 export const getExchangeLabel = (name: string): string => {
   return AVAILABLE_EXCHANGES.find((s) => s.name === name)?.label ?? name
+}
+
+export const MAX_CANDLES: Record<string, number> = {
+  '1m': 500,
+  '3m': 500,
+  '5m': 500,
+  '15m': 500,
+  '30m': 500,
+  '1h': 500,
+  '2h': 500,
+  '4h': 400,
+  '6h': 300,
+  '8h': 300,
+  '12h': 200,
+  '1d': 365,
+  '3d': 200,
+  '1w': 104,
+  '1M': 100,
 }

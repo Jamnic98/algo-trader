@@ -39,10 +39,7 @@ const Dashboard = () => {
         <Heading title="Running Bots" as={6} size={3} />
         {bots.length > 0 ? (
           <div className="overflow-x-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
-            <BotTable
-              bots={bots}
-              columns={['mode', 'symbol', 'quantity', 'interval', 'lookback', 'started']}
-            />
+            <BotTable bots={bots} columns={['mode', 'symbol', 'quantity', 'interval', 'started']} />
           </div>
         ) : (
           <div className="text-gray-500">No bots running.</div>

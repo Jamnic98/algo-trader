@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { BarLoader, CandlestickChart } from 'components'
-import type { OHLCVCandle } from 'types'
+import type { Bot, OHLCVCandle } from 'types'
 import { useAlert } from 'hooks'
 
-type BotCandleChartProps = { id: string; symbol: string; status: string }
+type BotCandleChartProps = { bot: Bot }
 
-const BotCandleChart = ({ id, symbol, status }: BotCandleChartProps) => {
+const BotCandleChart = ({ bot }: BotCandleChartProps) => {
+  const { id, status, base, quote } = bot
+
   const { showAlert } = useAlert()
   const snapshotDoneRef = useRef(false)
   const candlesRef = useRef<OHLCVCandle[]>([])
@@ -106,7 +108,7 @@ const BotCandleChart = ({ id, symbol, status }: BotCandleChartProps) => {
     <CandlestickChart
       data={candles}
       newCandle={latestTick}
-      symbol={symbol}
+      symbol={`${base}/${quote}`}
       height={400}
       initialPrice={candles ? candles[0]?.close : 0}
     />

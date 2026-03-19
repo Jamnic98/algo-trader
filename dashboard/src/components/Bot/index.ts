@@ -1,6 +1,7 @@
 export { default as BotActionButtons } from './BotActionButtons'
 export { default as BotCandleChart } from './BotCandleChart'
 export { default as BotForm } from './BotForm'
+export { default as BotInfo } from './BotInfo'
 export { default as BotLogs } from './BotLogs'
 export { default as BotStats } from './BotStats'
 export { default as BotStatusPill } from './BotStatusPill'

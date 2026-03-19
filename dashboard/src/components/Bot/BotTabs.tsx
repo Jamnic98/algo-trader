@@ -3,16 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 import {
   ArrowLeftRight,
   BarChart2,
-  Copy,
   CandlestickChart as CChart,
   Info,
   ScrollText,
 } from 'lucide-react'
 
-import { BotCandleChart, BotLogs, BotStats, BotTrades, Tabs } from 'components'
-import { useAlert } from 'hooks'
+import { BotCandleChart, BotInfo, BotLogs, BotStats, BotTrades, Tabs } from 'components'
 import type { Bot, Tab } from 'types'
-import { getStrategyLabel } from 'utils'
+import { candleRangeToString } from 'utils'
 
 const makeBotRunDurationStr = (botStart: string): string => {
   const seconds = Math.floor((Date.now() - Date.parse(botStart)) / 1000)
@@ -34,7 +32,6 @@ interface BotTabsProps {
 }
 
 const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
-  const { showAlert } = useAlert()
   const [searchParams, setSearchParams] = useSearchParams()
   const [runningFor, setRunningFor] = useState<string>(
     bot.started ? makeBotRunDurationStr(bot.started) : '-'
@@ -50,58 +47,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
     {
       label: 'Info',
       icon: <Info size={13} />,
-      content: (
-        <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm font-mono select-none min-w-0 max-w-full">
-          <span className="text-content-tertiary">Id</span>
-          <span className="flex items-center gap-2 text-content-secondary min-w-0">
-            <span className="truncate min-w-0">{bot.id}</span>
-            <Copy
-              size={12}
-              className="cursor-pointer shrink-0 hover:text-content-primary transition-colors"
-              onClick={() => {
-                navigator.clipboard.writeText(bot.id)
-                showAlert({ type: 'info', message: 'Bot id copied' })
-              }}
-            />
-          </span>
-          {/* Mode */}
-          <span className="text-content-tertiary">Mode</span>
-          <span className="text-content-secondary capitalize">{bot.mode}</span>
-
-          {/* Strategy` */}
-          <span className="text-content-tertiary">Strategy</span>
-          <span className="text-content-secondary">{getStrategyLabel(bot.strategy.name)}</span>
-          {bot?.quantity && (
-            <>
-              <span className="text-content-tertiary">Quantity</span>
-              <span className="text-content-secondary">{bot.quantity}</span>
-            </>
-          )}
-
-          {/* Number of candles */}
-          {bot.candles && (
-            <>
-              <span className="text-content-tertiary">Candles</span>
-              <span className="text-content-secondary">{bot.candles.length}</span>
-            </>
-          )}
-          {/* Interval duration */}
-          <span className="text-content-tertiary">Interval</span>
-          <span className="text-content-secondary">{bot.interval}</span>
-          {/* Lookback duration */}
-          <span className="text-content-tertiary">Lookback</span>
-          <span className="text-content-secondary">{bot.lookback}</span>
-          {/* Start time */}
-          <span className="text-content-tertiary">Started</span>
-          <span className="text-content-secondary">
-            {bot.started
-              ? new Date(Date.parse(bot.started)).toLocaleString('en-GB', { timeZone: 'UTC' })
-              : '-'}
-          </span>
-          <span className="text-content-tertiary">Run-time</span>
-          <span className="text-content-secondary">{bot.started ? runningFor : '-'}</span>
-        </div>
-      ),
+      content: <BotInfo bot={bot} runningFor={runningFor} />,
     },
     {
       label: 'Stats',
@@ -121,7 +67,33 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
       label: 'Candles',
       icon: <CChart size={13} />,
       content: (
-        <BotCandleChart id={bot.id} symbol={`${bot.base}/${bot.quote}`} status={bot.status} />
+        <div className="space-y-3 bg-content-secondary/10 rounded-xl p-2">
+          <BotCandleChart bot={bot} />
+          <div className="flex justify-between text-xs font-mono">
+            <div className="flex flex-row gap-6">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-content-tertiary tracking-wider">Lookback</span>
+                <span className="text-accent">
+                  {bot.candles?.length ? candleRangeToString(bot.candles) : '-'}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-0.5">
+                <span className="text-content-tertiary tracking-wider">Interval</span>
+                <span className="text-accent">{bot.interval ?? 0}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-0.5">
+              <span className="text-content-tertiary tracking-wider">Candles</span>
+              <span className="text-content-secondary">
+                {bot.candles?.length ?? 0}
+                <span className="text-content-tertiary"> / </span>
+                <span className="text-accent">{bot.maxCandles}</span>
+              </span>
+            </div>
+          </div>
+        </div>
       ),
     },
     {
