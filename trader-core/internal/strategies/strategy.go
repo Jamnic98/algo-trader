@@ -29,9 +29,8 @@ func New(name string) (Strategy, error) {
 	switch name {
 	case "simple":
 		return NewSimpleStrategy(), nil
-		// TODO: implement
-		// case "simpleDca":
-		// 	return NewSimpleDCAStrategy(), nil
+	case "simpleDca":
+		return NewSimpleDCAStrategy(), nil
 	default:
 		return nil, fmt.Errorf("unknown strategy: %q", name)
 	}

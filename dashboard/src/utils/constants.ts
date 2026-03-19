@@ -17,14 +17,12 @@ export const STRATEGY_CONFIG: Record<string, StrategyFieldConfig> = {
   simpleDca: {
     managesQuantity: false,
     managesInterval: false,
-    managesLookback: false,
-    defaultLookback: 200,
+    managesLookback: true,
   },
   smartDca: {
     managesQuantity: true,
     managesInterval: true,
-    managesLookback: false,
-    defaultLookback: 200,
+    managesLookback: true,
   },
 }
 
@@ -41,7 +39,7 @@ export const EXCHANGE_CONFIG: Record<Exchange, { assetTypes: AssetType[] }> = {
 // keeping the shape the same so the select doesn't need to change
 export const AVAILABLE_STRATEGIES: { name: string; label: string }[] = [
   { name: 'simple', label: 'Simple' },
-  // { name: 'simpleDca', label: 'Simple DCA' },
+  { name: 'simpleDca', label: 'Simple DCA' },
   // { name: 'smartDca', label: 'Smart DCA' },
 ]
 

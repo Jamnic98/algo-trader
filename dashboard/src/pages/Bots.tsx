@@ -37,7 +37,6 @@ const validateCreateBotForm = (formData: CreateBot): ValidationResult => {
 
 const defaultStrategy: CreateBotStrategy = {
   name: 'simple',
-  label: 'Simple',
 }
 const defaultFormData: CreateBot = {
   mode: 'paper',
@@ -123,7 +122,9 @@ const Bots = () => {
     }
 
     try {
-      const bot = await createBot(form)
+      console.log('creating bot with payload:', payload.lookback)
+      const bot = await createBot(payload)
+
       setBots((prev) => [...prev, bot])
       setForm(defaultFormData)
       setLookbackCandles(200)

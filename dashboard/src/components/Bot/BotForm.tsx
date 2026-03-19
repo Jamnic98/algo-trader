@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react'
 
-import type { CreateBot, CreateBotStrategy } from 'types'
 import { AVAILABLE_STRATEGIES, EXCHANGE_CONFIG, STRATEGY_CONFIG } from 'utils'
+import type { CreateBot, CreateBotStrategy } from 'types'
 
 type BotFormProps = {
   form: CreateBot
@@ -143,7 +143,7 @@ const BotForm = ({
                 name="quantity"
                 value={form.quantity}
                 onChange={onChange}
-                // placeholder="0.001"
+                placeholder="0.001"
                 className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-24 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/20"
                 required
               />
@@ -153,11 +153,11 @@ const BotForm = ({
           {!strategyConfig.managesLookback && (
             <div className="flex flex-col gap-1">
               <label className="text-content-secondary text-xs uppercase tracking-wider">
-                Lookback
+                Candles
               </label>
               <input
                 type="number"
-                min={1}
+                min={0}
                 value={lookbackCandles}
                 onChange={(e) => onLookbackChange(Number(e.target.value))}
                 placeholder="200"

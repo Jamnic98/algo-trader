@@ -9,7 +9,15 @@ const INTERVAL_TO_HOURS: Record<string, number> = {
 
 export const lookbackToString = (candles: number, interval: string): string => {
   const hours = (INTERVAL_TO_HOURS[interval] ?? 1) * candles
-  return `${Math.round(hours)}h`
+  const minutes = hours * 60
+  if (Number.isInteger(minutes) && minutes < 60) {
+    return `${minutes}m`
+  }
+  if (Number.isInteger(hours)) {
+    return `${hours}h`
+  }
+  // fractional hours — use minutes to stay exact
+  return `${Math.round(minutes)}m`
 }
 
 export const deriveSymbol = (

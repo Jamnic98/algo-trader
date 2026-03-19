@@ -339,6 +339,9 @@ func createBotHandler(c *gin.Context) {
 		Quote     string                `json:"quote"`
 		Symbol    string                `json:"symbol"`
 		Strategy  models.StrategyConfig `json:"strategy"`
+		Interval  string                `json:"interval"`
+		Lookback  string                `json:"lookback"`
+		Quantity  string                `json:"quantity"`
 	}
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -352,6 +355,9 @@ func createBotHandler(c *gin.Context) {
 		Base:      req.Base,
 		Quote:     req.Quote,
 		Strategy:  req.Strategy,
+		Interval:  req.Interval,
+		Lookback:  req.Lookback,
+		Quantity:  req.Quantity,
 	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
