@@ -31,6 +31,8 @@ func New(name string) (Strategy, error) {
 		return NewSimpleStrategy(), nil
 	case "simpleDca":
 		return NewSimpleDCAStrategy(), nil
+	// case "smartDca":
+	// 	return NewSmartDCAStrategy(), nil
 	default:
 		return nil, fmt.Errorf("unknown strategy: %q", name)
 	}

@@ -78,12 +78,12 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	if err != nil {
 		return fmt.Errorf("invalid interval %q: %w", b.Interval, err)
 	}
-
 	lookback, err := time.ParseDuration(b.Lookback)
 	if err != nil {
 		return fmt.Errorf("invalid lookback %q: %w", b.Lookback, err)
 	}
 
+	// Set interval between candle
 	intervalDur := interval.Duration()
 	b.MaxCandles = max(int(lookback/intervalDur), 1)
 
@@ -94,10 +94,12 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	b.Logger.Info("fetched %d candles", len(candles))
 	b.Candles = candles
 
+	// Subscribe to OHLC_Candle stream
 	rt.Dispatcher.Subscribe(b.Symbol(), interval, b)
 	b.Logger.Info("subscribed to %s_%s", b.Symbol(), interval.String())
 	rt.MarketManager.Subscribe(b.Symbol(), interval)
 
+	// Run the bot
 	b.ctx, b.cancel = context.WithCancel(context.Background())
 	go RunBotStrategy(b.ctx, b)
 

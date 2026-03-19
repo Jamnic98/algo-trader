@@ -122,9 +122,7 @@ const Bots = () => {
     }
 
     try {
-      console.log('creating bot with payload:', payload.lookback)
       const bot = await createBot(payload)
-
       setBots((prev) => [...prev, bot])
       setForm(defaultFormData)
       setLookbackCandles(200)

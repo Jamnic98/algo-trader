@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react'
 
-import { AVAILABLE_STRATEGIES, EXCHANGE_CONFIG, STRATEGY_CONFIG } from 'utils'
+import { AVAILABLE_STRATEGIES, candleIntervals, EXCHANGE_CONFIG, STRATEGY_CONFIG } from 'utils'
 import type { CreateBot, CreateBotStrategy } from 'types'
 
 type BotFormProps = {
@@ -179,7 +179,7 @@ const BotForm = ({
                 className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
                 required
               >
-                {['1m', '5m', '15m', '1h', '4h', '1d'].map((i) => (
+                {candleIntervals.map((i) => (
                   <option key={i} value={i}>
                     {i}
                   </option>

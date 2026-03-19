@@ -22,8 +22,13 @@ type SmartDCAStrategy struct {
 	totalBought decimal.Decimal
 }
 
-func NewSmartDCAStrategy(fixedSpend decimal.Decimal) *SmartDCAStrategy {
-	return &SmartDCAStrategy{fixedSpend: fixedSpend}
+// TODO: implement
+func NewSmartDCAStrategy(s SmartDCAStrategy) *SmartDCAStrategy {
+	return &SmartDCAStrategy{
+		fixedSpend: s.fixedSpend,
+		// totalSpent:  s.totalSpent,
+		// totalBought: s.totalBought,
+	}
 }
 
 func (s *SmartDCAStrategy) OnCandle(c models.Candle) Decision {

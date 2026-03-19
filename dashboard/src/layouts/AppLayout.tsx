@@ -16,7 +16,7 @@ const AppLayout = () => {
   return (
     <div className="flex flex-row h-screen bg-surface-page">
       <Sidebar isOpen={isOpen} onToggle={() => setIsOpen((open) => !open)} />
-      <div className="flex flex-col grow overflow-y-auto [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
+      <div className="flex flex-col grow overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
         <main className="flex flex-col w-full max-w-7xl py-8 px-4 sm:px-8 mx-auto">
           <Breadcrumbs />
           <Outlet />

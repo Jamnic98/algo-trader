@@ -32,6 +32,7 @@ func NewPaperExecution(account *PaperAccount) *PaperExecution {
 	return &PaperExecution{Account: account}
 }
 
+// Trade execution with paper trading engine
 func (pe *PaperExecution) ExecuteTrade(order Order) (*Fill, error) {
 	price := order.Price
 	qty := order.Qty
@@ -48,13 +49,13 @@ func (pe *PaperExecution) ExecuteTrade(order Order) (*Fill, error) {
 		Symbol:   order.Symbol,
 		Side:     order.Side,
 		Price:    price,
+		Fee:      fee,
 		Qty:      qty,
 		Notional: notional,
-		Fee:      fee,
 		Time:     time.Now(),
 	}
 
-	// Apply to account (thread-safe, decimal-safe)
+	// Apply to account
 	if err := pe.Account.ApplyFill(fill); err != nil {
 		return nil, err
 	}

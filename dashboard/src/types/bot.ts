@@ -23,7 +23,6 @@ export interface CreateBot {
   lookback?: string
   quantity?: string
   strategy: CreateBotStrategy
-
   candles?: OHLCVCandle[]
 }
 
