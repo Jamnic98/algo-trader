@@ -71,7 +71,7 @@ func main() {
 	botFactory := bot.BotFactory{
 		Account: account,
 		Engine: func() engine.ExecutionEngine {
-			return engine.NewPaperExecution(account)
+			return engine.NewPaperExecutor(account)
 		},
 	}
 

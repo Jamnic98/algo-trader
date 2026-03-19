@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
+import { SignalLabel } from 'components'
 import type { Trade, Pagination } from 'types'
 
 const COLUMNS = [
@@ -16,11 +17,7 @@ const COLUMNS = [
 const renderCell = (trade: Trade, key: string) => {
   switch (key) {
     case 'side':
-      return (
-        <span className={trade.side === 'BUY' ? 'text-green-400' : 'text-red-400'}>
-          {trade.side}
-        </span>
-      )
+      return <SignalLabel signal={trade.side} />
     case 'timestamp':
       return new Intl.DateTimeFormat('en-GB', {
         day: '2-digit',

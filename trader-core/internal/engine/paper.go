@@ -24,35 +24,34 @@ func NewPaperAccount(startBalance, fee string) *PaperAccount {
 	}
 }
 
-type PaperExecution struct {
+type PaperExecutor struct {
 	Account *PaperAccount
 }
 
-func NewPaperExecution(account *PaperAccount) *PaperExecution {
-	return &PaperExecution{Account: account}
+func NewPaperExecutor(account *PaperAccount) *PaperExecutor {
+	return &PaperExecutor{Account: account}
 }
 
 // Trade execution with paper trading engine
-func (pe *PaperExecution) ExecuteTrade(order Order) (*Fill, error) {
+func (pe *PaperExecutor) ExecuteTrade(order Order) (*Fill, error) {
 	price := order.Price
 	qty := order.Qty
 	feeRate := pe.Account.Fee
 
+	// Calculate notional (Price * Quantity)
 	notional := price.Mul(qty)
-
-	// Fee = notional * feeRate
+	// Fee amount = notional * feeRate
 	fee := notional.Mul(feeRate)
 
 	// Create fill
 	fill := &Fill{
-		BotID:    order.BotID,
-		Symbol:   order.Symbol,
-		Side:     order.Side,
-		Price:    price,
-		Fee:      fee,
-		Qty:      qty,
-		Notional: notional,
-		Time:     time.Now(),
+		BotID:  order.BotID,
+		Symbol: order.Symbol,
+		Signal: order.Signal,
+		Price:  price,
+		Fee:    fee,
+		Qty:    qty,
+		Time:   time.Now(),
 	}
 
 	// Apply to account
@@ -72,7 +71,7 @@ func (a *PaperAccount) ApplyFill(f *Fill) error {
 		a.Positions[f.Symbol] = decimal.NewFromInt(0)
 	}
 
-	switch f.Side {
+	switch f.Signal {
 	case "BUY":
 		totalCost := f.Price.Mul(f.Qty).Add(f.Fee)
 		if a.balance.LessThan(totalCost) {

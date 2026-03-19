@@ -1,11 +1,15 @@
 package engine
 
-import "github.com/shopspring/decimal"
+import (
+	"trader-core/internal/strategies"
+
+	"github.com/shopspring/decimal"
+)
 
 type Order struct {
 	BotID  string
 	Symbol string
-	Side   Side
+	Signal strategies.Signal
 	Price  decimal.Decimal
 	Qty    decimal.Decimal
 }

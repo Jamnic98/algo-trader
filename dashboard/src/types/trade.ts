@@ -1,8 +1,10 @@
+export type TradeSignal = 'BUY' | 'SELL' | 'HOLD'
+
 export type Trade = {
   id: number
   botID: string
   symbol: string
-  side: string // BUY / SELL / NONE
+  side: TradeSignal // BUY / SELL / NONE
   price: number // per unit price
   quantity: number
   fee: number // in fee asset

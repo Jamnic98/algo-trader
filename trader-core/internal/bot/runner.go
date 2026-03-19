@@ -70,7 +70,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			order := engine.Order{
 				BotID:  b.ID,
 				Symbol: b.Symbol(),
-				Side:   engine.Side(decision.Signal),
+				Signal: strategies.Signal(decision.Signal),
 				Price:  candle.Close,
 				Qty:    quantity,
 			}
@@ -86,13 +86,15 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				Symbol:      fill.Symbol,
 				Base:        b.Base,
 				Quote:       b.Quote,
-				Side:        string(fill.Side),
+				Side:        string(fill.Signal),
 				PriceInt:    ToInt64(fill.Price, priceScale),
 				QuantityInt: ToInt64(fill.Qty, quantityScale),
 				FeeInt:      ToInt64(fill.Fee, feeScale),
-				FeeAsset:    b.Quote,
-				// TODO: remove from hardcoding
-				Exchange:  "binance",
+
+				// TODO: replace
+				FeeAsset: b.Quote,
+				Exchange: b.Exchange,
+
 				Timestamp: fill.Time,
 			}
 
@@ -106,7 +108,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 
 			b.Logger.Info(
 				"%s %s %s @ %s (fee %s)\n",
-				fill.Side,
+				fill.Signal,
 				fill.Symbol,
 				fill.Qty.String(),
 				fill.Price.String(),

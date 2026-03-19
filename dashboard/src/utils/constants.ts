@@ -53,6 +53,9 @@ export const EXCHANGE_CONFIG: Record<Exchange, { assetTypes: AssetType[] }> = {
   binance: {
     assetTypes: ['crypto'],
   },
+  // alpaca: {
+  //   assetTypes: ['crypto', 'stocks'],
+  // },
 }
 
 // Hardcoded for now — swap the array for an API/DB fetch later
@@ -64,6 +67,15 @@ export const AVAILABLE_STRATEGIES: { name: string; label: string }[] = [
   // { name: 'smartDca', label: 'Smart DCA' },
 ]
 
+export const AVAILABLE_EXCHANGES: { name: Exchange; label: string }[] = [
+  { name: 'binance', label: 'Binance' },
+  // { name: 'alpaca', label: 'Alpaca' },
+]
+
 export const getStrategyLabel = (name: string): string => {
   return AVAILABLE_STRATEGIES.find((s) => s.name === name)?.label ?? name
+}
+
+export const getExchangeLabel = (name: string): string => {
+  return AVAILABLE_EXCHANGES.find((s) => s.name === name)?.label ?? name
 }

@@ -4,13 +4,14 @@ import { GlobeIcon, GlobeOff } from 'lucide-react'
 
 import { BotActionButtons, BotStatusPill } from 'components'
 import type { Bot, LoadingAction } from 'types'
-import { displaySymbol, getStrategyLabel } from 'utils'
+import { displaySymbol, getExchangeLabel, getStrategyLabel } from 'utils'
 
 type BotStatus = 'running' | 'attached' | 'created'
 type BotFilters = { status?: BotStatus }
 type ColumnKey =
   | 'id'
   | 'mode'
+  | 'exchange'
   | 'symbol'
   | 'strategy'
   | 'quantity'
@@ -34,6 +35,7 @@ type BotTableProps = {
 const ALL_COLUMNS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'id', label: 'Id', className: 'w-24' },
   { key: 'mode', label: 'Mode', className: 'w-16' },
+  { key: 'exchange', label: 'Exchange', className: 'w-16' },
   { key: 'strategy', label: 'Strategy', className: 'w-24' },
   { key: 'symbol', label: 'Symbol', className: 'w-24' },
   { key: 'quantity', label: 'Quantity', className: 'w-24' },
@@ -66,6 +68,8 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
         ) : (
           <GlobeIcon size={18} className="text-accent" />
         )
+      case 'exchange':
+        return getExchangeLabel(bot.exchange)
       case 'status':
         return <BotStatusPill status={bot.status} />
       case 'started':

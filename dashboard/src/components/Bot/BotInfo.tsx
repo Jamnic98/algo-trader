@@ -26,6 +26,11 @@ const BotInfo = ({ bot, runningFor }: BotInfoProps) => {
           }}
         />
       </span>
+
+      {/* Exchange */}
+      <span className="text-content-tertiary">Exchange</span>
+      <span className="text-content-secondary capitalize">{bot.exchange}</span>
+
       {/* Mode */}
       <span className="text-content-tertiary">Mode</span>
       <span className="text-content-secondary capitalize">{bot.mode}</span>
