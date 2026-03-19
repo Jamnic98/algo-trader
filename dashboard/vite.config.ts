@@ -11,13 +11,16 @@ const target = process.env.DOCKER ?
 export default defineConfig({
   plugins: [react(), tsconfigPaths(), tailwindcss()],
   server: {
-    host: true,
-    proxy: {
-      '/api': {
-        target,
-        ws: true,
-        changeOrigin: true,
-      },
-    }
+      host: true,
+      proxy: {
+          '/api': {
+              target,
+              ws: true,
+              changeOrigin: true,
+              headers: {
+                  'X-Accel-Buffering': 'no',
+              },
+          },
+      }
   }
 });

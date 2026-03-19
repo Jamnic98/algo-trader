@@ -13,22 +13,22 @@ func NewSimpleStrategy() *SimpleStrategy {
 	return &SimpleStrategy{}
 }
 
-func (s *SimpleStrategy) OnCandle(c models.Candle) Signal {
+func (s *SimpleStrategy) OnCandle(c models.Candle) Decision {
 	defer func() { s.prev = &c }()
 
 	if s.prev == nil {
-		return Hold // not enough data yet
+		return Decision{Signal: Hold}
 	}
 
 	if !s.hasPosition && c.Close.LessThan(s.prev.Close) {
 		s.hasPosition = true
-		return Buy
+		return Decision{Signal: Buy} // Quantity: nil — caller decides
 	}
 
 	if s.hasPosition && c.Close.GreaterThan(s.prev.Close) {
 		s.hasPosition = false
-		return Sell
+		return Decision{Signal: Sell} // Quantity: nil — sell all, caller decides
 	}
 
-	return Hold
+	return Decision{Signal: Hold}
 }

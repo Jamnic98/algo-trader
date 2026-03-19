@@ -37,6 +37,7 @@ const validateCreateBotForm = (formData: CreateBot): ValidationResult => {
 
 const defaultStrategy: CreateBotStrategy = {
   name: 'simple',
+  label: 'Simple',
 }
 const defaultFormData: CreateBot = {
   mode: 'paper',
@@ -88,8 +89,12 @@ const Bots = () => {
 
     setForm((prev) => {
       const next = { ...prev, [name]: value }
-      next.base = next.base && next.base.toUpperCase()
-      next.quote = next.quote && next.quote.toUpperCase()
+
+      if (name === 'base') next.base = value.toUpperCase()
+      if (name === 'quote') next.quote = value.toUpperCase()
+
+      // reset quote when switching away from crypto
+      if (name === 'assetType' && value !== 'crypto') next.quote = undefined
 
       return next
     })

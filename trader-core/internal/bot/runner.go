@@ -48,23 +48,29 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				continue
 			}
 
-			// strategy just signals, bot decides quantity
-			signal := b.Strategy.OnCandle(candle)
-			b.Logger.Info("strategy signal: %s", signal)
-			if signal == strategies.Hold {
+			decision := b.Strategy.OnCandle(candle)
+			b.Logger.Info("strategy decision: %s", decision.Signal)
+
+			if decision.Signal == strategies.Hold {
 				continue
 			}
 
-			quantity, err := decimal.NewFromString(b.Quantity)
-			if err != nil {
-				log.Println("invalid quantity:", err)
-				continue
+			var quantity decimal.Decimal
+			if decision.Quantity != nil {
+				quantity = *decision.Quantity
+			} else {
+				var err error
+				quantity, err = decimal.NewFromString(b.Quantity)
+				if err != nil {
+					log.Println("invalid quantity:", err)
+					continue
+				}
 			}
 
 			order := engine.Order{
 				BotID:  b.ID,
 				Symbol: b.Symbol(),
-				Side:   engine.Side(signal), // Signal -> Side
+				Side:   engine.Side(decision.Signal),
 				Price:  candle.Close,
 				Qty:    quantity,
 			}

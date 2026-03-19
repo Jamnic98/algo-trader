@@ -10,7 +10,7 @@ type BotFormProps = {
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
   onModeToggle: () => void
   onStrategyChange: (strategy: CreateBotStrategy) => void
-  onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void
+  onSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void
 }
 
 const BotForm = ({
@@ -46,6 +46,7 @@ const BotForm = ({
         </div>
       </div>
 
+      {/* Exchange  */}
       <div className="flex flex-col gap-1">
         <label className="text-content-secondary text-xs uppercase tracking-wider">Exchange</label>
         <select
@@ -63,6 +64,7 @@ const BotForm = ({
         </select>
       </div>
 
+      {/* Asset Type */}
       <div className="flex flex-col gap-1">
         <label className="text-content-secondary text-xs uppercase tracking-wider">
           Asset Type
@@ -81,29 +83,26 @@ const BotForm = ({
           ))}
         </select>
       </div>
-
       {form.assetType === 'crypto' && (
-        <div className="flex flex-col gap-1">
-          <label className="text-content-secondary text-xs uppercase tracking-wider">Symbol</label>
-          <div className="flex items-center border border-border rounded bg-surface-secondary focus-within:border-accent transition-colors">
-            <input
-              autoFocus
-              name="base"
-              value={form.base}
-              onChange={onChange}
-              placeholder="BTC"
-              className="bg-transparent px-3 py-1.5 w-16 text-center uppercase text-content-primary focus:outline-none placeholder:text-content-secondary/20 text-sm"
-              required
-            />
-            <span className="text-content-secondary/40 px-0.5">/</span>
-            <input
-              name="quote"
-              value={form.quote}
-              onChange={onChange}
-              placeholder="USDT"
-              className="bg-transparent px-3 py-1.5 w-16 text-center text-content-primary uppercase text-sm focus:outline-none placeholder:text-content-secondary/20"
-            />
-          </div>
+        <div className="flex items-center border border-border rounded bg-surface-secondary focus-within:border-accent transition-colors">
+          <input
+            autoFocus
+            name="base"
+            value={form.base}
+            onChange={onChange}
+            placeholder="BTC"
+            className="bg-transparent px-3 py-1.5 w-16 text-center uppercase text-content-primary focus:outline-none placeholder:text-content-secondary/20 text-sm"
+            required
+          />
+          <span className="text-content-secondary px-1 text-sm select-none">/</span>
+          <input
+            name="quote"
+            value={form.quote ?? ''}
+            onChange={onChange}
+            placeholder="USDT"
+            className="bg-transparent px-3 py-1.5 w-16 text-center text-content-primary uppercase text-sm focus:outline-none placeholder:text-content-secondary/20"
+            required
+          />
         </div>
       )}
 
@@ -114,14 +113,14 @@ const BotForm = ({
           name="strategy"
           value={form.strategy.name}
           onChange={(e) => {
-            const selected = AVAILABLE_STRATEGIES.find((s) => s.value.name === e.target.value)
-            if (selected) onStrategyChange(selected.value)
+            const selected = AVAILABLE_STRATEGIES.find((s) => s.name === e.target.value)
+            if (selected) onStrategyChange({ name: selected.name })
           }}
           className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
           required
         >
-          {AVAILABLE_STRATEGIES.map(({ label, value }) => (
-            <option key={value.name} value={value.name}>
+          {AVAILABLE_STRATEGIES.map(({ label, name }) => (
+            <option key={name} value={name}>
               {label}
             </option>
           ))}

@@ -12,6 +12,7 @@ import {
 import { BotCandleChart, BotLogs, BotStats, BotTrades, Tabs } from 'components'
 import { useAlert } from 'hooks'
 import type { Bot, Tab } from 'types'
+import { getStrategyLabel } from 'utils'
 
 const makeBotRunDurationStr = (botStart: string): string => {
   const seconds = Math.floor((Date.now() - Date.parse(botStart)) / 1000)
@@ -63,11 +64,13 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
               }}
             />
           </span>
-
-          {/* rest unchanged */}
+          {/* Mode */}
           <span className="text-content-tertiary">Mode</span>
-          <span className="text-content-secondary">{bot.mode}</span>
+          <span className="text-content-secondary capitalize">{bot.mode}</span>
 
+          {/* Strategy` */}
+          <span className="text-content-tertiary">Strategy</span>
+          <span className="text-content-secondary">{getStrategyLabel(bot.strategy.name)}</span>
           {bot?.quantity && (
             <>
               <span className="text-content-tertiary">Quantity</span>
@@ -75,26 +78,26 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
             </>
           )}
 
+          {/* Number of candles */}
           {bot.candles && (
             <>
               <span className="text-content-tertiary">Candles</span>
               <span className="text-content-secondary">{bot.candles.length}</span>
             </>
           )}
-
+          {/* Interval duration */}
           <span className="text-content-tertiary">Interval</span>
           <span className="text-content-secondary">{bot.interval}</span>
-
+          {/* Lookback duration */}
           <span className="text-content-tertiary">Lookback</span>
           <span className="text-content-secondary">{bot.lookback}</span>
-
+          {/* Start time */}
           <span className="text-content-tertiary">Started</span>
           <span className="text-content-secondary">
             {bot.started
               ? new Date(Date.parse(bot.started)).toLocaleString('en-GB', { timeZone: 'UTC' })
               : '-'}
           </span>
-
           <span className="text-content-tertiary">Run-time</span>
           <span className="text-content-secondary">{bot.started ? runningFor : '-'}</span>
         </div>

@@ -3,6 +3,8 @@ package strategies
 import (
 	"fmt"
 	"trader-core/internal/db/models"
+
+	"github.com/shopspring/decimal"
 )
 
 type Signal string
@@ -13,16 +15,23 @@ const (
 	Sell Signal = "SELL"
 )
 
-// Strategy interface for any strategy
-type Strategy interface {
-	OnCandle(c models.Candle) Signal
+type Decision struct {
+	Signal   Signal
+	Quantity *decimal.Decimal // nil = caller decides, non-nil = strategy dictates
 }
 
-func NewStrategy(name string) (Strategy, error) {
+// Strategy interface for any strategy
+type Strategy interface {
+	OnCandle(c models.Candle) Decision
+}
+
+func New(name string) (Strategy, error) {
 	switch name {
 	case "simple":
 		return NewSimpleStrategy(), nil
-	// add more here as you build them
+		// TODO: implement
+		// case "simpleDca":
+		// 	return NewSimpleDCAStrategy(), nil
 	default:
 		return nil, fmt.Errorf("unknown strategy: %q", name)
 	}

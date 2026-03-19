@@ -1,4 +1,4 @@
-import type { AssetType, CreateBotStrategy, Exchange } from 'types'
+import type { AssetType, Exchange } from 'types'
 
 type StrategyFieldConfig = {
   managesQuantity?: boolean
@@ -9,15 +9,23 @@ type StrategyFieldConfig = {
 
 export const STRATEGY_CONFIG: Record<string, StrategyFieldConfig> = {
   simple: {
-    managesQuantity: false, // bot sets quantity
-    managesInterval: false, // bot sets interval
-    managesLookback: false, // bot sets lookback
+    managesQuantity: false,
+    managesInterval: false,
+    managesLookback: false,
     defaultLookback: 200,
   },
-  // future — e.g. a strategy that self-manages position sizing
-  // grid: {
-  //   managesQuantity: true,  // hide quantity field, strategy handles it
-  // }
+  simpleDca: {
+    managesQuantity: false,
+    managesInterval: false,
+    managesLookback: false,
+    defaultLookback: 200,
+  },
+  smartDca: {
+    managesQuantity: true,
+    managesInterval: true,
+    managesLookback: false,
+    defaultLookback: 200,
+  },
 }
 
 // --- Config ---
@@ -31,12 +39,12 @@ export const EXCHANGE_CONFIG: Record<Exchange, { assetTypes: AssetType[] }> = {
 
 // Hardcoded for now — swap the array for an API/DB fetch later
 // keeping the shape the same so the select doesn't need to change
-export const AVAILABLE_STRATEGIES: { label: string; value: CreateBotStrategy }[] = [
-  {
-    label: 'Simple',
-    value: {
-      name: 'simple',
-    },
-  },
-  // add more strategies here, or fetch from DB and map to this shape
+export const AVAILABLE_STRATEGIES: { name: string; label: string }[] = [
+  { name: 'simple', label: 'Simple' },
+  // { name: 'simpleDca', label: 'Simple DCA' },
+  // { name: 'smartDca', label: 'Smart DCA' },
 ]
+
+export const getStrategyLabel = (name: string): string => {
+  return AVAILABLE_STRATEGIES.find((s) => s.name === name)?.label ?? name
+}

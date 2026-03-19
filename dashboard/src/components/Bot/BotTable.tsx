@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { GlobeIcon, GlobeOff } from 'lucide-react'
 
 import { BotActionButtons, BotStatusPill } from 'components'
 import type { Bot, LoadingAction } from 'types'
-import { GlobeIcon, GlobeOff } from 'lucide-react'
-import { deriveSymbol } from 'utils'
+import { displaySymbol, getStrategyLabel } from 'utils'
 
 type BotStatus = 'running' | 'attached' | 'created'
 type BotFilters = { status?: BotStatus }
@@ -12,6 +12,7 @@ type ColumnKey =
   | 'id'
   | 'mode'
   | 'symbol'
+  | 'strategy'
   | 'quantity'
   | 'interval'
   | 'lookback'
@@ -33,6 +34,7 @@ type BotTableProps = {
 const ALL_COLUMNS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'id', label: 'Id', className: 'w-24' },
   { key: 'mode', label: 'Mode', className: 'w-16' },
+  { key: 'strategy', label: 'Strategy', className: 'w-24' },
   { key: 'symbol', label: 'Symbol', className: 'w-24' },
   { key: 'quantity', label: 'Quantity', className: 'w-24' },
   { key: 'interval', label: 'Interval', className: 'w-20' },
@@ -77,8 +79,10 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
               hour12: false,
             }).format(new Date(bot.started))
           : '-'
+      case 'strategy':
+        return getStrategyLabel(bot.strategy.name)
       case 'symbol':
-        return deriveSymbol(bot.exchange, bot.assetType, bot.base, bot.quote)
+        return displaySymbol(bot.assetType, bot.base, bot.quote)
       default:
         return bot[key]
     }

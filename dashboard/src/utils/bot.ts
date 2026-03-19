@@ -29,3 +29,8 @@ export const deriveSymbol = (
   }
   return `${base}${quote ?? ''}`.toUpperCase() // fallback
 }
+
+export const displaySymbol = (assetType: string, base: string, quote?: string): string => {
+  if (assetType === 'crypto' && quote) return `${base}/${quote}`
+  return base
+}

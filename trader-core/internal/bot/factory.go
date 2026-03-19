@@ -20,7 +20,7 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		cfg.ID = uuid.New().String()
 	}
 
-	strategy, err := strategies.NewStrategy(cfg.StrategyConfig.Name)
+	strategy, err := strategies.New(cfg.StrategyConfig.Name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get strategy: %w", err)
 	}
