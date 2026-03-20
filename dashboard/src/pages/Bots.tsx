@@ -97,8 +97,8 @@ const Bots = () => {
     })
 
     if (name === 'interval') {
-      const max = MAX_CANDLES[value] ?? 500
-      if (maxCandles > max) setMaxCandles(max)
+      const max = MAX_CANDLES[value] ?? 100
+      setMaxCandles((prev) => Math.min(prev, max))
     }
   }
 

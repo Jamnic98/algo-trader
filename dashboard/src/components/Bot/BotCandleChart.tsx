@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { BarLoader, CandlestickChart } from 'components'
 import type { Bot, OHLCVCandle } from 'types'
 import { useAlert } from 'hooks'
+import { INTERVAL_TO_HOURS } from 'utils'
 
 type BotCandleChartProps = { bot: Bot }
 
@@ -101,8 +102,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
     }
   }, [id, status])
 
-  if (status === 'created') return <div className="text-gray-500">Bot not attached.</div>
-  if (!snapshotDone) return <BarLoader />
+  if (bot.started && !snapshotDone) return <BarLoader />
 
   return (
     <CandlestickChart
@@ -111,6 +111,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
       symbol={`${base}/${quote}`}
       height={400}
       initialPrice={candles ? candles[0]?.close : 0}
+      intervalMinutes={Math.round((INTERVAL_TO_HOURS[bot.interval] ?? 1) * 60)}
     />
   )
 }

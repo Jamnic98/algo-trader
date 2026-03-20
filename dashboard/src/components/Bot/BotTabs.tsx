@@ -8,9 +8,8 @@ import {
   ScrollText,
 } from 'lucide-react'
 
-import { BotCandleChart, BotInfo, BotLogs, BotStats, BotTrades, Tabs } from 'components'
+import { BotCandles, BotInfo, BotLogs, BotStats, BotTrades, Tabs } from 'components'
 import type { Bot, Tab } from 'types'
-import { candleRangeToString } from 'utils'
 
 const makeBotRunDurationStr = (botStart: string): string => {
   const seconds = Math.floor((Date.now() - Date.parse(botStart)) / 1000)
@@ -66,34 +65,10 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
     {
       label: 'Candles',
       icon: <CChart size={13} />,
-      content: (
-        <div className="space-y-3 bg-content-secondary/10 rounded-xl p-2">
-          <BotCandleChart bot={bot} />
-          <div className="flex justify-between text-xs font-mono">
-            <div className="flex flex-row gap-6">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-content-tertiary tracking-wider">Lookback</span>
-                <span className="text-accent">
-                  {bot.candles?.length ? candleRangeToString(bot.candles) : '-'}
-                </span>
-              </div>
-
-              <div className="flex flex-col gap-0.5">
-                <span className="text-content-tertiary tracking-wider">Interval</span>
-                <span className="text-accent">{bot.interval ?? 0}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-0.5">
-              <span className="text-content-tertiary tracking-wider">Candles</span>
-              <span className="text-content-secondary">
-                {bot.candles?.length ?? 0}
-                <span className="text-content-tertiary"> / </span>
-                <span className="text-accent">{bot.maxCandles}</span>
-              </span>
-            </div>
-          </div>
-        </div>
+      content: bot.started ? (
+        <BotCandles bot={bot} />
+      ) : (
+        <div className="text-gray-500">Bot not attached.</div>
       ),
     },
     {

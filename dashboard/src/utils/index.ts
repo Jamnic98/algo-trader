@@ -3,7 +3,7 @@ import type { OHLCVCandle } from 'types'
 export * from './bot'
 export * from './constants'
 
-const INTERVAL_TO_HOURS: Record<string, number> = {
+export const INTERVAL_TO_HOURS: Record<string, number> = {
   '1m': 1 / 60,
   '3m': 3 / 60,
   '5m': 5 / 60,
@@ -37,7 +37,7 @@ export const candleRangeToString = (candles: OHLCVCandle[]): string => {
 }
 
 // shared logic
-const minutesToDurationString = (totalMinutes: number): string => {
+export const minutesToDurationString = (totalMinutes: number): string => {
   const years = Math.floor(totalMinutes / 525960)
   const months = Math.floor((totalMinutes % 525960) / 43830)
   const weeks = Math.floor((totalMinutes % 43830) / 10080)

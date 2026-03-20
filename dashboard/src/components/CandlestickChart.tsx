@@ -15,6 +15,7 @@ import {
 } from 'lightweight-charts'
 
 import type { OHLCVCandle } from 'types'
+import { minutesToDurationString } from 'utils'
 
 type CandlestickChartProps = {
   data: OHLCVCandle[]
@@ -22,6 +23,7 @@ type CandlestickChartProps = {
   height?: number
   newCandle?: OHLCVCandle | null
   initialPrice?: number
+  intervalMinutes: number
 }
 
 type TooltipData = {
@@ -67,6 +69,7 @@ const CandlestickChart = ({
   symbol = 'CHART',
   height = 400,
   initialPrice,
+  intervalMinutes,
 }: CandlestickChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -74,6 +77,7 @@ const CandlestickChart = ({
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
+  const [visibleCandles, setVisibleCandles] = useState<number | null>(null)
   const [containerWidth, setContainerWidth] = useState(0)
 
   // Chart init — once on mount
@@ -118,6 +122,12 @@ const CandlestickChart = ({
     })
 
     chartRef.current = chart
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (range) {
+        setVisibleCandles(Math.round(range.to - range.from))
+      }
+    })
 
     const { precision, minMove } = getPricePrecision(initialPrice ?? 100)
     const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -240,8 +250,15 @@ const CandlestickChart = ({
   const pctChangeNum =
     first && newCandle ? ((newCandle.close - first.close) / first.close) * 100 : 0
   const pctChange = Math.abs(pctChangeNum).toFixed(2)
-  const isUp = pctChangeNum >= 0
+
+  // price color — based on current candle (green if close >= open)
+  const isUp = newCandle ? newCandle.close >= newCandle.open : true
   const priceColor = isUp ? '#22c55e' : '#ef4444'
+
+  // pct change — based on first candle in dataset
+  const isUpFromFirst = pctChangeNum >= 0
+  const pctColor = isUpFromFirst ? '#22c55e' : '#ef4444'
+
   const tooltipIsUp = tooltip ? tooltip.amountChange >= 0 : true
   const tooltipColor = tooltipIsUp ? '#22c55e' : '#ef4444'
 
@@ -252,6 +269,7 @@ const CandlestickChart = ({
           <span className="text-content-secondary text-[11px] font-mono uppercase tracking-widest">
             {symbol}
           </span>
+          {/* OHLC numerical data */}
           {newCandle && (
             <span className="text-[11px] font-mono text-content-secondary">
               {' '}
@@ -284,11 +302,11 @@ const CandlestickChart = ({
             <span
               className="text-[11px] font-mono px-1.5 py-0.5 rounded"
               style={{
-                color: priceColor,
-                backgroundColor: isUp ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                color: pctColor,
+                backgroundColor: isUpFromFirst ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
               }}
             >
-              {isUp ? '+' : '-'}
+              {isUpFromFirst ? '+' : '-'}
               {pctChange}%
             </span>
           </div>
@@ -329,17 +347,41 @@ const CandlestickChart = ({
           </div>
         )}
       </div>
-
-      {newCandle && (
-        <div className="flex items-center gap-4 px-5 py-2 border-t border-table-border">
-          <span className="text-[10px] font-mono text-content-secondary uppercase tracking-widest">
-            Vol
-          </span>
-          <span className="text-[11px] font-mono text-content-primary">
-            {newCandle.volume.toLocaleString(undefined, { maximumFractionDigits: 3 })}
-          </span>
+      <div className="flex items-center gap-4 px-5 py-2 border-t border-table-border">
+        {newCandle && (
+          <>
+            <span className="text-[10px] font-mono text-content-secondary uppercase tracking-widest">
+              Vol
+            </span>
+            <span className="text-[11px] font-mono text-content-primary">
+              {newCandle.volume.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+            </span>
+          </>
+        )}
+        {visibleCandles !== null && (
+          <>
+            <span className="text-[10px] font-mono text-content-secondary uppercase tracking-widest">
+              Lookback
+            </span>
+            <span className="text-[11px] font-mono text-content-primary">
+              {minutesToDurationString(visibleCandles * intervalMinutes)}
+            </span>
+          </>
+        )}
+        <div className="ml-auto flex items-center gap-4">
+          {visibleCandles !== null && (
+            <>
+              <span className="text-[10px] font-mono text-content-secondary uppercase tracking-widest">
+                Zoom
+              </span>
+              <span className="text-[11px] font-mono text-content-primary">
+                {visibleCandles} / {data.length} candles (
+                {Math.round((visibleCandles / data.length) * 100)}%)
+              </span>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }

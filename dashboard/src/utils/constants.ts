@@ -41,8 +41,7 @@ export const candleIntervals = [
   '12h',
   '1d',
   '3d',
-  // TODO: include these
-  // '1w',
+  '1w',
   // '1M',
 ]
 
@@ -81,8 +80,8 @@ export const getExchangeLabel = (name: string): string => {
 }
 
 export const MAX_CANDLES: Record<string, number> = {
-  '1m': 500,
-  '3m': 500,
+  '1m': 1000,
+  '3m': 675,
   '5m': 500,
   '15m': 500,
   '30m': 500,
@@ -94,6 +93,6 @@ export const MAX_CANDLES: Record<string, number> = {
   '12h': 200,
   '1d': 365,
   '3d': 200,
-  '1w': 104,
+  '1w': 100,
   '1M': 100,
 }
