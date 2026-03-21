@@ -16,7 +16,7 @@ type PositionDTO struct {
 	Realised   string `json:"realised_pnl"`
 }
 
-func calcBotPositions(botID string) ([]PositionDTO, error) {
+func CalcBotPositions(botID string) ([]PositionDTO, error) {
 	var trades []models.Trade
 	if err := db.DB.Where("bot_id = ?", botID).Order("timestamp ASC").Find(&trades).Error; err != nil {
 		return nil, err
@@ -56,15 +56,12 @@ func calcBotPositions(botID string) ([]PositionDTO, error) {
 			s.totalBought = s.totalBought.Add(qty)
 
 		case "SELL":
-			if s.totalBought.IsPositive() {
-				avgEntry := s.totalSpent.Div(s.totalBought)
-				s.realised = s.realised.Add(price.Sub(avgEntry).Mul(qty))
-			}
-			s.qty = s.qty.Sub(qty)
+			avgEntry := s.totalSpent.Div(s.totalBought)
+			s.realised = s.realised.Add(price.Sub(avgEntry).Mul(qty))
+
 			s.totalSpent = s.totalSpent.Sub(price.Mul(qty))
-			if s.totalBought.IsPositive() {
-				s.totalBought = s.totalBought.Sub(qty)
-			}
+			s.totalBought = s.totalBought.Sub(qty)
+
 		}
 	}
 

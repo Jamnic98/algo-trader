@@ -111,3 +111,28 @@ func fetchKlinesBatch(symbol, interval string, limit int, endTime int64) ([]RawK
 
 	return klines, nil
 }
+
+func FetchPrice(symbol string) (string, error) {
+	url := fmt.Sprintf("%s/api/v3/ticker/price?symbol=%s", restBaseURL, symbol)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("FetchPrice request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("FetchPrice bad status: %s, body: %s", resp.Status, body)
+	}
+
+	var result struct {
+		Price string `json:"price"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("FetchPrice decode failed: %w", err)
+	}
+
+	return result.Price, nil
+}

@@ -174,10 +174,10 @@ const BotForm = ({
                     <input
                       type="number"
                       min={1}
-                      max={MAX_CANDLES[form.interval] ?? 500}
+                      max={MAX_CANDLES[form.interval] ?? 100}
                       value={maxCandles}
                       onChange={(e) => {
-                        const max = MAX_CANDLES[form.interval] ?? 500
+                        const max = MAX_CANDLES[form.interval] ?? 100
                         onLookbackChange(Math.min(Number(e.target.value), max))
                       }}
                       placeholder="200"

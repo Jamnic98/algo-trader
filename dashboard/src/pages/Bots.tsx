@@ -98,7 +98,7 @@ const Bots = () => {
 
     if (name === 'interval') {
       const max = MAX_CANDLES[value] ?? 100
-      setMaxCandles((prev) => Math.min(prev, max))
+      setMaxCandles(max) // always set to max of new interval
     }
   }
 
@@ -116,6 +116,7 @@ const Bots = () => {
 
     const payload: CreateBot = {
       ...form,
+      maxCandles,
     }
     const result = validateCreateBotForm(payload)
     if (!result.valid) {
