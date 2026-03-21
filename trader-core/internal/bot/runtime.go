@@ -52,7 +52,7 @@ func (r *Runtime) CreateBot(data CreateBotData) (*Bot, error) {
 		return nil, fmt.Errorf("failed to create strategy config: %w", err)
 	}
 
-	b.Logger.Info("created")
+	b.Logger.Info("new bot created")
 	return b, nil
 }
 

@@ -177,11 +177,13 @@ func streamBotLogsHandler(c *gin.Context) {
 	snapshot, ch := b.Logger.Subscribe()
 	defer b.Logger.Unsubscribe(ch)
 
-	// send catch-up buffer first
 	for _, entry := range snapshot {
 		data, _ := json.Marshal(entry)
 		fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 	}
+
+	// ready event unblocks frontend — no log message, no duplicates
+	fmt.Fprintf(c.Writer, "event: ready\ndata: {}\n\n")
 	c.Writer.Flush()
 
 	for {
@@ -218,6 +220,8 @@ func streamBotCandlesHandler(c *gin.Context) {
 		data, _ := json.Marshal(models.CandleToDTO(candle))
 		fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 	}
+
+	fmt.Fprintf(c.Writer, "event: ready\ndata: {}\n\n")
 	c.Writer.Flush()
 
 	for {
@@ -246,6 +250,10 @@ func streamBotTicksHandler(c *gin.Context) {
 	ch := b.TickBroadcaster.Subscribe()
 	defer b.TickBroadcaster.Unsubscribe(ch)
 
+	// added ready event — was missing
+	fmt.Fprintf(c.Writer, "event: ready\ndata: {}\n\n")
+	c.Writer.Flush()
+
 	for {
 		select {
 		case candle := <-ch:
@@ -257,7 +265,6 @@ func streamBotTicksHandler(c *gin.Context) {
 		}
 	}
 }
-
 func createBotHandler(c *gin.Context) {
 	var req bot.CreateBotData
 

@@ -126,9 +126,11 @@ const Bots = () => {
 
     try {
       const bot = await createBot(payload)
+      // Reset form to default state
       setBots((prev) => [...prev, bot])
       setForm(defaultFormData)
       setMaxCandles(200)
+      showAlert({ type: 'success', title: 'Bot created', message: `${bot.id}` })
     } catch (err) {
       console.error(err)
       showAlert({ title: 'Failed to create bot', type: 'error' })

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { BarLoader } from 'components'
 import { useAlert } from 'hooks'
@@ -11,6 +11,7 @@ type LogEntry = {
 
 const BotLogs = ({ id }: { id: string }) => {
   const { showAlert } = useAlert()
+  const showAlertRef = useRef(showAlert)
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -18,6 +19,10 @@ const BotLogs = ({ id }: { id: string }) => {
     const es = new EventSource(
       `/api/bots/${id}/logs/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
     )
+
+    es.onopen = () => {
+      setLoading(false)
+    }
 
     es.onmessage = (e) => {
       setLoading(false)
@@ -29,16 +34,17 @@ const BotLogs = ({ id }: { id: string }) => {
       setLoading(false)
       const errorMsg = 'Bot logs stream error'
       console.error(errorMsg)
-      showAlert({ type: 'error', title: errorMsg })
+      showAlertRef.current({ type: 'error', title: errorMsg })
       es.close()
     }
 
     return () => es.close()
-  }, [id, showAlert])
+  }, [id])
 
   if (loading) return <BarLoader />
 
-  if (!logs.length) return <div className="text-gray-500">No logs yet.</div>
+  if (!logs.length)
+    return <div className="text-content-secondary text-sm font-mono">No logs yet.</div>
 
   return (
     <div className="font-mono text-xs space-y-1 overflow-y-auto max-h-128 pr-2 overflow-x-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-400">
