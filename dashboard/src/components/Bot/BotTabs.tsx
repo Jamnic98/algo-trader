@@ -51,7 +51,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
     {
       label: 'Stats',
       icon: <BarChart2 size={13} />,
-      content: <BotStats id={bot.id} tick={positionsTick} />,
+      content: <BotStats bot={bot} tick={positionsTick} />,
     },
     {
       label: 'Trades',
@@ -68,7 +68,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
       content: bot.started ? (
         <BotCandles bot={bot} />
       ) : (
-        <div className="text-gray-500">Bot not attached.</div>
+        <div className="text-content-secondary text-sm font-mono">Bot not attached.</div>
       ),
     },
     {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, startTransition } from 'react'
 import {
   createChart,
   CandlestickSeries,
@@ -22,8 +22,8 @@ type CandlestickChartProps = {
   symbol?: string
   height?: number
   newCandle?: OHLCVCandle | null
+  intervalMinutes?: number
   initialPrice?: number
-  intervalMinutes: number
 }
 
 type TooltipData = {
@@ -68,14 +68,15 @@ const CandlestickChart = ({
   newCandle,
   symbol = 'CHART',
   height = 400,
+  intervalMinutes = 60,
   initialPrice,
-  intervalMinutes,
 }: CandlestickChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const hasSeeded = useRef(false)
   const candleSeriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
+  const [seededLength, setSeededLength] = useState(0)
   const [tooltip, setTooltip] = useState<TooltipData | null>(null)
   const [visibleCandles, setVisibleCandles] = useState<number | null>(null)
   const [containerWidth, setContainerWidth] = useState(0)
@@ -224,6 +225,7 @@ const CandlestickChart = ({
     if (!hasSeeded.current) {
       chartRef.current?.timeScale().fitContent()
       hasSeeded.current = true
+      startTransition(() => setSeededLength(sorted.length))
     }
   }, [data])
 
@@ -246,9 +248,9 @@ const CandlestickChart = ({
     })
   }, [newCandle])
 
-  const first = data.length > 0 ? data[0] : null
+  const firstClose = data.length > 0 ? data[0].close : null
   const pctChangeNum =
-    first && newCandle ? ((newCandle.close - first.close) / first.close) * 100 : 0
+    firstClose && newCandle ? ((newCandle.close - firstClose) / firstClose) * 100 : 0
   const pctChange = Math.abs(pctChangeNum).toFixed(2)
 
   // price color — based on current candle (green if close >= open)
@@ -297,7 +299,7 @@ const CandlestickChart = ({
               className="text-[20px] font-semibold tracking-tight"
               style={{ color: priceColor }}
             >
-              ${fmtPrice(newCandle?.close)}
+              ${fmtPrice(newCandle.close)}
             </span>
             <span
               className="text-[11px] font-mono px-1.5 py-0.5 rounded"
@@ -375,8 +377,8 @@ const CandlestickChart = ({
                 Zoom
               </span>
               <span className="text-[11px] font-mono text-content-primary">
-                {visibleCandles} / {data.length} candles (
-                {Math.round((visibleCandles / data.length) * 100)}%)
+                {visibleCandles} / {seededLength || data.length} candles (
+                {Math.round((visibleCandles / (seededLength || data.length)) * 100)}%)
               </span>
             </>
           )}

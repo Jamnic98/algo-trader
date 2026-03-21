@@ -13,7 +13,8 @@ func NewSimpleStrategy() *SimpleStrategy {
 	return &SimpleStrategy{}
 }
 
-func (s *SimpleStrategy) OnCandle(c models.Candle) Decision {
+func (s *SimpleStrategy) OnCandle(ctx CandleContext) Decision {
+	c := ctx.Candle
 	defer func() { s.prev = &c }()
 
 	if s.prev == nil {

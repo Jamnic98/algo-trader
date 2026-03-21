@@ -1,8 +1,6 @@
 package strategies
 
 import (
-	"trader-core/internal/db/models"
-
 	"github.com/shopspring/decimal"
 )
 
@@ -12,7 +10,7 @@ func NewSimpleDCAStrategy() *SimpleDCAStrategy {
 	return &SimpleDCAStrategy{}
 }
 
-func (s *SimpleDCAStrategy) OnCandle(c models.Candle) Decision {
+func (s *SimpleDCAStrategy) OnCandle(ctx CandleContext) Decision {
 	return Decision{Signal: Buy}
 }
 
@@ -31,7 +29,8 @@ func NewSmartDCAStrategy(s SmartDCAStrategy) *SmartDCAStrategy {
 	}
 }
 
-func (s *SmartDCAStrategy) OnCandle(c models.Candle) Decision {
+func (s *SmartDCAStrategy) OnCandle(ctx CandleContext) Decision {
+	c := ctx.Candle
 	price := c.Close
 
 	if s.totalBought.IsPositive() {

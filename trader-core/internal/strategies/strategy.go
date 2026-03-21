@@ -22,7 +22,7 @@ type Decision struct {
 
 // Strategy interface for any strategy
 type Strategy interface {
-	OnCandle(c models.Candle) Decision
+	OnCandle(ctx CandleContext) Decision
 }
 
 func New(name string) (Strategy, error) {
@@ -36,4 +36,10 @@ func New(name string) (Strategy, error) {
 	default:
 		return nil, fmt.Errorf("unknown strategy: %q", name)
 	}
+}
+
+type CandleContext struct {
+	Candle   models.Candle
+	FeeRate  decimal.Decimal
+	AvgEntry decimal.Decimal // 0 if no position
 }

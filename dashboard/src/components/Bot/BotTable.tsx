@@ -64,7 +64,7 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
         return <span className="font-mono text-sm truncate">{bot.id.split('-')[0]}</span>
       case 'mode':
         return bot.mode === 'paper' ? (
-          <GlobeOff size={18} className="text-content-tertiary" />
+          <GlobeOff size={18} className="text-content-secondary" />
         ) : (
           <GlobeIcon size={18} className="text-accent" />
         )

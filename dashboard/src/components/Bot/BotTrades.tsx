@@ -16,11 +16,11 @@ const TRADES_LIMIT = 15
 const COLUMNS = [
   // { key: 'botID', label: 'Bot ID' },
   // { key: 'symbol', label: 'Symbol' },
-  { key: 'timestamp', label: 'Timestamp' },
   { key: 'side', label: 'Side' },
   { key: 'quantity', label: 'Quantity' },
   { key: 'price', label: 'Price' },
   { key: 'fee', label: 'Fee' },
+  { key: 'timestamp', label: 'Timestamp' },
   // { key: 'feeAsset', label: 'Fee Asset' },
 ]
 
@@ -106,7 +106,8 @@ const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
   }, [id, page, showAlert, onNewTrade])
 
   if (loading) return <BarLoader fullscreen />
-  if (!trades.length) return <div className="text-gray-500">No trades yet.</div>
+  if (!trades.length)
+    return <div className="text-content-secondary text-sm font-mono">No trades yet.</div>
 
   return (
     <div>

@@ -13,23 +13,23 @@ const BotCandles = ({ bot }: BotCandlesProps) => {
       <div className="flex justify-between text-xs font-mono">
         <div className="flex flex-row gap-6">
           <div className="flex flex-col gap-0.5">
-            <span className="text-content-tertiary tracking-wider">Lookback</span>
+            <span className="text-content-secondary tracking-wider">Lookback</span>
             <span className="text-accent">
               {bot.candles?.length ? candleRangeToString(bot.candles) : '-'}
             </span>
           </div>
 
           <div className="flex flex-col gap-0.5">
-            <span className="text-content-tertiary tracking-wider">Interval</span>
+            <span className="text-content-secondary tracking-wider">Interval</span>
             <span className="text-accent">{bot.interval ?? 0}</span>
           </div>
         </div>
 
         <div className="flex flex-col gap-0.5">
-          <span className="text-content-tertiary tracking-wider">Candles</span>
+          <span className="text-content-secondary tracking-wider">Candles</span>
           <span className="text-content-secondary">
             {bot.candles?.length ?? 0}
-            <span className="text-content-tertiary"> / </span>
+            <span className="text-content-secondary"> / </span>
             <span className="text-accent">{bot.maxCandles}</span>
           </span>
         </div>

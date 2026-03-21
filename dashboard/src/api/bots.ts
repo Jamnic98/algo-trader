@@ -39,5 +39,7 @@ export const getBotTrades = async (id: string, page = 1, limit = 15) =>
     { method: 'GET' }
   )
 
-export const getBotPositions = async (id: string): Promise<Position[]> =>
-  await api.fetchJson<Position[]>(`${botsEndpoint}/${id}/positions`)
+export const getBotPositions = async (id: string): Promise<Position[]> => {
+  const res = await api.fetchJson<{ positions: Position[] }>(`${botsEndpoint}/${id}/positions`)
+  return res.positions
+}

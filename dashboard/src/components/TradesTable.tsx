@@ -42,7 +42,9 @@ type TradesTableProps = {
 }
 
 const TradesTable = ({ trades, pagination, page, onPageChange }: TradesTableProps) => {
-  if (!trades.length) return <div className="text-gray-500">No trades yet.</div>
+  if (!trades.length) {
+    return <div className="text-content-secondary text-sm font-mono">No trades yet.</div>
+  }
 
   return (
     <div>
