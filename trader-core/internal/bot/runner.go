@@ -50,12 +50,23 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 
 			decision := b.Strategy.OnCandle(strategies.CandleContext{
 				Candle:  candle,
-				FeeRate: decimal.NewFromFloat(0.001),
+				FeeRate: b.BotConfig.StrategyConfig.TakerFee,
 			})
 
-			b.Logger.Info("strategy decision: %s", decision.Signal)
+			if decision.Reason != "" {
+				b.Logger.Info("decision: %s — %s", decision.Signal, decision.Reason)
+			} else {
+				b.Logger.Info("decision: %s", decision.Signal)
+			}
 
 			if decision.Signal == strategies.Hold {
+				continue
+			}
+
+			if decision.Signal == strategies.Hold {
+				if decision.Reason != "" {
+					b.Logger.Info("hold — %s", decision.Reason)
+				}
 				continue
 			}
 

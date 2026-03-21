@@ -23,6 +23,7 @@ const (
 type Decision struct {
 	Signal   Signal
 	Quantity *decimal.Decimal // nil = caller decides, non-nil = strategy dictates
+	Reason   string
 }
 
 // Strategy interface for any strategy
