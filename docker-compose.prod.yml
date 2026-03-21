@@ -34,12 +34,15 @@ services:
       dockerfile: Dockerfile.prod
     expose:
       - "8080"
-    # depends_on:
-    #   - redis
     networks:
       - app-network
     env_file:
       - .env.prod
+    volumes:
+      - ./logs:/app/logs
+
+networks:
+  app-network:
 
   # redis:
   #   image: redis:8.6-alpine
@@ -52,9 +55,9 @@ services:
   #     - redis-data:/data
   #   restart: unless-stopped
 
-networks:
-  app-network:
-    # external: true
+# networks:
+#   app-network:
+# external: true
 
 # volumes:
 #   redis-data:

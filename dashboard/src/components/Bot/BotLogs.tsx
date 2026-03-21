@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 
+import { BarLoader } from 'components'
 import { useAlert } from 'hooks'
 
 type LogEntry = {
@@ -11,6 +12,7 @@ type LogEntry = {
 const BotLogs = ({ id }: { id: string }) => {
   const { showAlert } = useAlert()
   const [logs, setLogs] = useState<LogEntry[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const es = new EventSource(
@@ -18,18 +20,23 @@ const BotLogs = ({ id }: { id: string }) => {
     )
 
     es.onmessage = (e) => {
+      setLoading(false)
       const entry: LogEntry = JSON.parse(e.data)
       setLogs((prev) => [entry, ...prev].slice(0, 200))
     }
 
     es.onerror = () => {
+      setLoading(false)
       const errorMsg = 'Bot logs stream error'
       console.error(errorMsg)
       showAlert({ type: 'error', title: errorMsg })
       es.close()
     }
+
     return () => es.close()
   }, [id, showAlert])
+
+  if (loading) return <BarLoader />
 
   if (!logs.length) return <div className="text-gray-500">No logs yet.</div>
 

@@ -105,7 +105,7 @@ const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
     return () => source.close()
   }, [id, page, showAlert, onNewTrade])
 
-  if (loading) return <BarLoader fullscreen />
+  if (loading) return <BarLoader />
   if (!trades.length)
     return <div className="text-content-secondary text-sm font-mono">No trades yet.</div>
 

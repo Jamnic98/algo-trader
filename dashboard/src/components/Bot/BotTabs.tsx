@@ -10,19 +10,7 @@ import {
 
 import { BotCandles, BotInfo, BotLogs, BotStats, BotTrades, Tabs } from 'components'
 import type { Bot, Tab } from 'types'
-
-const makeBotRunDurationStr = (botStart: string): string => {
-  const seconds = Math.floor((Date.now() - Date.parse(botStart)) / 1000)
-  const y = Math.floor(seconds / 31536000)
-  const mo = Math.floor((seconds % 31536000) / 2592000)
-  const d = Math.floor((seconds % 2592000) / 86400)
-  const h = Math.floor((seconds % 86400) / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = seconds % 60
-  return [y && `${y}y`, mo && `${mo}mo`, d && `${d}d`, h && `${h}h`, m && `${m}m`, `${s}s`]
-    .filter(Boolean)
-    .join(' ')
-}
+import { makeBotRunDurationStr } from 'utils'
 
 interface BotTabsProps {
   bot: Bot
@@ -42,6 +30,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
     return () => clearInterval(interval)
   }, [bot.started])
 
+  const { id } = bot
   const tabs: Tab[] = [
     {
       label: 'Info',
@@ -57,24 +46,25 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
       label: 'Trades',
       icon: <ArrowLeftRight size={13} />,
       content: (
-        <div className="space-y-3 text-gray-500">
-          <BotTrades id={bot.id} onNewTrade={onNewTrade} />
-        </div>
+        // <div className="space-y-3 text-gray-500">
+        <BotTrades id={id} onNewTrade={onNewTrade} />
+        // </div>
       ),
     },
     {
       label: 'Candles',
       icon: <CChart size={13} />,
-      content: bot.started ? (
-        <BotCandles bot={bot} />
-      ) : (
-        <div className="text-content-secondary text-sm font-mono">Bot not attached.</div>
-      ),
+      content:
+        bot?.started && bot.status === 'running' ? (
+          <BotCandles bot={bot} />
+        ) : (
+          <div className="text-content-secondary text-sm font-mono">Bot not attached.</div>
+        ),
     },
     {
       label: 'Logs',
       icon: <ScrollText size={13} />,
-      content: <BotLogs id={bot.id} />,
+      content: <BotLogs key={id} id={id} />,
     },
   ]
 

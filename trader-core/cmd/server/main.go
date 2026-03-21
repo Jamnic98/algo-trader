@@ -36,7 +36,7 @@ func main() {
 	// logging
 	logPath := ""
 	if cfg.Env == "prod" {
-		logPath = "bot.log"
+		logPath = "logs/bot.log"
 	}
 	if err := monitoring.SetupLogger(logPath); err != nil {
 		log.Fatalf("failed to setup logger: %v", err)

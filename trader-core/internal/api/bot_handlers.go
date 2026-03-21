@@ -266,7 +266,6 @@ func createBotHandler(c *gin.Context) {
 		return
 	}
 
-	// Check quantity value
 	if req.Quantity != "" {
 		if _, err := decimal.NewFromString(req.Quantity); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid quantity %q: must be a valid number", req.Quantity)})
@@ -274,25 +273,9 @@ func createBotHandler(c *gin.Context) {
 		}
 	}
 
-	cfg, err := parseBotCreateRequest(bot.CreateBotData{
-		Mode:       req.Mode,
-		Strategy:   req.Strategy,
-		Exchange:   req.Exchange,
-		AssetType:  req.AssetType,
-		Base:       req.Base,
-		Quote:      req.Quote,
-		Quantity:   req.Quantity,
-		Interval:   req.Interval,
-		MaxCandles: req.MaxCandles,
-	})
+	b, err := runtime.CreateBot(req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	b, err := runtime.CreateBot(cfg)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

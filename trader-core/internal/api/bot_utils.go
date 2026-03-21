@@ -40,7 +40,7 @@ func fetchBotTrades(botID string, page, limit int) ([]dto.TradeDTO, int64, int, 
 	return dtos, total, totalPages, nil
 }
 
-func parseBotCreateRequest(data bot.CreateBotData) (bot.BotConfig, error) {
+func parseBotCreateRequest(id string, data bot.CreateBotData) (bot.BotConfig, error) {
 	if data.Mode == "" {
 		data.Mode = bot.BotModePaper
 	}
@@ -95,7 +95,7 @@ func parseBotCreateRequest(data bot.CreateBotData) (bot.BotConfig, error) {
 		AssetType:      data.AssetType,
 		Base:           data.Base,
 		Quote:          data.Quote,
-		StrategyConfig: data.Strategy,
+		StrategyConfig: data.Strategy.ToStrategyConfig(id),
 		Interval:       data.Interval,
 		MaxCandles:     data.MaxCandles,
 		Quantity:       data.Quantity,

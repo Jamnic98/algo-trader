@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
 	"trader-core/internal/monitoring"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -30,13 +32,28 @@ func (r *Runtime) newBot(cfg BotConfig) (*Bot, error) {
 	}
 }
 
-func (r *Runtime) CreateBot(cfg BotConfig) (*Bot, error) {
+func (r *Runtime) CreateBot(data CreateBotData) (*Bot, error) {
+	id := uuid.New().String()
+
+	cfg, err := BuildBotConfig(id, data)
+	if err != nil {
+		return nil, err
+	}
+
 	b, err := r.newBot(cfg)
 	if err != nil {
 		return nil, err
 	}
+
+	if err := r.DB.Omit("StrategyConfig").Create(&b.BotConfig).Error; err != nil {
+		return nil, fmt.Errorf("failed to create bot config: %w", err)
+	}
+	if err := r.DB.Create(&b.BotConfig.StrategyConfig).Error; err != nil {
+		return nil, fmt.Errorf("failed to create strategy config: %w", err)
+	}
+
 	b.Logger.Info("created")
-	return b, r.DB.Save(&b.BotConfig).Error
+	return b, nil
 }
 
 func (r *Runtime) RestoreBot(cfg BotConfig) (*Bot, error) {
@@ -44,6 +61,11 @@ func (r *Runtime) RestoreBot(cfg BotConfig) (*Bot, error) {
 }
 
 func (r *Runtime) DeleteBot(b *Bot) error {
+	// delete strategy config first (child)
+	if err := r.DB.Where("bot_id = ?", b.ID).Delete(&models.StrategyConfig{}).Error; err != nil {
+		return err
+	}
+
 	result := r.DB.Delete(&BotConfig{}, "id = ?", b.ID)
 	if result.Error != nil {
 		return result.Error
@@ -57,7 +79,7 @@ func (r *Runtime) DeleteBot(b *Bot) error {
 
 func (r *Runtime) LoadBots() ([]BotConfig, error) {
 	var cfgs []BotConfig
-	return cfgs, r.DB.Find(&cfgs).Error
+	return cfgs, r.DB.Preload("StrategyConfig").Find(&cfgs).Error
 }
 
 func (rt *Runtime) AttachBot(b *Bot) error {

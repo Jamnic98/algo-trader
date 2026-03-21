@@ -1,13 +1,18 @@
 package strategies
 
 import (
-	"fmt"
 	"trader-core/internal/db/models"
 
 	"github.com/shopspring/decimal"
 )
 
 type Signal string
+
+type Logger interface {
+	Info(format string, args ...any)
+	Warn(format string, args ...any)
+	Error(format string, args ...any)
+}
 
 const (
 	Hold Signal = "HOLD"
@@ -23,19 +28,6 @@ type Decision struct {
 // Strategy interface for any strategy
 type Strategy interface {
 	OnCandle(ctx CandleContext) Decision
-}
-
-func New(name string) (Strategy, error) {
-	switch name {
-	case "simple":
-		return NewSimpleStrategy(), nil
-	case "simpleDca":
-		return NewSimpleDCAStrategy(), nil
-	// case "smartDca":
-	// 	return NewSmartDCAStrategy(), nil
-	default:
-		return nil, fmt.Errorf("unknown strategy: %q", name)
-	}
 }
 
 type CandleContext struct {

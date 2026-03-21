@@ -56,3 +56,16 @@ export const minutesToDurationString = (totalMinutes: number): string => {
 
   return parts.slice(0, 2).join(' ') || '0m'
 }
+
+export const makeBotRunDurationStr = (botStart: string): string => {
+  const seconds = Math.floor((Date.now() - Date.parse(botStart)) / 1000)
+  const y = Math.floor(seconds / 31536000)
+  const mo = Math.floor((seconds % 31536000) / 2592000)
+  const d = Math.floor((seconds % 2592000) / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  return [y && `${y}y`, mo && `${mo}mo`, d && `${d}d`, h && `${h}h`, m && `${m}m`, `${s}s`]
+    .filter(Boolean)
+    .join(' ')
+}

@@ -2,6 +2,8 @@ package bot
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -10,6 +12,8 @@ import (
 	"trader-core/internal/engine"
 	"trader-core/internal/strategies"
 
+	"github.com/shopspring/decimal"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -36,32 +40,87 @@ const (
 	BotModeLive  BotMode = "live"
 )
 
+type CreateBotStrategy struct {
+	Name        string          `json:"name"`
+	DisplayName string          `json:"display_name"`
+	Params      json.RawMessage `json:"params"`    // pass through as-is
+	MakerFee    *float64        `json:"maker_fee"` // nil = use default
+	TakerFee    *float64        `json:"taker_fee"` // nil = use default
+}
+
+func (s CreateBotStrategy) ToStrategyConfig(botID string) models.StrategyConfig {
+	params := datatypes.JSON([]byte("{}"))
+	if s.Params != nil {
+		params = datatypes.JSON(s.Params)
+	}
+
+	maker := decimal.NewFromFloat(0.001) // default Binance spot
+	taker := decimal.NewFromFloat(0.001)
+	if s.MakerFee != nil {
+		maker = decimal.NewFromFloat(*s.MakerFee)
+	}
+	if s.TakerFee != nil {
+		taker = decimal.NewFromFloat(*s.TakerFee)
+	}
+
+	return models.StrategyConfig{
+		BotID:       botID,
+		Name:        s.Name,
+		DisplayName: s.DisplayName,
+		Params:      params,
+		MakerFee:    maker,
+		TakerFee:    taker,
+	}
+}
+
 type CreateBotData struct {
-	Mode       BotMode               `json:"mode"`
-	Strategy   models.StrategyConfig `json:"strategy"`
-	Exchange   string                `json:"exchange"`
-	AssetType  string                `json:"assetType"`
-	Base       string                `json:"base"`
-	Quote      string                `json:"quote"`
-	Interval   string                `json:"interval"`
-	MaxCandles int                   `json:"maxCandles"`
-	Quantity   string                `json:"quantity"`
+	Mode       BotMode           `json:"mode"`
+	Strategy   CreateBotStrategy `json:"strategy"`
+	Exchange   string            `json:"exchange"`
+	AssetType  string            `json:"assetType"`
+	Base       string            `json:"base"`
+	Quote      string            `json:"quote"`
+	Interval   string            `json:"interval"`
+	MaxCandles int               `json:"maxCandles"`
+	Quantity   string            `json:"quantity"`
 }
 
 // BotConfig — owns all trading params + which strategy to use
 type BotConfig struct {
-	ID             string                `gorm:"primaryKey" json:"id"`
+	ID             string                `gorm:"primaryKey"    json:"id"`
 	Mode           BotMode               `json:"mode"`
-	StrategyConfig models.StrategyConfig `json:"strategy" gorm:"embedded;embeddedPrefix:strategy_"`
+	StrategyConfig models.StrategyConfig `json:"strategy"     gorm:"foreignKey:BotID"`
 	Exchange       string                `json:"exchange"`
 	AssetType      string                `json:"assetType"`
 	Base           string                `json:"base"`
 	Quote          string                `json:"quote"`
-	Interval       string                `json:"interval"`                             // e.g. "1h"
-	MaxCandles     int                   `gorm:"column:max_candles" json:"maxCandles"` // e.g. 200
-	Lookback       string                `json:"lookback"`                             // e.g. "200h"
-	Quantity       string                `json:"quantity"`                             // e.g. "0.001"
-	DeletedAt      gorm.DeletedAt        `gorm:"index" json:"-"`
+	Interval       string                `json:"interval"`
+	MaxCandles     int                   `gorm:"column:max_candles" json:"maxCandles"`
+	Lookback       string                `json:"lookback"`
+	Quantity       string                `json:"quantity"`
+	DeletedAt      gorm.DeletedAt        `gorm:"index"         json:"-"`
+}
+
+func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
+	interval, err := engine.ParseInterval(data.Interval)
+	if err != nil {
+		return BotConfig{}, fmt.Errorf("invalid interval %q: %w", data.Interval, err)
+	}
+	lookback := interval.Lookback(data.MaxCandles).String()
+
+	return BotConfig{
+		ID:             id,
+		Mode:           data.Mode,
+		Exchange:       data.Exchange,
+		AssetType:      data.AssetType,
+		Base:           data.Base,
+		Quote:          data.Quote,
+		Interval:       data.Interval,
+		MaxCandles:     data.MaxCandles,
+		Quantity:       data.Quantity,
+		Lookback:       lookback,
+		StrategyConfig: data.Strategy.ToStrategyConfig(id),
+	}, nil
 }
 
 type Bot struct {

@@ -14,6 +14,7 @@ import type { NameType, ValueType } from 'recharts/types/component/DefaultToolti
 
 import { getBotTrades, getPrice } from 'api'
 import type { Bot, Trade } from 'types'
+import { BarLoader } from 'components/Loaders'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -181,8 +182,7 @@ const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
     }
   }, [bot.id, tick, symbol])
 
-  if (loading)
-    return <div className="text-content-secondary text-sm font-mono animate-pulse">Loading...</div>
+  if (loading) return <BarLoader />
 
   if (!trades.length) {
     return <div className="text-content-secondary text-sm font-mono">No trades yet.</div>

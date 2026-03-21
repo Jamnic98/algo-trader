@@ -10,6 +10,9 @@ services:
       - app-network
     env_file:
       - .env.local
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
     depends_on:
       - trader-core
 
@@ -22,12 +25,16 @@ services:
       - "8080"
     ports:
       - "8080:8080"
-    # depends_on:
-    #   - redis
     networks:
       - app-network
     env_file:
       - .env.local
+    volumes:
+      - ./trader-core:/app
+      - /root/go/pkg:/root/go/pkg
+
+networks:
+  app-network:
 
   # redis:
   #   image: redis:8.6-alpine
@@ -40,9 +47,9 @@ services:
   #     - redis-data:/data
   #   restart: unless-stopped
 
-networks:
-  app-network:
-    # external: true
+# networks:
+#   app-network:
+# external: true
 
 # volumes:
 #   redis-data:

@@ -20,7 +20,8 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		cfg.ID = uuid.New().String()
 	}
 
-	strategy, err := strategies.New(cfg.StrategyConfig.Name)
+	logger := NewBotLogger(cfg.ID)
+	strategy, err := strategies.NewFromConfig(cfg.StrategyConfig, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get strategy: %w", err)
 	}
@@ -30,7 +31,7 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
 		Status:    BotCreated,
 
 		Engine:   f.Engine(),
-		Logger:   NewBotLogger(cfg.ID),
+		Logger:   logger,
 		Strategy: strategy,
 		CandleCh: make(chan models.Candle, 100),
 
