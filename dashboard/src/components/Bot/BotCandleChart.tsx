@@ -5,16 +5,21 @@ import type { Bot, OHLCVCandle } from 'types'
 import { useAlert } from 'hooks'
 import { INTERVAL_TO_HOURS } from 'utils'
 
+const candleCache = new Map<string, OHLCVCandle[]>()
+
 type BotCandleChartProps = { bot: Bot }
 
 const BotCandleChart = ({ bot }: BotCandleChartProps) => {
   const { id, status, base, quote } = bot
 
   const { showAlert } = useAlert()
+  const showAlertRef = useRef(showAlert)
   const snapshotDoneRef = useRef(false)
   const candlesRef = useRef<OHLCVCandle[]>([])
-  const [candles, setCandles] = useState<OHLCVCandle[]>([])
-  const [latestTick, setLatestTick] = useState<OHLCVCandle | null>(null)
+  const [candles, setCandles] = useState<OHLCVCandle[]>(() => candleCache.get(id) ?? [])
+  const [latestTick, setLatestTick] = useState<OHLCVCandle | null>(
+    () => candleCache.get(id)?.at(-1) ?? null
+  )
   const [snapshotDone, setSnapshotDone] = useState(false)
 
   useEffect(() => {
@@ -26,7 +31,6 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
 
     es.onmessage = (e) => {
       const candle = JSON.parse(e.data)
-
       const mapped: OHLCVCandle = {
         open: candle.open,
         high: candle.high,
@@ -38,8 +42,12 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
       }
 
       setCandles((prev) => {
+        // deduplicate by openTime
+        const exists = prev.some((c) => c.openTime === mapped.openTime)
+        if (exists) return prev
         const next = [...prev, mapped]
         candlesRef.current = next
+        candleCache.set(id, next)
         return next
       })
     }
@@ -56,7 +64,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
     })
 
     es.onerror = () => {
-      showAlert({ type: 'error', title: 'Bot candles stream error' })
+      showAlertRef.current({ type: 'error', title: 'Bot candles stream error' })
       es.close()
     }
 
@@ -68,7 +76,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
       snapshotDoneRef.current = false
       setSnapshotDone(false)
     }
-  }, [id, status, showAlert])
+  }, [id, status, candleCache])
 
   useEffect(() => {
     if (status === 'created') return
@@ -78,6 +86,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
     )
 
     es.onmessage = (e) => {
+      console.log('tick raw:', e.data)
       const candle = JSON.parse(e.data)
       if (!snapshotDoneRef.current) {
         snapshotDoneRef.current = true
