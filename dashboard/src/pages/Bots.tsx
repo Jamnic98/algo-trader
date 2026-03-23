@@ -105,10 +105,10 @@ const Bots = () => {
   const handleCreateBot = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (maxCandles < 1) {
+    if (!(maxCandles > 0)) {
       showAlert({
         title: 'Invalid form',
-        message: 'Candles must be at least 1',
+        message: 'Max candles must be greater than 0',
         type: 'error',
       })
       return

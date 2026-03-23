@@ -16,7 +16,7 @@ const Dashboard = () => {
     const fetchBots = async () => {
       try {
         const bots = await getAllBots()
-        setBots(bots.filter((bot) => bot.status === 'running'))
+        setBots(bots.filter((bot) => bot.status === 'trading'))
       } catch {
         showAlert({
           title: 'Failed to load bots',
@@ -42,7 +42,7 @@ const Dashboard = () => {
             <BotTable bots={bots} columns={['mode', 'symbol', 'quantity', 'interval', 'started']} />
           </div>
         ) : (
-          <div className="text-gray-500">No bots running.</div>
+          <div className="text-gray-500">No bots trading.</div>
         )}
       </div>
     </div>

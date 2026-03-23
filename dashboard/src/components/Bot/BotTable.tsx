@@ -6,7 +6,7 @@ import { BotActionButtons, BotStatusPill } from 'components'
 import type { Bot, LoadingAction } from 'types'
 import { displaySymbol, getExchangeLabel, getStrategyLabel } from 'utils'
 
-type BotStatus = 'running' | 'attached' | 'created'
+type BotStatus = 'trading' | 'attached' | 'created'
 type BotFilters = { status?: BotStatus }
 type ColumnKey =
   | 'id'

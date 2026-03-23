@@ -51,7 +51,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
       label: 'Candles',
       icon: <CChart size={13} />,
       content:
-        bot?.started && bot.status === 'running' ? (
+        bot?.started && bot.status === 'trading' ? (
           <BotCandles bot={bot} />
         ) : (
           <div className="text-content-secondary text-sm font-mono">Bot not attached.</div>

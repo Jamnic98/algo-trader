@@ -98,7 +98,7 @@ const BotActionButtons = ({
       </>
     )}
 
-    {botStatus === 'running' && (
+    {botStatus === 'trading' && (
       <ActionButton
         onClick={(e) => {
           e.stopPropagation()

@@ -1,6 +1,6 @@
 import type { OHLCVCandle } from 'types'
 
-export type BotStatus = 'created' | 'running' | 'dead'
+export type BotStatus = 'created' | 'trading' | 'dead'
 export type BotMode = 'paper' | 'live'
 // TODO: Add exchange
 export type Exchange = 'binance' //| 'alpaca'

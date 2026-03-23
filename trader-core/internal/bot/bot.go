@@ -30,7 +30,7 @@ type BotStatus string
 
 const (
 	BotCreated BotStatus = "created"
-	BotRunning BotStatus = "running"
+	BotRunning BotStatus = "trading"
 )
 
 type BotMode string

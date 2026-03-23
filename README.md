@@ -12,36 +12,43 @@ with clean separation between market data ingestion, candle dispatching, strateg
 The system is split into a few core components:
 
 ### Binance Client
+
 - Maintains a WebSocket connection to Binance
 - Receives raw kline (candle) events
 - Pushes messages into an internal channel
 
 ### MarketDataManager
+
 - Consumes raw WebSocket messages
 - Parses kline events
 - Filters **only closed candles**
 - Fans out candles to subscribed bots via the Dispatcher
 
 ### Dispatcher
+
 - Maintains subscriptions per symbol + interval
 - Sends candles to each bot's CandleCh
 - Non-blocking fan-out (drops if a bot is slow)
 
 ### Bot
+
 - Owns strategy execution
 - Maintains internal candle buffer (lookback-based)
 - Executes strategy logic on each closed candle
 - Can be started, stopped, attached, or detached at runtime
 
 ### Runtime
+
 - Glue layer between Dispatcher, MarketDataManager, and Bots
 - Responsible for attaching and detaching bots from live feeds
 
 ### API (Gin)
+
 - Create, start, stop, delete bots via HTTP
 - Returns safe DTOs (no channels or internal state leaks)
 
 ### Frontend (Vite + Tailwind)
+
 - Web-based control panel for managing bots
 - Communicates with the Go API over HTTP
 - Displays bot state, configuration, and lifecycle
@@ -59,9 +66,9 @@ Bots intentionally separate **market attachment** from **strategy execution**.
   Bot exists but is not connected to market data.
 
 - `attached`  
-  Bot is subscribed to market data and receiving candles, but strategy is not running.
+  Bot is subscribed to market data and receiving candles, but strategy is not trading.
 
-- `running`  
+- `trading`  
   Bot is attached **and** actively executing its strategy.
 
 - `stopped`  
@@ -97,7 +104,7 @@ The frontend lives in its own directory and acts purely as a UI layer.
 - Create bots
 - Start and stop bots
 - View bot status and configuration
-- Inspect running state in real time
+- Inspect trading state in real time
 
 ## Design goals
 
@@ -112,18 +119,17 @@ The frontend lives in its own directory and acts purely as a UI layer.
 ## Notes
 
 This project intentionally avoids:
+
 - Global mutable state where possible
 - Blocking fan-out
 - Implicit goroutine lifetimes
 
 Everything should start, stop, and clean up explicitly.
 
-___
-
+---
 
 ### Running the app with docker compose
 
-
-``` bash
+```bash
 docker compose -f docker-compose.prod.yml up --build
 ```
