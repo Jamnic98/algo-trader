@@ -5,7 +5,7 @@ import type { Bot, OHLCVCandle } from 'types'
 import { useAlert } from 'hooks'
 import { INTERVAL_TO_HOURS } from 'utils'
 
-const candleCache = new Map<string, OHLCVCandle[]>()
+// const candleCache = new Map<string, OHLCVCandle[]>()
 
 type BotCandleChartProps = { bot: Bot }
 
@@ -16,10 +16,8 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
   const showAlertRef = useRef(showAlert)
   const snapshotDoneRef = useRef(false)
   const candlesRef = useRef<OHLCVCandle[]>([])
-  const [candles, setCandles] = useState<OHLCVCandle[]>(() => candleCache.get(id) ?? [])
-  const [latestTick, setLatestTick] = useState<OHLCVCandle | null>(
-    () => candleCache.get(id)?.at(-1) ?? null
-  )
+  const [candles, setCandles] = useState<OHLCVCandle[]>([])
+  const [latestTick, setLatestTick] = useState<OHLCVCandle | null>(() => candles[-1])
   const [snapshotDone, setSnapshotDone] = useState(false)
 
   useEffect(() => {
@@ -47,7 +45,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
         if (exists) return prev
         const next = [...prev, mapped]
         candlesRef.current = next
-        candleCache.set(id, next)
+        // candleCache.set(id, next)
         return next
       })
     }
@@ -76,7 +74,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
       snapshotDoneRef.current = false
       setSnapshotDone(false)
     }
-  }, [id, status, candleCache])
+  }, [id, status])
 
   useEffect(() => {
     if (status === 'created') return
@@ -86,7 +84,6 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
     )
 
     es.onmessage = (e) => {
-      console.log('tick raw:', e.data)
       const candle = JSON.parse(e.data)
       if (!snapshotDoneRef.current) {
         snapshotDoneRef.current = true

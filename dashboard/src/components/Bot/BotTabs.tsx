@@ -54,7 +54,9 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
         bot?.started && bot.status === 'trading' ? (
           <BotCandles bot={bot} />
         ) : (
-          <div className="text-content-secondary text-sm font-mono">Bot not attached.</div>
+          <div className="text-content-secondary text-sm font-mono">
+            Start bot to fetch candlestick data.
+          </div>
         ),
     },
     {

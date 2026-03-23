@@ -265,6 +265,7 @@ func streamBotTicksHandler(c *gin.Context) {
 		}
 	}
 }
+
 func createBotHandler(c *gin.Context) {
 	var req bot.CreateBotData
 
