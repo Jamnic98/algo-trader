@@ -6,7 +6,7 @@ import { BarLoader, BotActionButtons, BotStatusPill, BotTabs, Heading } from 'co
 import { useAlert } from 'hooks'
 import type { Bot, LoadingAction } from 'types'
 
-const BotOverview = () => {
+const BotDetails = () => {
   const { id } = useParams()
   const { showAlert } = useAlert()
   const navigate = useNavigate()
@@ -89,7 +89,7 @@ const BotOverview = () => {
 
   return (
     <div className="space-y-8">
-      <Heading title="Bot Overview" />
+      <Heading title="Bot Details" />
       {bot && (
         <>
           <div className="w-fit">
@@ -118,4 +118,4 @@ const BotOverview = () => {
   )
 }
 
-export default BotOverview
+export default BotDetails

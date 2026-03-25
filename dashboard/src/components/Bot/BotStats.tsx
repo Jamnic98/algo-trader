@@ -166,8 +166,6 @@ const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
     Promise.all([getBotTrades(bot.id, 1, 500), getPrice(symbol)])
       .then(([tradesRes, price]) => {
         if (cancelled) return
-        console.log('trades:', tradesRes)
-        console.log('price:', price)
         setTrades(tradesRes.data)
         setCurrentPrice(price)
         setLoading(false)

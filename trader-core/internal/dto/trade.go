@@ -7,12 +7,6 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-const (
-	priceScale    = int64(1e8)
-	quantityScale = int64(1e6)
-	feeScale      = int64(1e8)
-)
-
 type TradeDTO struct {
 	ID        uint            `json:"id"`
 	BotID     string          `json:"botID"`

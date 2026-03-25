@@ -1,13 +1,53 @@
 package strategies
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/shopspring/decimal"
 )
+
+func init() {
+	Register("simple_dca", StrategySchema{
+		Name:        "simple_dca",
+		DisplayName: "Simple DCA",
+		Params:      []ParamSchema{},
+	}, func(_ []byte) (Strategy, error) {
+		return NewSimpleDCAStrategy(SimpleDCAParams{}), nil
+	})
+
+	minSpend := 0.01
+	Register("smart_dca", StrategySchema{
+		Name:        "smart_dca",
+		DisplayName: "Smart DCA",
+		Params: []ParamSchema{
+			{
+				Key:     "fixed_spend",
+				Label:   "Fixed Spend",
+				Type:    ParamTypeString,
+				Default: "10.00",
+				Min:     &minSpend,
+			},
+		},
+	}, func(paramsJSON []byte) (Strategy, error) {
+		var params SmartDCAParams
+		if len(paramsJSON) > 0 {
+			if err := json.Unmarshal(paramsJSON, &params); err != nil {
+				return nil, fmt.Errorf("parsing smart_dca params: %w", err)
+			}
+		}
+		if params.FixedSpend == "" {
+			params.FixedSpend = "10.00"
+		}
+		// logger passed as nil here — bot factory will need to inject it
+		return NewSmartDCAStrategy(params), nil
+	})
+}
 
 type SimpleDCAStrategy struct{}
 type SimpleDCAParams struct{}
 
-func NewSimpleDCAStrategy(params SimpleDCAParams, logger Logger) *SimpleDCAStrategy {
+func NewSimpleDCAStrategy(params SimpleDCAParams) *SimpleDCAStrategy {
 	return &SimpleDCAStrategy{}
 }
 
@@ -18,26 +58,19 @@ func (s *SimpleDCAStrategy) OnCandle(ctx CandleContext) Decision {
 type SmartDCAParams struct {
 	FixedSpend string `json:"fixed_spend"` // string → decimal, e.g. "50.00"
 }
+
 type SmartDCAStrategy struct {
 	fixedSpend  decimal.Decimal
 	totalSpent  decimal.Decimal
 	totalBought decimal.Decimal
-	logger      Logger
 }
 
-// TODO: implement
-func NewSmartDCAStrategy(params SmartDCAParams, logger Logger) *SmartDCAStrategy {
-
+func NewSmartDCAStrategy(params SmartDCAParams) *SmartDCAStrategy {
 	fixedSpend, err := decimal.NewFromString(params.FixedSpend)
 	if err != nil || fixedSpend.IsZero() {
-		logger.Info("[SmartDCA] invalid fixed_spend %q, defaulting to 10", params.FixedSpend)
 		fixedSpend = decimal.NewFromInt(10)
 	}
-	return &SmartDCAStrategy{
-		fixedSpend: fixedSpend,
-		// totalSpent:  s.totalSpent,
-		// totalBought: s.totalBought,
-	}
+	return &SmartDCAStrategy{fixedSpend: fixedSpend}
 }
 
 func (s *SmartDCAStrategy) OnCandle(ctx CandleContext) Decision {
@@ -55,11 +88,6 @@ func (s *SmartDCAStrategy) OnCandle(ctx CandleContext) Decision {
 			profit := sellValue.Sub(s.totalSpent).Sub(sellFee)
 
 			if profit.IsNegative() {
-				s.logger.Info(
-					"[SmartDCA] skipping sell — profit %s negative after fee %s",
-					profit.StringFixed(8),
-					sellFee.StringFixed(8),
-				)
 				return Decision{Signal: Hold}
 			}
 
@@ -76,11 +104,6 @@ func (s *SmartDCAStrategy) OnCandle(ctx CandleContext) Decision {
 	buyFee := cost.Mul(ctx.FeeRate)
 
 	if buyFee.GreaterThanOrEqual(s.fixedSpend) {
-		s.logger.Info(
-			"[SmartDCA] skipping buy — fee %s exceeds fixed spend %s",
-			buyFee.StringFixed(8),
-			s.fixedSpend.StringFixed(8),
-		)
 		return Decision{Signal: Hold}
 	}
 

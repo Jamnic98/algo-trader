@@ -7,9 +7,9 @@ import { MAX_CANDLES, STRATEGY_CONFIG } from 'utils'
 import type { Bot, CreateBot, CreateBotStrategy, LoadingAction } from 'types'
 
 // Strategy only has name now
-const botStrategyValidators: ((s: CreateBotStrategy) => ValidationResult)[] = [
-  (s) => (s.name ? { valid: true } : { valid: false, error: 'Strategy name is required' }),
-]
+// const botStrategyValidators: ((s: CreateBotStrategy) => ValidationResult)[] = [
+//   (s) => (s.name ? { valid: true } : { valid: false, error: 'Strategy name is required' }),
+// ]
 
 // interval, quantity, maxCandles live on the form now
 const createBotValidators: ((f: CreateBot) => ValidationResult)[] = [
@@ -18,13 +18,13 @@ const createBotValidators: ((f: CreateBot) => ValidationResult)[] = [
   (f) => (f.mode ? { valid: true } : { valid: false, error: 'Mode is required' }),
   (f) => (f.interval ? { valid: true } : { valid: false, error: 'Interval is required' }),
   (f) => (f.quantity ? { valid: true } : { valid: false, error: 'Quantity is required' }),
-  (f) => {
-    for (const validator of botStrategyValidators) {
-      const result = validator(f.strategy)
-      if (!result.valid) return result
-    }
-    return { valid: true }
-  },
+  // (f) => {
+  //   for (const validator of botStrategyValidators) {
+  //     const result = validator(f.strategy)
+  //     if (!result.valid) return result
+  //   }
+  //   return { valid: true }
+  // },
 ]
 const validateCreateBotForm = (formData: CreateBot): ValidationResult => {
   for (const validator of createBotValidators) {
@@ -34,9 +34,6 @@ const validateCreateBotForm = (formData: CreateBot): ValidationResult => {
   return { valid: true }
 }
 
-const defaultStrategy: CreateBotStrategy = {
-  name: 'simple',
-}
 const defaultFormData: CreateBot = {
   mode: 'paper',
   exchange: 'binance',
@@ -46,7 +43,8 @@ const defaultFormData: CreateBot = {
   interval: '1h', //1h
   maxCandles: 200,
   quantity: '0.001',
-  strategy: defaultStrategy,
+  strategy_id: 1,
+  // strategy_id: 1,
 }
 
 type ValidationResult = { valid: true } | { valid: false; error: string }
@@ -102,7 +100,7 @@ const Bots = () => {
     }
   }
 
-  const handleCreateBot = async (e: React.SyntheticEvent<HTMLFormElement>) => {
+  const handleCreateBot = async (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     if (!(maxCandles > 0)) {

@@ -39,6 +39,7 @@ func InitBotAPI(rt *bot.Runtime) {
 		activeBotsMu.Lock()
 		activeBots[b.ID] = b
 		activeBotsMu.Unlock()
+
 	}
 }
 
@@ -52,9 +53,9 @@ func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("/:id/candles/stream", streamBotCandlesHandler)
 	rg.GET("/:id/ticks/stream", streamBotTicksHandler)
 
+	rg.POST("", createBotHandler)
 	rg.POST("/:id/start", startBotHandler)
 	rg.POST("/:id/stop", stopBotHandler)
-	rg.POST("", createBotHandler)
 	rg.DELETE("/:id", deleteBotHandler)
 }
 
@@ -90,6 +91,7 @@ func getBotsHandler(c *gin.Context) {
 		for i, b := range bots {
 			dtos[i] = botToDTO(b)
 		}
+
 		c.JSON(http.StatusOK, gin.H{"bots": dtos})
 	}
 }

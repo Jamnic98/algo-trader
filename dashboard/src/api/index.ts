@@ -2,6 +2,7 @@ export * from './account'
 export * from './bots'
 export * from './diagnostics'
 export * from './price'
+export * from './strategies'
 export * from './trades'
 
 class ApiError extends Error {

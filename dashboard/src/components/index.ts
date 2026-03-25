@@ -1,6 +1,7 @@
 export * from './Alert'
 export * from './Bot'
 export * from './Loaders'
+export * from './Strategy'
 
 export { default as Breadcrumbs } from './Breadcrumbs'
 export { default as ChartCard } from './ChartCard'

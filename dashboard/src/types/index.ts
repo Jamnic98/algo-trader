@@ -3,6 +3,7 @@ export * from './alert'
 export * from './bot'
 export * from './candle'
 export * from './diagnostic'
+export * from './strategy'
 export * from './tab'
 export * from './trade'
 

@@ -7,6 +7,7 @@ import (
 	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
 	"trader-core/internal/monitoring"
+	"trader-core/internal/strategies"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -22,50 +23,47 @@ type Runtime struct {
 	Errors        chan string
 }
 
-func (r *Runtime) newBot(cfg BotConfig) (*Bot, error) {
+func (r *Runtime) newBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
 	switch cfg.Mode {
-	// TODO: live implementation
-	// case BotModeLive:
-	// 	return r.BotFactory.NewLiveBot(cfg)
 	default:
-		return r.BotFactory.NewPaperBot(cfg)
+		return r.BotFactory.NewPaperBot(cfg, strategy)
 	}
 }
 
 func (r *Runtime) CreateBot(data CreateBotData) (*Bot, error) {
-	id := uuid.New().String()
+	var strategyModel models.Strategy
 
+	if err := r.DB.First(&strategyModel, data.StrategyID).Error; err != nil {
+		return nil, fmt.Errorf("strategy %d not found: %w", data.StrategyID, err)
+	}
+
+	fmt.Println("SM", strategyModel)
+
+	activeStrategy, err := ResolveStrategy(r.DB, strategyModel)
+	if err != nil {
+		return nil, fmt.Errorf("resolving strategy: %w", err)
+	}
+
+	id := uuid.New().String()
 	cfg, err := BuildBotConfig(id, data)
 	if err != nil {
 		return nil, err
 	}
 
-	b, err := r.newBot(cfg)
+	b, err := r.newBot(cfg, activeStrategy)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := r.DB.Omit("StrategyConfig").Create(&b.BotConfig).Error; err != nil {
+	if err := r.DB.Omit("Strategy").Create(&b.BotConfig).Error; err != nil {
 		return nil, fmt.Errorf("failed to create bot config: %w", err)
-	}
-	if err := r.DB.Create(&b.BotConfig.StrategyConfig).Error; err != nil {
-		return nil, fmt.Errorf("failed to create strategy config: %w", err)
 	}
 
 	b.Logger.Info("new bot created")
 	return b, nil
 }
 
-func (r *Runtime) RestoreBot(cfg BotConfig) (*Bot, error) {
-	return r.newBot(cfg)
-}
-
 func (r *Runtime) DeleteBot(b *Bot) error {
-	// delete strategy config first (child)
-	if err := r.DB.Where("bot_id = ?", b.ID).Delete(&models.StrategyConfig{}).Error; err != nil {
-		return err
-	}
-
 	result := r.DB.Delete(&BotConfig{}, "id = ?", b.ID)
 	if result.Error != nil {
 		return result.Error
@@ -79,7 +77,7 @@ func (r *Runtime) DeleteBot(b *Bot) error {
 
 func (r *Runtime) LoadBots() ([]BotConfig, error) {
 	var cfgs []BotConfig
-	return cfgs, r.DB.Preload("StrategyConfig").Find(&cfgs).Error
+	return cfgs, r.DB.Preload("Strategy").Find(&cfgs).Error
 }
 
 func (rt *Runtime) AttachBot(b *Bot) error {
@@ -163,4 +161,17 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 	b.Started = time.Time{}
 	b.Logger.Info("detached")
 	return nil
+}
+
+func (r *Runtime) RestoreBot(cfg BotConfig) (*Bot, error) {
+	var strategyModel models.Strategy
+	if err := r.DB.First(&strategyModel, cfg.StrategyID).Error; err != nil {
+		return nil, fmt.Errorf("strategy %d not found: %w", cfg.StrategyID, err)
+	}
+
+	activeStrategy, err := ResolveStrategy(r.DB, strategyModel)
+	if err != nil {
+		return nil, err
+	}
+	return r.newBot(cfg, activeStrategy)
 }

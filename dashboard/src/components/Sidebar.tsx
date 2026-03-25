@@ -8,6 +8,7 @@ import {
   Home,
   PanelLeftClose,
   PanelLeftOpen,
+  // Route,
 } from 'lucide-react'
 
 import { StatusIndicator } from 'components'
@@ -18,6 +19,7 @@ type SidebarLink = { label: string; url: string; icon: ReactNode }
 const sidebarLinks: SidebarLink[] = [
   { label: 'dashboard', url: '/', icon: <Home size={18} /> },
   { label: 'bots', url: '/bots', icon: <Bot size={18} /> },
+  // { label: 'strategies', url: '/strategies', icon: <Route size={18} /> },
   { label: 'trades', url: '/trades', icon: <ArrowLeftRight size={18} /> },
   { label: 'accounts', url: '/accounts', icon: <Coins size={18} /> },
   { label: 'diagnostics', url: '/diagnostics', icon: <Activity size={18} /> },

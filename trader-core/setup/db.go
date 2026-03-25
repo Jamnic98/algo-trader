@@ -13,7 +13,10 @@ func InitDatabase(cfg Config) *gorm.DB {
 	db.ConnectPostgres(cfg.Dsn)
 
 	// Auto-migrate tables
-	db.Migrate(&bot.BotConfig{}, &models.Trade{}, &models.StrategyConfig{})
+	db.Migrate(&bot.BotConfig{}, &models.Trade{}, &models.Strategy{})
+
+	// Seed db
+	db.SeedStrategies(db.DB)
 
 	return db.DB
 }

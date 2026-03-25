@@ -1,7 +1,6 @@
 import { Copy } from 'lucide-react'
 
 import { useAlert } from 'hooks'
-import { getStrategyLabel } from 'utils'
 import type { Bot } from 'types'
 
 type BotInfoProps = {
@@ -34,9 +33,10 @@ const BotInfo = ({ bot, runningFor }: BotInfoProps) => {
         {/* Exchange */}
         <span className="text-content-secondary">Exchange</span>
         <span className="text-content-secondary capitalize">{bot.exchange}</span>
+        {/* TODO: add back */}
         {/* Strategy */}
-        <span className="text-content-secondary">Strategy</span>
-        <span className="text-content-secondary">{getStrategyLabel(bot.strategy.name)}</span>
+        {/* <span className="text-content-secondary">Strategy</span>
+        <span className="text-content-secondary">{bot.strategy.name}</span> */}
         {/* Interval */}
         <span className="text-content-secondary">Interval</span>
         <span className="text-content-secondary">{bot.interval}</span>

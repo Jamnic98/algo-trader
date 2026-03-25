@@ -3,12 +3,14 @@ import { Plus } from 'lucide-react'
 import {
   candleIntervals,
   lookbackToString,
-  AVAILABLE_STRATEGIES,
   EXCHANGE_CONFIG,
   MAX_CANDLES,
   STRATEGY_CONFIG,
 } from 'utils'
 import type { CreateBot, CreateBotStrategy } from 'types'
+import { useStrategies } from 'hooks'
+import { BarLoader } from 'components'
+import { Link } from 'react-router-dom'
 
 type BotFormProps = {
   form: CreateBot
@@ -17,7 +19,7 @@ type BotFormProps = {
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
   onModeToggle: () => void
   onStrategyChange: (strategy: CreateBotStrategy) => void
-  onSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void
+  onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void
 }
 
 const BotForm = ({
@@ -29,8 +31,50 @@ const BotForm = ({
   onStrategyChange,
   onSubmit,
 }: BotFormProps) => {
+  const { data: strategies, loading: loadingStrategies } = useStrategies()
   const availableAssetTypes = EXCHANGE_CONFIG[form.exchange]?.assetTypes ?? []
-  const strategyConfig = STRATEGY_CONFIG[form.strategy.name] ?? {}
+  const strategyConfig = STRATEGY_CONFIG[form.strategy_id] ?? {}
+
+  const renderStrategyField = () => {
+    if (loadingStrategies) return <BarLoader />
+
+    if (!strategies || strategies.length === 0)
+      return (
+        <div className="flex flex-col gap-1">
+          <label className="text-content-secondary text-xs uppercase tracking-wider">
+            Strategy
+          </label>
+          <Link
+            to="/strategies/create"
+            className="text-accent text-sm py-1.5 hover:opacity-80 transition-opacity"
+          >
+            + Create a strategy
+          </Link>
+        </div>
+      )
+
+    return (
+      <div className="flex flex-col gap-1">
+        <label className="text-content-secondary text-xs uppercase tracking-wider">Strategy</label>
+        <select
+          name="strategy"
+          value={strategies[0].name}
+          onChange={(e) => {
+            const selected = strategies.find((s) => s.name === e.target.value)
+            if (selected) onStrategyChange({ name: selected.name })
+          }}
+          className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
+          required
+        >
+          {strategies.map(({ name }) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-1">
@@ -119,104 +163,86 @@ const BotForm = ({
         )}
 
         {/* Strategy */}
-        <div className="flex flex-col gap-1">
-          <label className="text-content-secondary text-xs uppercase tracking-wider">
-            Strategy
-          </label>
-          <select
-            name="strategy"
-            value={form.strategy.name}
-            onChange={(e) => {
-              const selected = AVAILABLE_STRATEGIES.find((s) => s.name === e.target.value)
-              if (selected) onStrategyChange({ name: selected.name })
-            }}
-            className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
-            required
-          >
-            {AVAILABLE_STRATEGIES.map(({ label, name }) => (
-              <option key={name} value={name}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {renderStrategyField()}
 
-        {/* Strategy params */}
-        {(!strategyConfig.managesInterval ||
-          !strategyConfig.managesLookback ||
-          !strategyConfig.managesQuantity) && (
-          <>
-            <div className="w-px self-stretch bg-border" />
+        {/* Strategy params — only shown when strategy is loaded */}
+        {strategies &&
+          strategies.length > 0 &&
+          (!strategyConfig.managesInterval ||
+            !strategyConfig.managesLookback ||
+            !strategyConfig.managesQuantity) && (
+            <>
+              <div className="w-px self-stretch bg-border" />
 
-            {!strategyConfig.managesQuantity && (
-              <div className="flex flex-col gap-1">
-                <label className="text-content-secondary text-xs uppercase tracking-wider">
-                  Quantity
-                </label>
-                <input
-                  name="quantity"
-                  value={form.quantity}
-                  onChange={onChange}
-                  placeholder="0.001"
-                  className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-24 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/20"
-                  required
-                />
-              </div>
-            )}
+              {!strategyConfig.managesQuantity && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-content-secondary text-xs uppercase tracking-wider">
+                    Quantity
+                  </label>
+                  <input
+                    name="quantity"
+                    value={form.quantity}
+                    onChange={onChange}
+                    placeholder="0.001"
+                    className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-24 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/20"
+                    required
+                  />
+                </div>
+              )}
 
-            {(!strategyConfig.managesLookback || !strategyConfig.managesInterval) && (
-              <div className="flex items-end gap-2">
-                {!strategyConfig.managesLookback && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-content-secondary text-xs uppercase tracking-wider">
-                      Candles
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={MAX_CANDLES[form.interval] ?? 100}
-                      value={maxCandles}
-                      onChange={(e) => {
-                        const max = MAX_CANDLES[form.interval] ?? 100
-                        onLookbackChange(Math.min(Number(e.target.value), max))
-                      }}
-                      placeholder="200"
-                      className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-24 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/20"
-                      required
-                    />
-                  </div>
-                )}
+              {(!strategyConfig.managesLookback || !strategyConfig.managesInterval) && (
+                <div className="flex items-end gap-2">
+                  {!strategyConfig.managesLookback && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-content-secondary text-xs uppercase tracking-wider">
+                        Candles
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={MAX_CANDLES[form.interval] ?? 100}
+                        value={maxCandles}
+                        onChange={(e) => {
+                          const max = MAX_CANDLES[form.interval] ?? 100
+                          onLookbackChange(Math.min(Number(e.target.value), max))
+                        }}
+                        placeholder="200"
+                        className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-24 text-sm focus:outline-none focus:border-accent transition-colors placeholder:text-content-secondary/20"
+                        required
+                      />
+                    </div>
+                  )}
 
-                {!strategyConfig.managesInterval && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-content-secondary text-xs uppercase tracking-wider">
-                      Interval
-                    </label>
-                    <select
-                      name="interval"
-                      value={form.interval}
-                      onChange={onChange}
-                      className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
-                      required
-                    >
-                      {candleIntervals.map((i) => (
-                        <option key={i} value={i}>
-                          {i}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                  {!strategyConfig.managesInterval && (
+                    <div className="flex flex-col gap-1">
+                      <label className="text-content-secondary text-xs uppercase tracking-wider">
+                        Interval
+                      </label>
+                      <select
+                        name="interval"
+                        value={form.interval}
+                        onChange={onChange}
+                        className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
+                        required
+                      >
+                        {candleIntervals.map((i) => (
+                          <option key={i} value={i}>
+                            {i}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                {!strategyConfig.managesLookback && (
-                  <span className="text-accent text-xs font-mono pb-2 whitespace-nowrap">
-                    ≈ {lookbackToString(maxCandles, form.interval)}
-                  </span>
-                )}
-              </div>
-            )}
-          </>
-        )}
+                  {!strategyConfig.managesLookback && (
+                    <span className="text-accent text-xs font-mono pb-2 whitespace-nowrap">
+                      ≈ {lookbackToString(maxCandles, form.interval)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </>
+          )}
 
         <button
           type="submit"

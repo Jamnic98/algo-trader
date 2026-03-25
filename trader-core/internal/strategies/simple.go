@@ -12,11 +12,20 @@ type SimpleStrategy struct {
 	hasPosition bool
 	prev        *models.Candle
 	buyPrice    decimal.Decimal
-	logger      Logger
 }
 
-func NewSimpleStrategy(params SimpleParams, logger Logger) *SimpleStrategy {
-	return &SimpleStrategy{logger: logger}
+func init() {
+	Register("simple", StrategySchema{
+		Name:        "simple",
+		DisplayName: "Simple",
+		Params:      []ParamSchema{}, // no params
+	}, func(_ []byte) (Strategy, error) {
+		return NewSimpleStrategy(SimpleParams{}), nil
+	})
+}
+
+func NewSimpleStrategy(params SimpleParams) *SimpleStrategy {
+	return &SimpleStrategy{}
 }
 
 func (s *SimpleStrategy) OnCandle(ctx CandleContext) Decision {

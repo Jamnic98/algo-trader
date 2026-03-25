@@ -26,6 +26,7 @@ type CandleDTO struct {
 
 func CandleToDTO(c Candle) CandleDTO {
 	return CandleDTO{
+		// TODO: review
 		Open:      c.Open.InexactFloat64(),
 		Close:     c.Close.InexactFloat64(),
 		High:      c.High.InexactFloat64(),

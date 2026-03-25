@@ -1,7 +1,6 @@
 package bot
 
 import (
-	"fmt"
 	"trader-core/internal/db/models"
 	"trader-core/internal/dto"
 	"trader-core/internal/engine"
@@ -15,25 +14,19 @@ type BotFactory struct {
 	Engine  func() engine.ExecutionEngine
 }
 
-func (f *BotFactory) NewPaperBot(cfg BotConfig) (*Bot, error) {
+func (f *BotFactory) NewPaperBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
 	if cfg.ID == "" {
 		cfg.ID = uuid.New().String()
-	}
-
-	logger := NewBotLogger(cfg.ID)
-	strategy, err := strategies.NewFromConfig(cfg.StrategyConfig, logger)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get strategy: %w", err)
 	}
 
 	b := &Bot{
 		BotConfig: cfg,
 		Status:    BotCreated,
 
-		Engine:   f.Engine(),
-		Logger:   logger,
-		Strategy: strategy,
-		CandleCh: make(chan models.Candle, 100),
+		Engine:         f.Engine(),
+		Logger:         NewBotLogger(cfg.ID),
+		ActiveStrategy: strategy,
+		CandleCh:       make(chan models.Candle, 100),
 
 		TradeBroadcaster:  &Broadcaster[dto.TradeDTO]{},
 		CandleBroadcaster: &Broadcaster[models.Candle]{},

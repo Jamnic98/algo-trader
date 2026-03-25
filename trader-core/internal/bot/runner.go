@@ -48,9 +48,10 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				continue
 			}
 
-			decision := b.Strategy.OnCandle(strategies.CandleContext{
-				Candle:  candle,
-				FeeRate: b.BotConfig.StrategyConfig.TakerFee,
+			decision := b.ActiveStrategy.OnCandle(strategies.CandleContext{
+				Candle: candle,
+				// TODO: remove hardcoded fee value
+				FeeRate: decimal.NewFromFloat32(0.001),
 			})
 
 			if decision.Reason != "" {

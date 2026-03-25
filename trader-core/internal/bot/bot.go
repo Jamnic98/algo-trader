@@ -17,7 +17,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// Asset types
 type AssetType string
 
 const (
@@ -25,7 +24,6 @@ const (
 	Stocks AssetType = "stocks"
 )
 
-// Bot statuses
 type BotStatus string
 
 const (
@@ -40,66 +38,67 @@ const (
 	BotModeLive  BotMode = "live"
 )
 
-type CreateBotStrategy struct {
-	Name        string          `json:"name"`
-	DisplayName string          `json:"display_name"`
-	Params      json.RawMessage `json:"params"`    // pass through as-is
-	MakerFee    *float64        `json:"maker_fee"` // nil = use default
-	TakerFee    *float64        `json:"taker_fee"` // nil = use default
-}
+var (
+	defaultMakerFee = decimal.NewFromFloat(0.001)
+	defaultTakerFee = decimal.NewFromFloat(0.001)
+)
 
-func (s CreateBotStrategy) ToStrategyConfig(botID string) models.StrategyConfig {
-	params := datatypes.JSON([]byte("{}"))
-	if s.Params != nil {
-		params = datatypes.JSON(s.Params)
-	}
-
-	maker := decimal.NewFromFloat(0.001) // default Binance spot
-	taker := decimal.NewFromFloat(0.001)
-	if s.MakerFee != nil {
-		maker = decimal.NewFromFloat(*s.MakerFee)
-	}
-	if s.TakerFee != nil {
-		taker = decimal.NewFromFloat(*s.TakerFee)
-	}
-
-	return models.StrategyConfig{
-		BotID:       botID,
-		Name:        s.Name,
-		DisplayName: s.DisplayName,
-		Params:      params,
-		MakerFee:    maker,
-		TakerFee:    taker,
-	}
-}
-
+// CreateBotRequest is what the HTTP request body looks like.
+// The user picks an existing strategy by ID and optionally overrides params/fees.
 type CreateBotData struct {
-	Mode       BotMode           `json:"mode"`
-	Strategy   CreateBotStrategy `json:"strategy"`
-	Exchange   string            `json:"exchange"`
-	AssetType  string            `json:"assetType"`
-	Base       string            `json:"base"`
-	Quote      string            `json:"quote"`
-	Interval   string            `json:"interval"`
-	MaxCandles int               `json:"maxCandles"`
-	Quantity   string            `json:"quantity"`
+	Mode           BotMode          `json:"mode"`
+	StrategyID     uint             `json:"strategy_id"`
+	ParamOverrides json.RawMessage  `json:"param_overrides"` // optional, overrides strategy defaults
+	MakerFee       *decimal.Decimal `json:"maker_fee"`       // nil = use strategy default
+	TakerFee       *decimal.Decimal `json:"taker_fee"`       // nil = use strategy default
+	Exchange       string           `json:"exchange"`
+	AssetType      string           `json:"assetType"`
+	Base           string           `json:"base"`
+	Quote          string           `json:"quote"`
+	Interval       string           `json:"interval"`
+	MaxCandles     int              `json:"maxCandles"`
+	Quantity       string           `json:"quantity"`
 }
 
-// BotConfig — owns all trading params + which strategy to use
+// BotConfig is the DB model for a bot.
 type BotConfig struct {
-	ID             string                `gorm:"primaryKey"    json:"id"`
-	Mode           BotMode               `json:"mode"`
-	StrategyConfig models.StrategyConfig `json:"strategy"     gorm:"foreignKey:BotID"`
-	Exchange       string                `json:"exchange"`
-	AssetType      string                `json:"assetType"`
-	Base           string                `json:"base"`
-	Quote          string                `json:"quote"`
-	Interval       string                `json:"interval"`
-	MaxCandles     int                   `gorm:"column:max_candles" json:"maxCandles"`
-	Lookback       string                `json:"lookback"`
-	Quantity       string                `json:"quantity"`
-	DeletedAt      gorm.DeletedAt        `gorm:"index"         json:"-"`
+	ID             string          `gorm:"primaryKey"         json:"id"`
+	Mode           BotMode         `json:"mode"`
+	StrategyID     uint            `gorm:"not null"           json:"strategy_id"`
+	Strategy       models.Strategy `gorm:"foreignKey:StrategyID" json:"-"` // loaded via Preload
+	ParamOverrides datatypes.JSON  `gorm:"type:jsonb"         json:"param_overrides"`
+	Exchange       string          `json:"exchange"`
+	AssetType      string          `json:"assetType"`
+	Base           string          `json:"base"`
+	Quote          string          `json:"quote"`
+	Interval       string          `json:"interval"`
+	MaxCandles     int             `gorm:"column:max_candles" json:"maxCandles"`
+	Lookback       string          `json:"lookback"`
+	Quantity       string          `json:"quantity"`
+	DeletedAt      gorm.DeletedAt  `gorm:"index"              json:"-"`
 }
+
+// ResolvedStrategy merges the strategy template defaults with bot-level overrides.
+// func (b *BotConfig) ResolvedStrategy() (dto.StrategyConfigDTO, error) {
+// 	// start from strategy template defaults
+// 	var cfg dto.StrategyConfigDTO
+// 	if err := json.Unmarshal(b.Strategy.DefaultConfig, &cfg); err != nil {
+// 		return cfg, fmt.Errorf("parsing strategy default config: %w", err)
+// 	}
+
+// 	// apply param overrides if present
+// 	if len(b.ParamOverrides) > 0 {
+// 		var overrides map[string]any
+// 		if err := json.Unmarshal(b.ParamOverrides, &overrides); err != nil {
+// 			return cfg, fmt.Errorf("parsing param overrides: %w", err)
+// 		}
+// 		for k, v := range overrides {
+// 			cfg.Params[k] = v
+// 		}
+// 	}
+
+// 	return cfg, nil
+// }
 
 func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
 	interval, err := engine.ParseInterval(data.Interval)
@@ -108,9 +107,17 @@ func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
 	}
 	lookback := interval.Lookback(data.MaxCandles).String()
 
+	// normalise param overrides
+	var overrides datatypes.JSON
+	if len(data.ParamOverrides) > 0 {
+		overrides = datatypes.JSON(data.ParamOverrides)
+	}
+
 	return BotConfig{
 		ID:             id,
 		Mode:           data.Mode,
+		StrategyID:     data.StrategyID,
+		ParamOverrides: overrides,
 		Exchange:       data.Exchange,
 		AssetType:      data.AssetType,
 		Base:           data.Base,
@@ -119,17 +126,17 @@ func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
 		MaxCandles:     data.MaxCandles,
 		Quantity:       data.Quantity,
 		Lookback:       lookback,
-		StrategyConfig: data.Strategy.ToStrategyConfig(id),
 	}, nil
 }
 
+// Bot is the runtime struct — BotConfig is the DB side, everything else is in-memory.
 type Bot struct {
 	BotConfig
 
-	Logger   *BotLogger
-	Status   BotStatus `json:"status"`
-	Started  time.Time `json:"started"`
-	Strategy strategies.Strategy
+	Logger         *BotLogger
+	Status         BotStatus           `json:"status"`
+	Started        time.Time           `json:"started"`
+	ActiveStrategy strategies.Strategy // renamed to avoid clash with BotConfig.Strategy (the DB relation)
 
 	Engine engine.ExecutionEngine
 
@@ -144,13 +151,10 @@ type Bot struct {
 	cancel context.CancelFunc
 }
 
-// Recreate the asset symbol
 func (b *Bot) Symbol() string {
 	switch b.Exchange {
 	case "binance":
-		return strings.ToUpper(b.Base + b.Quote) // "BTCUSDT"
+		return strings.ToUpper(b.Base + b.Quote)
 	}
-
-	// fallback
 	return strings.ToUpper(b.Base + b.Quote)
 }
