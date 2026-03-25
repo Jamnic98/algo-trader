@@ -39,7 +39,6 @@ func InitBotAPI(rt *bot.Runtime) {
 		activeBotsMu.Lock()
 		activeBots[b.ID] = b
 		activeBotsMu.Unlock()
-
 	}
 }
 
@@ -65,35 +64,136 @@ func getBotByIDHandler(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
+	d, err := botToDTO(b)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"bot": d})
 }
 
 func getBotsHandler(c *gin.Context) {
 	includeDeleted := c.Query("deleted") == "true"
 
-	var cfgs []bot.BotConfig
 	if includeDeleted {
+		var cfgs []bot.BotConfig
 		runtime.DB.Unscoped().Where("deleted_at IS NOT NULL").Find(&cfgs)
 		dtos := make([]BotDTO, len(cfgs))
 		for i, cfg := range cfgs {
 			dtos[i] = configToDTO(cfg)
 		}
 		c.JSON(http.StatusOK, gin.H{"bots": dtos})
-	} else {
-		activeBotsMu.RLock()
-		bots := make([]*bot.Bot, 0, len(activeBots))
-		for _, b := range activeBots {
-			bots = append(bots, b)
-		}
-		activeBotsMu.RUnlock()
-
-		dtos := make([]BotDTO, len(bots))
-		for i, b := range bots {
-			dtos[i] = botToDTO(b)
-		}
-
-		c.JSON(http.StatusOK, gin.H{"bots": dtos})
+		return
 	}
+
+	activeBotsMu.RLock()
+	bots := make([]*bot.Bot, 0, len(activeBots))
+	for _, b := range activeBots {
+		bots = append(bots, b)
+	}
+	activeBotsMu.RUnlock()
+
+	dtos := make([]BotDTO, 0, len(bots))
+	for _, b := range bots {
+		d, err := botToDTO(b)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		dtos = append(dtos, d)
+	}
+	c.JSON(http.StatusOK, gin.H{"bots": dtos})
+}
+
+func createBotHandler(c *gin.Context) {
+	var req bot.CreateBotData
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Quantity != "" {
+		if _, err := decimal.NewFromString(req.Quantity); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid quantity %q: must be a valid number", req.Quantity)})
+			return
+		}
+	}
+
+	b, err := runtime.CreateBot(req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	activeBotsMu.Lock()
+	activeBots[b.ID] = b
+	activeBotsMu.Unlock()
+
+	d, err := botToDTO(b)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"bot": d})
+}
+
+func startBotHandler(c *gin.Context) {
+	b := getBot(c.Param("id"))
+	if b == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
+	if err := runtime.AttachBot(b); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+	d, err := botToDTO(b)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"bot": d})
+}
+
+func stopBotHandler(c *gin.Context) {
+	b := getBot(c.Param("id"))
+	if b == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
+	if err := runtime.DetachBot(b); err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+	d, err := botToDTO(b)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"bot": d})
+}
+
+func deleteBotHandler(c *gin.Context) {
+	b := getBot(c.Param("id"))
+	if b == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
+		return
+	}
+
+	if b.Status == bot.BotRunning {
+		runtime.DetachBot(b)
+	}
+
+	if err := runtime.DeleteBot(b); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	activeBotsMu.Lock()
+	delete(activeBots, b.ID)
+	activeBotsMu.Unlock()
+
+	c.Status(http.StatusNoContent)
 }
 
 func getBotTradesHandler(c *gin.Context) {
@@ -184,7 +284,6 @@ func streamBotLogsHandler(c *gin.Context) {
 		fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 	}
 
-	// ready event unblocks frontend — no log message, no duplicates
 	fmt.Fprintf(c.Writer, "event: ready\ndata: {}\n\n")
 	c.Writer.Flush()
 
@@ -217,7 +316,6 @@ func streamBotCandlesHandler(c *gin.Context) {
 	ch := b.CandleBroadcaster.Subscribe()
 	defer b.CandleBroadcaster.Unsubscribe(ch)
 
-	// send existing candles as snapshot first
 	for _, candle := range b.Candles {
 		data, _ := json.Marshal(models.CandleToDTO(candle))
 		fmt.Fprintf(c.Writer, "data: %s\n\n", data)
@@ -252,7 +350,6 @@ func streamBotTicksHandler(c *gin.Context) {
 	ch := b.TickBroadcaster.Subscribe()
 	defer b.TickBroadcaster.Unsubscribe(ch)
 
-	// added ready event — was missing
 	fmt.Fprintf(c.Writer, "event: ready\ndata: {}\n\n")
 	c.Writer.Flush()
 
@@ -266,81 +363,4 @@ func streamBotTicksHandler(c *gin.Context) {
 			return
 		}
 	}
-}
-
-func createBotHandler(c *gin.Context) {
-	var req bot.CreateBotData
-
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if req.Quantity != "" {
-		if _, err := decimal.NewFromString(req.Quantity); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("invalid quantity %q: must be a valid number", req.Quantity)})
-			return
-		}
-	}
-
-	b, err := runtime.CreateBot(req)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	activeBotsMu.Lock()
-	activeBots[b.ID] = b
-	activeBotsMu.Unlock()
-
-	c.JSON(http.StatusCreated, gin.H{"bot": botToDTO(b)})
-}
-
-func startBotHandler(c *gin.Context) {
-	b := getBot(c.Param("id"))
-	if b == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
-		return
-	}
-	if err := runtime.AttachBot(b); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
-}
-
-func stopBotHandler(c *gin.Context) {
-	b := getBot(c.Param("id"))
-	if b == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
-		return
-	}
-	if err := runtime.DetachBot(b); err != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"bot": botToDTO(b)})
-}
-
-func deleteBotHandler(c *gin.Context) {
-	b := getBot(c.Param("id"))
-	if b == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
-		return
-	}
-
-	if b.Status == bot.BotRunning {
-		runtime.DetachBot(b)
-	}
-
-	if err := runtime.DeleteBot(b); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	activeBotsMu.Lock()
-	delete(activeBots, b.ID)
-	activeBotsMu.Unlock()
-
-	c.Status(http.StatusNoContent)
 }

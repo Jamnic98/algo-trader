@@ -1,16 +1,19 @@
 package api
 
 import (
+	"fmt"
 	"time"
 	"trader-core/internal/bot"
 	"trader-core/internal/db/models"
+	"trader-core/internal/dto"
 )
 
 type BotDTO struct {
 	ID         string             `json:"id"`
 	Mode       string             `json:"mode"`
 	Exchange   string             `json:"exchange"`
-	Strategy   models.Strategy    `json:"strategy"`
+	Strategy   *dto.StrategyDTO   `json:"strategy,omitempty"`
+	StrategyID uint               `json:"strategy_id,string"`
 	AssetType  string             `json:"assetType"`
 	Base       string             `json:"base"`
 	Quote      string             `json:"quote"`
@@ -22,12 +25,18 @@ type BotDTO struct {
 	Candles    []models.CandleDTO `json:"candles,omitempty"`
 }
 
-func botToDTO(b *bot.Bot) BotDTO {
+func botToDTO(b *bot.Bot) (BotDTO, error) {
 	var started *string
 	if !b.Started.IsZero() {
 		s := b.Started.Format(time.RFC3339)
 		started = &s
 	}
+
+	var strategy models.Strategy
+	if err := runtime.DB.First(&strategy, b.StrategyID).Error; err != nil {
+		return BotDTO{}, fmt.Errorf("strategy %d not found: %w", b.StrategyID, err)
+	}
+	strategyDTO := dto.StrategyToDTO(&strategy)
 
 	candles := make([]models.CandleDTO, len(b.Candles))
 	for i, c := range b.Candles {
@@ -38,7 +47,8 @@ func botToDTO(b *bot.Bot) BotDTO {
 		ID:         b.ID,
 		Mode:       string(b.Mode),
 		Exchange:   b.Exchange,
-		Strategy:   b.Strategy,
+		StrategyID: b.StrategyID,
+		Strategy:   &strategyDTO,
 		AssetType:  b.AssetType,
 		Base:       b.Base,
 		Quote:      b.Quote,
@@ -48,21 +58,31 @@ func botToDTO(b *bot.Bot) BotDTO {
 		Status:     b.Status,
 		Started:    started,
 		Candles:    candles,
-	}
+	}, nil
 }
 
 func configToDTO(cfg bot.BotConfig) BotDTO {
-	return BotDTO{
+	d := BotDTO{
 		ID:         cfg.ID,
 		Mode:       string(cfg.Mode),
 		Exchange:   cfg.Exchange,
+		StrategyID: cfg.StrategyID,
 		AssetType:  cfg.AssetType,
 		Base:       cfg.Base,
 		Quote:      cfg.Quote,
 		Interval:   cfg.Interval,
 		MaxCandles: cfg.MaxCandles,
 		Quantity:   cfg.Quantity,
-		Strategy:   cfg.Strategy,
 		Status:     "dead",
 	}
+
+	if cfg.StrategyID != 0 {
+		var strategy models.Strategy
+		if err := runtime.DB.First(&strategy, cfg.StrategyID).Error; err == nil {
+			s := dto.StrategyToDTO(&strategy)
+			d.Strategy = &s
+		}
+	}
+
+	return d
 }

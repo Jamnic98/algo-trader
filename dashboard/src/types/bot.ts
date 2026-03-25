@@ -2,20 +2,28 @@ import type { OHLCVCandle, Strategy } from 'types'
 
 export type BotStatus = 'created' | 'trading' | 'dead'
 export type BotMode = 'paper' | 'live'
-// TODO: Add exchange
-export type Exchange = 'binance' //| 'alpaca'
-export type AssetType = 'crypto' // | 'stocks'
+export type Exchange = 'binance'
+export type AssetType = 'crypto'
 
-export interface Bot extends CreateBot {
+export type Bot = {
   id: string
+  mode: BotMode
+  exchange: Exchange
+  strategy_id: string
+  strategy?: Strategy
+  assetType: AssetType
+  base: string
+  quote?: string
+  interval: string
+  maxCandles: number
+  quantity: string
   status: BotStatus
   started?: string
+  candles?: OHLCVCandle[]
   deletedAt?: string
-  candles: OHLCVCandle[]
-  strategy: Strategy
 }
 
-export interface CreateBot {
+export type CreateBot = {
   mode: BotMode
   exchange: Exchange
   assetType: AssetType
@@ -24,7 +32,7 @@ export interface CreateBot {
   interval: string
   maxCandles: number
   quantity?: string
-  strategy_id: number
+  strategy_id: string
 }
 
 export interface BotStrategy extends CreateBotStrategy {
@@ -35,6 +43,6 @@ export type CreateBotStrategy = {
   name: string
   displayName?: string
   params?: Record<string, unknown> // strategy-specific config
-  makerFee?: number // defaults to 0.001
-  takerFee?: number // defaults to 0.001
+  makerFee?: number
+  takerFee?: number
 }

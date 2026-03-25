@@ -43,8 +43,7 @@ const defaultFormData: CreateBot = {
   interval: '1h', //1h
   maxCandles: 200,
   quantity: '0.001',
-  strategy_id: 1,
-  // strategy_id: 1,
+  strategy_id: '1',
 }
 
 type ValidationResult = { valid: true } | { valid: false; error: string }

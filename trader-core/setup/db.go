@@ -4,6 +4,7 @@ import (
 	"trader-core/internal/bot"
 	"trader-core/internal/db"
 	"trader-core/internal/db/models"
+	_ "trader-core/internal/strategies"
 
 	"gorm.io/gorm"
 )

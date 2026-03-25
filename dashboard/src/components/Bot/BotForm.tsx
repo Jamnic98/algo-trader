@@ -1,5 +1,8 @@
 import { Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
+import { BarLoader } from 'components'
+import { useStrategies } from 'hooks'
 import {
   candleIntervals,
   lookbackToString,
@@ -8,9 +11,6 @@ import {
   STRATEGY_CONFIG,
 } from 'utils'
 import type { CreateBot, CreateBotStrategy } from 'types'
-import { useStrategies } from 'hooks'
-import { BarLoader } from 'components'
-import { Link } from 'react-router-dom'
 
 type BotFormProps = {
   form: CreateBot
@@ -58,6 +58,7 @@ const BotForm = ({
         <label className="text-content-secondary text-xs uppercase tracking-wider">Strategy</label>
         <select
           name="strategy"
+          // TODO: remove hardcoded value
           value={strategies[0].name}
           onChange={(e) => {
             const selected = strategies.find((s) => s.name === e.target.value)
