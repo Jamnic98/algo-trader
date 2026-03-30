@@ -23,7 +23,7 @@ func ResolveStrategy(db *gorm.DB, s models.Strategy) (strategies.Strategy, error
 	for _, node := range nodes {
 		var sub models.Strategy
 		if err := db.First(&sub, node.StrategySlug).Error; err != nil {
-			return nil, fmt.Errorf("loading sub-strategy %d: %w", node.StrategySlug, err)
+			return nil, fmt.Errorf("loading sub-strategy %s: %w", node.StrategySlug, err)
 		}
 		subStrategy, err := ResolveStrategy(db, sub) // recursive — handles nested composites
 		if err != nil {
