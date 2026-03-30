@@ -8,7 +8,7 @@ import {
   Home,
   PanelLeftClose,
   PanelLeftOpen,
-  // Route,
+  Route,
 } from 'lucide-react'
 
 import { StatusIndicator } from 'components'
@@ -19,8 +19,8 @@ type SidebarLink = { label: string; url: string; icon: ReactNode }
 const sidebarLinks: SidebarLink[] = [
   { label: 'dashboard', url: '/', icon: <Home size={18} /> },
   { label: 'bots', url: '/bots', icon: <Bot size={18} /> },
-  // { label: 'strategies', url: '/strategies', icon: <Route size={18} /> },
-  { label: 'trades', url: '/trades', icon: <ArrowLeftRight size={18} /> },
+  { label: 'strategies', url: '/strategies', icon: <Route size={18} /> },
+  { label: 'fills', url: '/fills', icon: <ArrowLeftRight size={18} /> },
   { label: 'accounts', url: '/accounts', icon: <Coins size={18} /> },
   { label: 'diagnostics', url: '/diagnostics', icon: <Activity size={18} /> },
 ]
@@ -37,7 +37,7 @@ const Sidebar = ({ isOpen, onToggle }: SidebarProps) => {
 
   useEffect(() => {
     const source = new EventSource(
-      `/api/health/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+      `/api/health/stream?api_key=${encodeURIComponent(import.meta.env.VITE_SERVER_API_KEY)}`
     )
 
     source.onmessage = (e) => {

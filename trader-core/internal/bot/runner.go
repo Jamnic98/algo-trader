@@ -97,7 +97,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				continue
 			}
 
-			trade := models.Trade{
+			trade := models.Fill{
 				BotID:       fill.BotID,
 				Symbol:      fill.Symbol,
 				Base:        b.Base,
@@ -120,7 +120,7 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			}
 
 			// broadcast to SSE subscribers
-			b.TradeBroadcaster.Publish(dto.TradeToDTO(&trade))
+			b.FillBroadcaster.Publish(dto.FIllToDTO(&trade))
 
 			b.Logger.Info(
 				"%s %s %s @ %s (fee %s)\n",

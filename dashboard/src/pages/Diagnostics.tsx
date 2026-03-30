@@ -4,8 +4,6 @@ import { BarLoader, ChartCard, Heading, PieCard, SectionLabel, StatCard } from '
 import type { ConnStatus, DiagnosticData, HistoryPoint } from 'types'
 import { useAlert } from 'hooks'
 
-const apiKey = import.meta.env.VITE_SERVER_API_KEY
-
 const toHHMMSS = (secs: number): string => {
   const h = Math.floor(secs / 3600)
   const m = Math.floor((secs % 3600) / 60)
@@ -39,7 +37,9 @@ const Diagnostics = () => {
   }, [])
 
   useEffect(() => {
-    const source = new EventSource(`/api/diagnostics/stream?api_key=${apiKey}`)
+    const source = new EventSource(
+      `/api/diagnostics/stream?api_key=${encodeURIComponent(import.meta.env.VITE_SERVER_API_KEY)}`
+    )
 
     source.onmessage = (e) => {
       const { stats, history } = JSON.parse(e.data)

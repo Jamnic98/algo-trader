@@ -17,9 +17,10 @@ const BotLogs = ({ id }: { id: string }) => {
 
   useEffect(() => {
     const es = new EventSource(
-      `/api/bots/${id}/logs/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+      `/api/bots/${id}/logs/stream?api_key=${encodeURIComponent(import.meta.env.VITE_SERVER_API_KEY)}`
     )
 
+    // connection established, stop loading
     es.onopen = () => {
       setLoading(false)
     }

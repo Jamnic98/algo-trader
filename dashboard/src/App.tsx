@@ -7,7 +7,7 @@ import {
   BotDetails,
   Dashboard,
   Diagnostics,
-  Trades,
+  Fills,
   Strategies,
   StrategyDetails,
   StrategyCreator,
@@ -29,10 +29,10 @@ function App() {
             <Route path="diagnostics" element={<Diagnostics />} />
 
             <Route path="strategies" element={<Strategies />} />
-            <Route path="strategies/:id" element={<StrategyDetails />} />
+            <Route path="strategies/:slug" element={<StrategyDetails />} />
             <Route path="strategies/create" element={<StrategyCreator />} />
 
-            <Route path="trades" element={<Trades />} />
+            <Route path="fills" element={<Fills />} />
           </Route>
         </Routes>
       </BreadcrumbProvider>

@@ -46,15 +46,15 @@ type PositionState struct {
 }
 
 func RestorePosition(db *gorm.DB, botID string) (PositionState, error) {
-	var trades []models.Trade
-	if err := db.Where("bot_id = ?", botID).Order("timestamp ASC").Find(&trades).Error; err != nil {
+	var fills []models.Fill
+	if err := db.Where("bot_id = ?", botID).Order("timestamp ASC").Find(&fills).Error; err != nil {
 		return PositionState{}, err
 	}
 
 	scale := decimal.NewFromInt(1e8)
 	var totalSpent, totalBought decimal.Decimal
 
-	for _, t := range trades {
+	for _, t := range fills {
 		price := decimal.NewFromInt(t.PriceInt).Div(scale)
 		qty := decimal.NewFromInt(t.QuantityInt).Div(scale)
 

@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { SignalLabel } from 'components'
-import type { Trade, Pagination } from 'types'
+import type { Fill, Pagination } from 'types'
 
 const COLUMNS = [
   { key: 'botID', label: 'Bot' },
@@ -14,7 +14,7 @@ const COLUMNS = [
   { key: 'timestamp', label: 'Timestamp' },
 ]
 
-const renderCell = (trade: Trade, key: string) => {
+const renderCell = (trade: Fill, key: string) => {
   switch (key) {
     case 'side':
       return <SignalLabel signal={trade.side} />
@@ -30,20 +30,20 @@ const renderCell = (trade: Trade, key: string) => {
     case 'botID':
       return <span className="font-mono text-sm truncate">{trade.botID.split('-')[0]}</span>
     default:
-      return trade[key as keyof Trade] as string
+      return trade[key as keyof Fill] as string
   }
 }
 
 type TradesTableProps = {
-  trades: Trade[]
+  fills: Fill[]
   pagination: Pagination | null
   page: number
   onPageChange: (page: number) => void
 }
 
-const TradesTable = ({ trades, pagination, page, onPageChange }: TradesTableProps) => {
-  if (!trades.length) {
-    return <div className="text-content-secondary text-sm font-mono">No trades yet.</div>
+const FillsTable = ({ fills, pagination, page, onPageChange }: TradesTableProps) => {
+  if (!fills.length) {
+    return <div className="text-content-secondary text-sm font-mono">No fills yet.</div>
   }
 
   return (
@@ -60,7 +60,7 @@ const TradesTable = ({ trades, pagination, page, onPageChange }: TradesTableProp
             </tr>
           </thead>
           <tbody>
-            {trades.map((trade) => (
+            {fills.map((trade) => (
               <tr
                 key={trade.id}
                 className="bg-table-row border-b border-table-border h-8 transition-colors duration-150 text-nowrap"
@@ -78,7 +78,7 @@ const TradesTable = ({ trades, pagination, page, onPageChange }: TradesTableProp
 
       {pagination && pagination.total_pages > 1 && (
         <div className="flex items-center justify-between mt-4 text-xs font-mono text-content-secondary">
-          <span className="text-content-secondary/50">{pagination.total} trades</span>
+          <span className="text-content-secondary/50">{pagination.total} fills</span>
           <div className="flex items-center gap-1">
             <button
               onClick={() => onPageChange(page - 1)}
@@ -130,4 +130,4 @@ const TradesTable = ({ trades, pagination, page, onPageChange }: TradesTableProp
   )
 }
 
-export default TradesTable
+export default FillsTable

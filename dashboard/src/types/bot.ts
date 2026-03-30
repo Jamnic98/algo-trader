@@ -1,4 +1,4 @@
-import type { OHLCVCandle, Strategy } from 'types'
+import type { OHLCVCandle } from 'types'
 
 export type BotStatus = 'created' | 'trading' | 'dead'
 export type BotMode = 'paper' | 'live'
@@ -12,7 +12,7 @@ export interface Bot extends CreateBot {
   started?: string
   deletedAt?: string
   candles: OHLCVCandle[]
-  strategy: Strategy
+  strategy_name: string
 }
 
 export interface CreateBot {
@@ -24,17 +24,5 @@ export interface CreateBot {
   interval: string
   maxCandles: number
   quantity?: string
-  strategy_id: number
-}
-
-export interface BotStrategy extends CreateBotStrategy {
-  id?: string
-}
-
-export type CreateBotStrategy = {
-  name: string
-  displayName?: string
-  params?: Record<string, unknown> // strategy-specific config
-  makerFee?: number // defaults to 0.001
-  takerFee?: number // defaults to 0.001
+  strategy_slug: string
 }

@@ -46,8 +46,8 @@ func InitBotAPI(rt *bot.Runtime) {
 func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.GET("", getBotsHandler)
 	rg.GET("/:id", getBotByIDHandler)
-	rg.GET("/:id/trades", getBotTradesHandler)
-	rg.GET("/:id/trades/stream", streamBotTradesHandler)
+	rg.GET("/:id/fills", getBotFillsHandler)
+	rg.GET("/:id/fills/stream", streamBotFillsHandler)
 	rg.GET("/:id/logs/stream", streamBotLogsHandler)
 	rg.GET("/:id/positions", getBotPositionsHandler)
 	rg.GET("/:id/candles/stream", streamBotCandlesHandler)
@@ -73,7 +73,7 @@ func getBotsHandler(c *gin.Context) {
 
 	var cfgs []bot.BotConfig
 	if includeDeleted {
-		runtime.DB.Unscoped().Where("deleted_at IS NOT NULL").Find(&cfgs)
+		runtime.DB.Unscoped().Preload("Strategy").Where("deleted_at IS NOT NULL").Find(&cfgs)
 		dtos := make([]BotDTO, len(cfgs))
 		for i, cfg := range cfgs {
 			dtos[i] = configToDTO(cfg)
@@ -96,7 +96,7 @@ func getBotsHandler(c *gin.Context) {
 	}
 }
 
-func getBotTradesHandler(c *gin.Context) {
+func getBotFillsHandler(c *gin.Context) {
 	botId := c.Param("id")
 	if getBot(botId) == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
@@ -106,7 +106,7 @@ func getBotTradesHandler(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 
-	dtos, total, totalPages, err := fetchBotTrades(botId, page, limit)
+	dtos, total, totalPages, err := fetchBotFills(botId, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -139,15 +139,15 @@ func getBotPositionsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"positions": positions})
 }
 
-func streamBotTradesHandler(c *gin.Context) {
+func streamBotFillsHandler(c *gin.Context) {
 	b := getBot(c.Param("id"))
 	if b == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "bot not found"})
 		return
 	}
 
-	ch := b.TradeBroadcaster.Subscribe()
-	defer b.TradeBroadcaster.Unsubscribe(ch)
+	ch := b.FillBroadcaster.Subscribe()
+	defer b.FillBroadcaster.Unsubscribe(ch)
 
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
@@ -155,8 +155,8 @@ func streamBotTradesHandler(c *gin.Context) {
 
 	for {
 		select {
-		case trade := <-ch:
-			data, _ := json.Marshal(trade)
+		case fill := <-ch:
+			data, _ := json.Marshal(fill)
 			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 			c.Writer.Flush()
 		case <-c.Request.Context().Done():

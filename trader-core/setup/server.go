@@ -30,7 +30,7 @@ func InitServer(cfg Config, mon *monitoring.SysMonitor) *gin.Engine {
 		api.RegisterDiagnosticsRoutes(route.Group("/diagnostics"))
 		api.RegisterPriceRoutes(route.Group("/price"))
 		api.RegisterStrategyRoutes(route.Group("/strategies"))
-		api.RegisterTradeRoutes(route.Group("/trades"))
+		api.RegisterFillRoutes(route.Group("/fills"))
 	}
 
 	route.GET("/health/stream", func(c *gin.Context) {

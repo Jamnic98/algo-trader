@@ -13,8 +13,7 @@ type ColumnKey =
   | 'mode'
   | 'exchange'
   | 'symbol'
-  // TODO: add back
-  // | 'strategy'
+  | 'strategy'
   | 'quantity'
   | 'interval'
   | 'maxCandles'
@@ -37,8 +36,7 @@ const ALL_COLUMNS: { key: ColumnKey; label: string; className?: string }[] = [
   { key: 'id', label: 'Id', className: 'w-24' },
   { key: 'mode', label: 'Mode', className: 'w-16' },
   { key: 'exchange', label: 'Exchange', className: 'w-16' },
-  // TODO: add back
-  // { key: 'strategy', label: 'Strategy', className: 'w-24' },
+  { key: 'strategy', label: 'Strategy', className: 'w-24' },
   { key: 'symbol', label: 'Symbol', className: 'w-24' },
   { key: 'quantity', label: 'Quantity', className: 'w-24' },
   { key: 'interval', label: 'Interval', className: 'w-20' },
@@ -85,9 +83,8 @@ const BotTable = ({ bots, botFilters, botActions, botLoadingActions, columns }: 
               hour12: false,
             }).format(new Date(bot.started))
           : '-'
-      // TODO: add back
-      // case 'strategy':
-      //   return bot.strategy.id
+      case 'strategy':
+        return bot.strategy_name
       case 'symbol':
         return displaySymbol(bot.assetType, bot.base, bot.quote)
       default:

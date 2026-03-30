@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-type TradeDTO struct {
+type FIllDTO struct {
 	ID        uint            `json:"id"`
 	BotID     string          `json:"botID"`
 	Symbol    string          `json:"symbol"`
@@ -23,8 +23,8 @@ type TradeDTO struct {
 	CreatedAt time.Time       `json:"createdAt"` // GORM convention
 }
 
-func TradeToDTO(t *models.Trade) TradeDTO {
-	return TradeDTO{
+func FIllToDTO(t *models.Fill) FIllDTO {
+	return FIllDTO{
 		ID:        t.ID,
 		BotID:     t.BotID,
 		Symbol:    t.Symbol,

@@ -1,10 +1,10 @@
-export type TradeSignal = 'BUY' | 'SELL' | 'HOLD'
+export type OrderSignal = 'BUY' | 'SELL' | 'HOLD'
 
-export type Trade = {
+export type Fill = {
   id: number
   botID: string
   symbol: string
-  side: TradeSignal // BUY / SELL / NONE
+  side: OrderSignal // BUY / SELL / NONE
   price: number // per unit price
   quantity: number
   fee: number // in fee asset
@@ -14,7 +14,7 @@ export type Trade = {
   createdAt: Date // GORM convention
 }
 
-export type TradeFilters = {
+export type FillFilters = {
   limit: number
   symbol: string
   side: string

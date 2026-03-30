@@ -21,7 +21,7 @@ type KlineEvent struct {
 		High      json.Number `json:"h"`
 		Low       json.Number `json:"l"`
 		Volume    json.Number `json:"v"`
-		Trades    int64       `json:"n"`
+		Fills     int64       `json:"n"`
 		IsClosed  bool        `json:"x"`
 	} `json:"k"`
 }

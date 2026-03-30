@@ -33,11 +33,9 @@ func (r *Runtime) newBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, err
 func (r *Runtime) CreateBot(data CreateBotData) (*Bot, error) {
 	var strategyModel models.Strategy
 
-	if err := r.DB.First(&strategyModel, data.StrategyID).Error; err != nil {
-		return nil, fmt.Errorf("strategy %d not found: %w", data.StrategyID, err)
+	if err := r.DB.First(&strategyModel, "slug = ?", data.StrategySlug).Error; err != nil {
+		return nil, fmt.Errorf("strategy %q not found: %w", data.StrategySlug, err)
 	}
-
-	fmt.Println("SM", strategyModel)
 
 	activeStrategy, err := ResolveStrategy(r.DB, strategyModel)
 	if err != nil {
@@ -55,7 +53,9 @@ func (r *Runtime) CreateBot(data CreateBotData) (*Bot, error) {
 		return nil, err
 	}
 
-	if err := r.DB.Omit("Strategy").Create(&b.BotConfig).Error; err != nil {
+	b.StrategyName = strategyModel.DisplayName
+
+	if err := r.DB.Create(&b.BotConfig).Error; err != nil {
 		return nil, fmt.Errorf("failed to create bot config: %w", err)
 	}
 
@@ -165,8 +165,8 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 
 func (r *Runtime) RestoreBot(cfg BotConfig) (*Bot, error) {
 	var strategyModel models.Strategy
-	if err := r.DB.First(&strategyModel, cfg.StrategyID).Error; err != nil {
-		return nil, fmt.Errorf("strategy %d not found: %w", cfg.StrategyID, err)
+	if err := r.DB.First(&strategyModel, cfg.StrategySlug).Error; err != nil {
+		return nil, fmt.Errorf("strategy %d not found: %w", cfg.StrategySlug, err)
 	}
 
 	activeStrategy, err := ResolveStrategy(r.DB, strategyModel)

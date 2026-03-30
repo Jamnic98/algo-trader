@@ -1,5 +1,8 @@
+import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 
+import { BarLoader } from 'components'
+import { useStrategies } from 'hooks'
 import {
   candleIntervals,
   lookbackToString,
@@ -7,10 +10,7 @@ import {
   MAX_CANDLES,
   STRATEGY_CONFIG,
 } from 'utils'
-import type { CreateBot, CreateBotStrategy } from 'types'
-import { useStrategies } from 'hooks'
-import { BarLoader } from 'components'
-import { Link } from 'react-router-dom'
+import type { CreateBot, Strategy } from 'types'
 
 type BotFormProps = {
   form: CreateBot
@@ -18,7 +18,7 @@ type BotFormProps = {
   onLookbackChange: (n: number) => void
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
   onModeToggle: () => void
-  onStrategyChange: (strategy: CreateBotStrategy) => void
+  onStrategyChange: (strategy: Strategy) => void
   onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void
 }
 
@@ -33,7 +33,7 @@ const BotForm = ({
 }: BotFormProps) => {
   const { data: strategies, loading: loadingStrategies } = useStrategies()
   const availableAssetTypes = EXCHANGE_CONFIG[form.exchange]?.assetTypes ?? []
-  const strategyConfig = STRATEGY_CONFIG[form.strategy_id] ?? {}
+  const strategyConfig = STRATEGY_CONFIG[form.strategy_slug] ?? {}
 
   const renderStrategyField = () => {
     if (loadingStrategies) return <BarLoader />
@@ -57,18 +57,18 @@ const BotForm = ({
       <div className="flex flex-col gap-1">
         <label className="text-content-secondary text-xs uppercase tracking-wider">Strategy</label>
         <select
-          name="strategy"
-          value={strategies[0].name}
+          name="strategy_slug"
+          value={form.strategy_slug}
           onChange={(e) => {
-            const selected = strategies.find((s) => s.name === e.target.value)
-            if (selected) onStrategyChange({ name: selected.name })
+            const selected = strategies?.find((s) => s.slug === e.target.value)
+            if (selected) onStrategyChange(selected)
           }}
           className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
           required
         >
-          {strategies.map(({ name }) => (
-            <option key={name} value={name}>
-              {name}
+          {strategies?.map(({ slug, display_name }, i) => (
+            <option key={i} value={slug}>
+              {display_name}
             </option>
           ))}
         </select>

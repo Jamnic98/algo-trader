@@ -1,25 +1,25 @@
 import { api } from 'api'
 
-import type { Trade, Pagination, TradeFilters } from 'types'
+import type { Fill, Pagination, FillFilters } from 'types'
 
-const tradesEndpoint = '/trades'
+const fillsEndpoint = '/fills'
 
-type TradesParams = TradeFilters & { page?: number; limit?: number }
+type FillsParams = FillFilters & { page?: number; limit?: number }
 
-type RawTradesResponse = {
-  trades: Trade[]
+type RawFillsResponse = {
+  fills: Fill[]
   total: number
   total_pages: number
   page: number
   limit: number
 }
 
-type TradesResponse = {
-  trades: Trade[]
+type FillsResponse = {
+  fills: Fill[]
   pagination: Pagination
 }
 
-export const getAllTrades = async (params: TradesParams): Promise<TradesResponse> => {
+export const getAllFills = async (params: FillsParams): Promise<FillsResponse> => {
   const query = new URLSearchParams()
   const { dateFrom, dateTo, ...rest } = params
 
@@ -29,10 +29,10 @@ export const getAllTrades = async (params: TradesParams): Promise<TradesResponse
   if (dateFrom) query.set('dateFrom', new Date(dateFrom).toISOString())
   if (dateTo) query.set('dateTo', new Date(dateTo + 'T23:59:59').toISOString())
 
-  const raw = await api.fetchJson<RawTradesResponse>(`${tradesEndpoint}?${query.toString()}`)
+  const raw = await api.fetchJson<RawFillsResponse>(`${fillsEndpoint}?${query.toString()}`)
 
   return {
-    trades: raw.trades,
+    fills: raw.fills,
     pagination: {
       total: raw.total,
       total_pages: raw.total_pages,

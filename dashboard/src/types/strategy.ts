@@ -11,13 +11,13 @@ export type ParamSchema = {
 }
 
 export type StrategySchema = {
-  name: string
+  slug: string
   display_name: string
   params: ParamSchema[]
 }
 
 export type StrategyNode = {
-  strategy_id: number
+  strategy_slug: string
   weight: number
   params: Record<string, unknown>
 }
@@ -35,8 +35,7 @@ export type CompositeConfig = {
 }
 
 export type Strategy = {
-  id: string
-  name: string
+  slug: string
   display_name: string
   is_composite: boolean
   created_at: string

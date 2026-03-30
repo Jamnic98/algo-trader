@@ -1,11 +1,11 @@
 import { useEffect, useState, useCallback } from 'react'
 
-import { Heading, TradesTable, TradesFilters, BarLoader } from 'components'
-import { getAllTrades, getAllBots } from 'api'
+import { Heading, FillsTable, FillsFilters, BarLoader } from 'components'
+import { getAllFills, getAllBots } from 'api'
 import { useAlert, useDebounce } from 'hooks'
-import type { Trade, Pagination, TradeFilters, Bot } from 'types'
+import type { Fill, Pagination, FillFilters, Bot } from 'types'
 
-const DEFAULT_FILTERS: TradeFilters = {
+const DEFAULT_FILTERS: FillFilters = {
   limit: 15,
   symbol: '',
   side: '',
@@ -14,13 +14,13 @@ const DEFAULT_FILTERS: TradeFilters = {
   dateTo: '',
 }
 
-const Trades = () => {
+const Fills = () => {
   const [includeDead, setIncludeDead] = useState(false)
   const [bots, setBots] = useState<Bot[]>([])
-  const [trades, setTrades] = useState<Trade[]>([])
+  const [fills, setTrades] = useState<Fill[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [page, setPage] = useState(1)
-  const [filters, setFilters] = useState<TradeFilters>(DEFAULT_FILTERS)
+  const [filters, setFilters] = useState<FillFilters>(DEFAULT_FILTERS)
   const [loading, setLoading] = useState(true)
 
   const { showAlert } = useAlert()
@@ -30,41 +30,41 @@ const Trades = () => {
     getAllBots({ deleted: includeDead }).then(setBots)
   }, [includeDead])
 
-  const fetchTrades = useCallback(async () => {
+  const fetchFills = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await getAllTrades({ page, ...debouncedFilters })
-      setTrades(res.trades)
+      const res = await getAllFills({ page, ...debouncedFilters })
+      setTrades(res.fills)
       setPagination(res.pagination)
     } catch (err) {
       console.error(err)
-      showAlert({ type: 'error', title: 'Failed to load trades' })
+      showAlert({ type: 'error', title: 'Failed to load fills' })
     } finally {
       setLoading(false)
     }
   }, [page, debouncedFilters, showAlert])
 
   useEffect(() => {
-    fetchTrades()
-  }, [fetchTrades])
+    fetchFills()
+  }, [fetchFills])
 
   useEffect(() => {
-    const es = new EventSource(`/api/trades/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`)
+    const es = new EventSource(`/api/fills/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`)
     es.onmessage = (e) => {
-      const trade: Trade = JSON.parse(e.data)
+      const fill: Fill = JSON.parse(e.data)
       const { symbol, side, botId, limit } = debouncedFilters
 
-      if (symbol && !trade.symbol.includes(symbol.toUpperCase())) return
-      if (side && trade.side !== side) return
-      if (botId && trade.botID !== botId) return
+      if (symbol && !fill.symbol.includes(symbol.toUpperCase())) return
+      if (side && fill.side !== side) return
+      if (botId && fill.botID !== botId) return
 
       // Only inject into the live view if the user is on page 1.
-      // On other pages the new trade is out of scope — let a
+      // On other pages the new fill is out of scope — let a
       // manual refresh or page navigation pick it up.
       if (page !== 1) return
 
       setTrades((prev) => {
-        const next = [trade, ...prev]
+        const next = [fill, ...prev]
         // keep trimmed to page size
         return next.slice(0, limit)
       })
@@ -79,7 +79,7 @@ const Trades = () => {
     }
 
     es.onerror = () => {
-      const errorMsg = 'Trades stream error'
+      const errorMsg = 'Fills stream error'
       console.error(errorMsg)
       showAlert({ type: 'error', title: errorMsg })
       es.close()
@@ -88,7 +88,7 @@ const Trades = () => {
     return () => es.close()
   }, [debouncedFilters, filters.limit, page, showAlert])
 
-  const handleFilterChange = (newFilters: TradeFilters) => {
+  const handleFilterChange = (newFilters: FillFilters) => {
     setFilters(newFilters)
     setPage(1) // reset to page 1 on filter change
   }
@@ -106,9 +106,9 @@ const Trades = () => {
 
   return (
     <div className="space-y-8">
-      <Heading title="Trades" />
+      <Heading title="Fills" />
       <div className="space-y-4">
-        <TradesFilters
+        <FillsFilters
           filters={filters}
           onChange={handleFilterChange}
           onClear={handleClear}
@@ -119,11 +119,11 @@ const Trades = () => {
         {loading ? (
           <BarLoader />
         ) : (
-          <TradesTable trades={trades} pagination={pagination} page={page} onPageChange={setPage} />
+          <FillsTable fills={fills} pagination={pagination} page={page} onPageChange={setPage} />
         )}
       </div>
     </div>
   )
 }
 
-export default Trades
+export default Fills

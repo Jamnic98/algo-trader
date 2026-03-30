@@ -4,12 +4,7 @@ import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, createBot, deleteBot } from 'api'
 import { useAlert } from 'hooks'
 import { MAX_CANDLES, STRATEGY_CONFIG } from 'utils'
-import type { Bot, CreateBot, CreateBotStrategy, LoadingAction } from 'types'
-
-// Strategy only has name now
-// const botStrategyValidators: ((s: CreateBotStrategy) => ValidationResult)[] = [
-//   (s) => (s.name ? { valid: true } : { valid: false, error: 'Strategy name is required' }),
-// ]
+import type { Bot, CreateBot, LoadingAction, Strategy } from 'types'
 
 // interval, quantity, maxCandles live on the form now
 const createBotValidators: ((f: CreateBot) => ValidationResult)[] = [
@@ -18,13 +13,6 @@ const createBotValidators: ((f: CreateBot) => ValidationResult)[] = [
   (f) => (f.mode ? { valid: true } : { valid: false, error: 'Mode is required' }),
   (f) => (f.interval ? { valid: true } : { valid: false, error: 'Interval is required' }),
   (f) => (f.quantity ? { valid: true } : { valid: false, error: 'Quantity is required' }),
-  // (f) => {
-  //   for (const validator of botStrategyValidators) {
-  //     const result = validator(f.strategy)
-  //     if (!result.valid) return result
-  //   }
-  //   return { valid: true }
-  // },
 ]
 const validateCreateBotForm = (formData: CreateBot): ValidationResult => {
   for (const validator of createBotValidators) {
@@ -43,8 +31,7 @@ const defaultFormData: CreateBot = {
   interval: '1h', //1h
   maxCandles: 200,
   quantity: '0.001',
-  strategy_id: 1,
-  // strategy_id: 1,
+  strategy_slug: 'simple',
 }
 
 type ValidationResult = { valid: true } | { valid: false; error: string }
@@ -181,9 +168,14 @@ const Bots = () => {
     }
   }
 
-  const handleStrategyChange = (strategy: CreateBotStrategy) => {
-    setForm((prev) => ({ ...prev, strategy }))
-    const config = STRATEGY_CONFIG[strategy.name]
+  const handleStrategyChange = (strategy: Strategy) => {
+    console.log('strategy id:', strategy.id)
+    setForm((prev) => {
+      const next = { ...prev, strategy_id: strategy.id as number }
+      console.log('new form:', next)
+      return next
+    })
+    const config = STRATEGY_CONFIG[strategy.id]
     if (config?.defaultLookback) setMaxCandles(config.defaultLookback)
   }
 

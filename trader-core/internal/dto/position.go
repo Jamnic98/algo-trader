@@ -17,8 +17,8 @@ type PositionDTO struct {
 }
 
 func CalcBotPositions(botID string) ([]PositionDTO, error) {
-	var trades []models.Trade
-	if err := db.DB.Where("bot_id = ?", botID).Order("timestamp ASC").Find(&trades).Error; err != nil {
+	var fills []models.Fill
+	if err := db.DB.Where("bot_id = ?", botID).Order("timestamp ASC").Find(&fills).Error; err != nil {
 		return nil, err
 	}
 
@@ -36,7 +36,7 @@ func CalcBotPositions(botID string) ([]PositionDTO, error) {
 	qtyScale := decimal.NewFromInt(1e6)
 	feeScale := decimal.NewFromInt(1e8)
 
-	for _, t := range trades {
+	for _, t := range fills {
 		if _, ok := ps[t.Symbol]; !ok {
 			ps[t.Symbol] = &state{}
 		}

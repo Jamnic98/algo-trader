@@ -13,7 +13,7 @@ import (
 
 func RegisterStrategyRoutes(rg *gin.RouterGroup) {
 	rg.GET("", getStrategiesHandler)
-	rg.GET("/:id", getStrategyHandler)
+	rg.GET("/:slug", getStrategyHandler)
 	rg.GET("/schemas", getSchemasHandler)
 	rg.POST("", createStrategyHandler)
 }
@@ -42,9 +42,9 @@ func getStrategiesHandler(c *gin.Context) {
 }
 
 func getStrategyHandler(c *gin.Context) {
-	id := c.Param("id")
+	slug := c.Param("slug")
 	var strategy models.Strategy
-	if err := db.DB.First(&strategy, id).Error; err != nil {
+	if err := db.DB.First(&strategy, "slug = ?", slug).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "strategy not found"})
 		return
 	}
@@ -52,7 +52,7 @@ func getStrategyHandler(c *gin.Context) {
 }
 
 type CreateStrategyRequest struct {
-	Name        string                     `json:"name"         binding:"required"`
+	Slug        string                     `json:"slug"         binding:"required"`
 	DisplayName string                     `json:"display_name" binding:"required"`
 	Threshold   float64                    `json:"threshold"`
 	Nodes       []strategies.CompositeNode `json:"nodes" binding:"required,min=1"`
@@ -76,7 +76,7 @@ func createStrategyHandler(c *gin.Context) {
 	}
 
 	strategy := models.Strategy{
-		Name:          req.Name,
+		Slug:          req.Slug,
 		DisplayName:   req.DisplayName,
 		IsComposite:   true,
 		DefaultConfig: cfgJSON,

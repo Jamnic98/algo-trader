@@ -33,10 +33,9 @@ const BotInfo = ({ bot, runningFor }: BotInfoProps) => {
         {/* Exchange */}
         <span className="text-content-secondary">Exchange</span>
         <span className="text-content-secondary capitalize">{bot.exchange}</span>
-        {/* TODO: add back */}
         {/* Strategy */}
-        {/* <span className="text-content-secondary">Strategy</span>
-        <span className="text-content-secondary">{bot.strategy.name}</span> */}
+        <span className="text-content-secondary">Strategy</span>
+        <span className="text-content-secondary">{bot.strategy_name}</span>
         {/* Interval */}
         <span className="text-content-secondary">Interval</span>
         <span className="text-content-secondary">{bot.interval}</span>

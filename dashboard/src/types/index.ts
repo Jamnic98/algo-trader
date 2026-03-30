@@ -5,7 +5,7 @@ export * from './candle'
 export * from './diagnostic'
 export * from './strategy'
 export * from './tab'
-export * from './trade'
+export * from './fill'
 
 export type HistoryPoint = { t: string; cpu: number; mem: number }
 export type ConnStatus = 'connecting' | 'live' | 'disconnected'

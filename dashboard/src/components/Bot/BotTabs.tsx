@@ -43,7 +43,7 @@ const BotTabs = ({ bot, onNewTrade, positionsTick }: BotTabsProps) => {
       content: <BotStats bot={bot} tick={positionsTick} />,
     },
     {
-      label: 'Trades',
+      label: 'Fills',
       icon: <ArrowLeftRight size={13} />,
       content: <BotTrades id={id} onNewTrade={onNewTrade} />,
     },

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-import { getBotTrades } from 'api'
+import { getBotFills } from 'api'
 import { BarLoader } from 'components'
 import { useAlert } from 'hooks'
-import type { Trade, Pagination } from 'types'
+import type { Fill, Pagination } from 'types'
 
 type BotTradesProps = {
   id: string
@@ -24,7 +24,7 @@ const COLUMNS = [
   // { key: 'feeAsset', label: 'Fee Asset' },
 ]
 
-const renderCell = (trade: Trade, key: string) => {
+const renderCell = (trade: Fill, key: string) => {
   switch (key) {
     case 'side':
       return (
@@ -44,44 +44,44 @@ const renderCell = (trade: Trade, key: string) => {
     case 'botID':
       return <span className="font-mono text-sm truncate">{trade.botID.split('-')[0]}</span>
     default:
-      return trade[key as keyof Trade] as string
+      return trade[key as keyof Fill] as string
   }
 }
 
 const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
   const { showAlert } = useAlert()
-  const [trades, setTrades] = useState<Trade[]>([])
+  const [fills, setTrades] = useState<Fill[]>([])
   const [pagination, setPagination] = useState<Pagination | null>(null)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
 
   // initial fetch
   useEffect(() => {
-    const fetchTrades = async () => {
+    const fetchFills = async () => {
       try {
         setLoading(true)
-        const res = await getBotTrades(id, page, TRADES_LIMIT)
+        const res = await getBotFills(id, page, TRADES_LIMIT)
         setTrades(res.data)
         setPagination(res.pagination)
       } catch (err) {
         console.error(err)
-        showAlert({ title: 'Failed to load bot trades', type: 'error' })
+        showAlert({ title: 'Failed to load bot fills', type: 'error' })
       } finally {
         setLoading(false)
       }
     }
-    fetchTrades()
+    fetchFills()
   }, [showAlert, id, page])
 
   useEffect(() => {
     if (page !== 1) return
 
     const source = new EventSource(
-      `/api/bots/${id}/trades/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+      `/api/bots/${id}/fills/stream?api_key=${encodeURIComponent(import.meta.env.VITE_SERVER_API_KEY)}`
     )
 
     source.onmessage = (e) => {
-      const trade: Trade = JSON.parse(e.data)
+      const trade: Fill = JSON.parse(e.data)
       setTrades((prev) => {
         const next = [trade, ...prev]
         return next.slice(0, TRADES_LIMIT) // or whatever your page size is
@@ -106,8 +106,8 @@ const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
   }, [id, page, showAlert, onNewTrade])
 
   if (loading) return <BarLoader />
-  if (!trades.length)
-    return <div className="text-content-secondary text-sm font-mono">No trades yet.</div>
+  if (!fills.length)
+    return <div className="text-content-secondary text-sm font-mono">No fills yet.</div>
 
   return (
     <div>
@@ -123,7 +123,7 @@ const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
             </tr>
           </thead>
           <tbody>
-            {trades.map((trade) => (
+            {fills.map((trade) => (
               <tr
                 key={trade.id}
                 className="bg-table-row border-b border-table-border h-8 transition-colors duration-150 text-nowrap"
@@ -142,7 +142,7 @@ const BotTrades = ({ id, onNewTrade }: BotTradesProps) => {
       {/* Pagination */}
       {pagination && pagination.total_pages > 1 && (
         <div className="flex items-center justify-between mt-4 text-xs font-mono text-content-secondary">
-          <span className="text-content-secondary/50">{pagination.total} trades</span>
+          <span className="text-content-secondary/50">{pagination.total} fills</span>
 
           <div className="flex items-center gap-1">
             <button

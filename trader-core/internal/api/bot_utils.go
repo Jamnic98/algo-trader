@@ -19,20 +19,20 @@ func getBot(id string) *bot.Bot {
 	return b
 }
 
-func fetchBotTrades(botID string, page, limit int) ([]dto.TradeDTO, int64, int, error) {
-	var trades []models.Trade
+func fetchBotFills(botID string, page, limit int) ([]dto.FIllDTO, int64, int, error) {
+	var fills []models.Fill
 	var total int64
 
-	db.DB.Model(&models.Trade{}).Where("bot_id = ?", botID).Count(&total)
-	if err := db.DB.Where("bot_id = ?", botID).Order("timestamp DESC").Offset((page - 1) * limit).Limit(limit).Find(&trades).Error; err != nil {
+	db.DB.Model(&models.Fill{}).Where("bot_id = ?", botID).Count(&total)
+	if err := db.DB.Where("bot_id = ?", botID).Order("timestamp DESC").Offset((page - 1) * limit).Limit(limit).Find(&fills).Error; err != nil {
 		return nil, 0, 0, err
 	}
 
 	totalPages := int(math.Ceil(float64(total) / float64(limit)))
 
-	dtos := make([]dto.TradeDTO, len(trades))
-	for i, t := range trades {
-		dtos[i] = dto.TradeToDTO(&t)
+	dtos := make([]dto.FIllDTO, len(fills))
+	for i, t := range fills {
+		dtos[i] = dto.FIllToDTO(&t)
 	}
 
 	return dtos, total, totalPages, nil

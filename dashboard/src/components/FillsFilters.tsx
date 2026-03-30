@@ -1,11 +1,11 @@
 import { RefreshCcw } from 'lucide-react'
 
-import type { Bot, TradeFilters } from 'types'
+import type { Bot, FillFilters } from 'types'
 
 type TradesFiltersProps = {
   bots: Bot[]
-  filters: TradeFilters
-  onChange: (filters: TradeFilters) => void
+  filters: FillFilters
+  onChange: (filters: FillFilters) => void
   onClear: () => void
   includeDead: boolean
   onIncludeDeadChange: (includeDead: boolean) => void
@@ -14,7 +14,7 @@ type TradesFiltersProps = {
 const LIMITS = [15, 25, 50]
 const SIDES = ['', 'BUY', 'SELL']
 
-const TradesFilters = ({
+const FillsFilters = ({
   bots,
   filters,
   onChange,
@@ -150,4 +150,4 @@ const TradesFilters = ({
     </div>
   )
 }
-export default TradesFilters
+export default FillsFilters

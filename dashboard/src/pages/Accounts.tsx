@@ -12,7 +12,7 @@ const Accounts = () => {
 
   useEffect(() => {
     const source = new EventSource(
-      `/api/account/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+      `/api/account/stream?api_key=${encodeURIComponent(import.meta.env.VITE_SERVER_API_KEY)}`
     )
 
     source.onmessage = (e) => {

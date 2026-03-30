@@ -12,7 +12,7 @@ import {
 } from 'recharts'
 import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 
-import { getBotTrades, getPrice } from 'api'
+import { getBotFills, getPrice } from 'api'
 import type { Bot, Trade } from 'types'
 import { BarLoader } from 'components/Loaders'
 
@@ -35,7 +35,7 @@ const fmtTime = (d: Date) =>
     hour12: false,
   }).format(new Date(d))
 
-// ─── derived stats from trades ───────────────────────────────────────────────
+// ─── derived stats from fills ───────────────────────────────────────────────
 
 type Stats = {
   realisedPnl: number
@@ -49,8 +49,8 @@ type Stats = {
   chartData: { time: string; pnl: number }[]
 }
 
-const deriveStats = (trades: Trade[], currentPrice: number): Stats => {
-  const sorted = [...trades].sort(
+const deriveStats = (fills: Trade[], currentPrice: number): Stats => {
+  const sorted = [...fills].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   )
 
@@ -154,7 +154,7 @@ const ChartTooltip = ({ active, payload, label }: TooltipContentProps<ValueType,
 // ─── main ────────────────────────────────────────────────────────────────────
 
 const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
-  const [trades, setTrades] = useState<Trade[]>([])
+  const [fills, setTrades] = useState<Trade[]>([])
   const [currentPrice, setCurrentPrice] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
@@ -163,7 +163,7 @@ const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getBotTrades(bot.id, 1, 500), getPrice(symbol)])
+    Promise.all([getBotFills(bot.id, 1, 500), getPrice(symbol)])
       .then(([tradesRes, price]) => {
         if (cancelled) return
         setTrades(tradesRes.data)
@@ -182,19 +182,19 @@ const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
 
   if (loading) return <BarLoader />
 
-  if (!trades.length) {
-    return <div className="text-content-secondary text-sm font-mono">No trades yet.</div>
+  if (!fills.length) {
+    return <div className="text-content-secondary text-sm font-mono">No fills yet.</div>
   }
 
-  const s = deriveStats(trades, currentPrice)
+  const s = deriveStats(fills, currentPrice)
   const quote = bot.quote ?? 'USDT'
 
   const unrealisedColor = s.unrealisedPnl > 0 ? 'green' : s.unrealisedPnl < 0 ? 'red' : 'neutral'
   const realisedColor = s.netPnl > 0 ? 'green' : s.netPnl < 0 ? 'red' : 'neutral'
   const chartColor = s.netPnl >= 0 ? '#4ade80' : '#f87171'
 
-  if (!trades.length)
-    return <div className="text-content-secondary text-sm font-mono">No trades yet.</div>
+  if (!fills.length)
+    return <div className="text-content-secondary text-sm font-mono">No fills yet.</div>
 
   return (
     <div className="flex flex-col gap-4 w-full select-none">

@@ -1,23 +1,22 @@
 import { useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { /* useNavigate, */ useParams } from 'react-router-dom'
 
 import { BarLoader, Heading } from 'components'
 import { useStrategy, useStrategies, useBreadcrumbs } from 'hooks'
 
 const StrategyDetails = () => {
-  const navigate = useNavigate()
-  const { id } = useParams<{ id: string }>()
+  const { slug } = useParams<{ slug: string }>()
   const { setOverride } = useBreadcrumbs()
-  const { data: strategy, loading, error } = useStrategy(id!)
+  const { data: strategy, loading, error } = useStrategy(slug!)
 
   useEffect(() => {
-    if (strategy && id) setOverride(id, strategy.name)
-  }, [strategy, id, setOverride])
+    if (strategy && slug) setOverride(slug, strategy.display_name)
+  }, [strategy, slug, setOverride])
 
   const { data: allStrategies } = useStrategies()
 
-  const strategyName = (strategyId: number) =>
-    allStrategies?.find((s) => Number(s.id) === strategyId)?.display_name ?? `#${strategyId}`
+  const strategyName = (strategySlug: string) =>
+    allStrategies?.find((s) => s.slug === strategySlug)?.display_name ?? strategySlug
 
   if (loading) return <BarLoader fullscreen />
   if (error || !strategy)
@@ -28,14 +27,11 @@ const StrategyDetails = () => {
       <Heading title={strategy.display_name} />
 
       <div className="flex flex-col gap-6 max-w-lg">
-        {/* Basic info */}
         <div className="flex flex-col gap-3">
-          <Row label="Name" value={strategy.name} />
           <Row label="Type" value={strategy.is_composite ? 'Composite' : 'Primitive'} />
           <Row label="Created" value={new Date(strategy.created_at).toLocaleString()} />
         </div>
 
-        {/* Composite config */}
         {strategy.is_composite && strategy.config && (
           <>
             <div className="w-full h-px bg-border" />
@@ -55,7 +51,7 @@ const StrategyDetails = () => {
                     key={i}
                     className="flex items-center justify-between border border-border rounded px-3 py-2 text-sm"
                   >
-                    <span className="text-content-primary">{strategyName(node.strategy_id)}</span>
+                    <span className="text-content-primary">{strategyName(node.strategy_slug)}</span>
                     <div className="flex items-center gap-4">
                       {Object.entries(node.params ?? {}).map(([k, v]) => (
                         <span key={k} className="text-content-secondary font-mono text-xs">
@@ -72,15 +68,6 @@ const StrategyDetails = () => {
             </div>
           </>
         )}
-
-        <div className="w-full h-px bg-border" />
-
-        <button
-          onClick={() => navigate('/strategies')}
-          className="text-content-secondary text-sm hover:text-content-primary transition-colors w-fit"
-        >
-          ← Back
-        </button>
       </div>
     </div>
   )

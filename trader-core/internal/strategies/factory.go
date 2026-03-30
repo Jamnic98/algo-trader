@@ -18,7 +18,7 @@ func NewFromConfig(cfg models.Strategy, logger Logger) (Strategy, error) {
 	}
 
 	// then unmarshal params into the typed struct for each strategy
-	switch cfg.Name {
+	switch cfg.Slug {
 	case "simple":
 		var params SimpleParams
 		if err := unmarshalParams(stratDTO.Params, &params); err != nil {
@@ -41,7 +41,7 @@ func NewFromConfig(cfg models.Strategy, logger Logger) (Strategy, error) {
 	// 	return NewSmartDCAStrategy(params, logger), nil
 
 	default:
-		return nil, fmt.Errorf("unknown strategy: %q", cfg.Name)
+		return nil, fmt.Errorf("unknown strategy: %q", cfg.Slug)
 	}
 }
 

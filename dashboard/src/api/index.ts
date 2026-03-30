@@ -3,7 +3,7 @@ export * from './bots'
 export * from './diagnostics'
 export * from './price'
 export * from './strategies'
-export * from './trades'
+export * from './fills'
 
 class ApiError extends Error {
   status?: number

@@ -2,14 +2,12 @@ package dto
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 	"trader-core/internal/db/models"
 )
 
 type StrategyDTO struct {
-	ID          string          `json:"id"`
-	Name        string          `json:"name"`
+	Slug        string          `json:"slug"`
 	DisplayName string          `json:"display_name"`
 	IsComposite bool            `json:"is_composite"`
 	CreatedAt   string          `json:"created_at"`
@@ -18,8 +16,7 @@ type StrategyDTO struct {
 
 func StrategyToDTO(s *models.Strategy) StrategyDTO {
 	dto := StrategyDTO{
-		ID:          fmt.Sprintf("%d", s.ID),
-		Name:        s.Name,
+		Slug:        s.Slug,
 		DisplayName: s.DisplayName,
 		IsComposite: s.IsComposite,
 		CreatedAt:   s.CreatedAt.Format(time.RFC3339),

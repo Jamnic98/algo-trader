@@ -11,7 +11,7 @@ import (
 
 func ResolveStrategy(db *gorm.DB, s models.Strategy) (strategies.Strategy, error) {
 	if !s.IsComposite {
-		return strategies.Build(s.Name, s.DefaultConfig)
+		return strategies.Build(s.Slug, s.DefaultConfig)
 	}
 
 	var nodes []models.StrategyNode
@@ -22,8 +22,8 @@ func ResolveStrategy(db *gorm.DB, s models.Strategy) (strategies.Strategy, error
 	composer := &strategies.WeightedComposer{Threshold: 0.6}
 	for _, node := range nodes {
 		var sub models.Strategy
-		if err := db.First(&sub, node.StrategyID).Error; err != nil {
-			return nil, fmt.Errorf("loading sub-strategy %d: %w", node.StrategyID, err)
+		if err := db.First(&sub, node.StrategySlug).Error; err != nil {
+			return nil, fmt.Errorf("loading sub-strategy %d: %w", node.StrategySlug, err)
 		}
 		subStrategy, err := ResolveStrategy(db, sub) // recursive — handles nested composites
 		if err != nil {

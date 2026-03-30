@@ -15,12 +15,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterTradeRoutes(rg *gin.RouterGroup) {
-	rg.GET("/", getTradesHandler)
-	rg.GET("/stream", streamAllTradesHandler)
+func RegisterFillRoutes(rg *gin.RouterGroup) {
+	rg.GET("/", getFillsHandler)
+	rg.GET("/stream", streamAllFillsHandler)
 }
 
-type TradeQuery struct {
+type FillQuery struct {
 	// Filters
 	BotID    string `form:"botId"`
 	Symbol   string `form:"symbol"`
@@ -36,16 +36,16 @@ type TradeQuery struct {
 	Limit int `form:"limit"`
 }
 
-type PaginatedTradesResponse struct {
-	Trades     []dto.TradeDTO `json:"trades"`
-	Total      int64          `json:"total"`
-	Page       int            `json:"page"`
-	Limit      int            `json:"limit"`
-	TotalPages int64          `json:"total_pages"`
+type PaginatedFillsResponse struct {
+	Fills      []dto.FIllDTO `json:"fills"`
+	Total      int64         `json:"total"`
+	Page       int           `json:"page"`
+	Limit      int           `json:"limit"`
+	TotalPages int64         `json:"total_pages"`
 }
 
-func getTradesHandler(c *gin.Context) {
-	var q TradeQuery
+func getFillsHandler(c *gin.Context) {
+	var q FillQuery
 	if err := c.ShouldBindQuery(&q); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -59,7 +59,7 @@ func getTradesHandler(c *gin.Context) {
 		q.Limit = 20
 	}
 
-	query := db.DB.Model(&models.Trade{})
+	query := db.DB.Model(&models.Fill{})
 
 	// Apply filters
 	if q.BotID != "" {
@@ -99,20 +99,20 @@ func getTradesHandler(c *gin.Context) {
 	}
 
 	// Fetch page
-	var trades []models.Trade
+	var fills []models.Fill
 	offset := (q.Page - 1) * q.Limit
 	if err := query.
 		Order("timestamp DESC").
 		Limit(q.Limit).
 		Offset(offset).
-		Find(&trades).Error; err != nil {
+		Find(&fills).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	tradesDTO := make([]dto.TradeDTO, len(trades))
-	for i, t := range trades {
-		tradesDTO[i] = dto.TradeToDTO(&t)
+	fillsDTO := make([]dto.FIllDTO, len(fills))
+	for i, t := range fills {
+		fillsDTO[i] = dto.FIllToDTO(&t)
 	}
 
 	pages := total / int64(q.Limit)
@@ -120,8 +120,8 @@ func getTradesHandler(c *gin.Context) {
 		pages++
 	}
 
-	c.JSON(http.StatusOK, PaginatedTradesResponse{
-		Trades:     tradesDTO,
+	c.JSON(http.StatusOK, PaginatedFillsResponse{
+		Fills:      fillsDTO,
 		Total:      total,
 		Page:       q.Page,
 		Limit:      q.Limit,
@@ -129,7 +129,7 @@ func getTradesHandler(c *gin.Context) {
 	})
 }
 
-func streamAllTradesHandler(c *gin.Context) {
+func streamAllFillsHandler(c *gin.Context) {
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
@@ -137,36 +137,36 @@ func streamAllTradesHandler(c *gin.Context) {
 	// subscribe to all active bots
 	type sub struct {
 		bot *bot.Bot
-		ch  chan dto.TradeDTO
+		ch  chan dto.FIllDTO
 	}
 	var subs []sub
 
 	activeBotsMu.RLock()
 	for _, b := range activeBots {
-		subs = append(subs, sub{bot: b, ch: b.TradeBroadcaster.Subscribe()})
+		subs = append(subs, sub{bot: b, ch: b.FillBroadcaster.Subscribe()})
 	}
 	activeBotsMu.RUnlock()
 
 	defer func() {
 		for _, s := range subs {
-			s.bot.TradeBroadcaster.Unsubscribe(s.ch)
+			s.bot.FillBroadcaster.Unsubscribe(s.ch)
 		}
 	}()
 
 	// merge all channels into one
-	merged := make(chan dto.TradeDTO)
+	merged := make(chan dto.FIllDTO)
 	for _, s := range subs {
-		go func(ch <-chan dto.TradeDTO) {
-			for trade := range ch {
-				merged <- trade
+		go func(ch <-chan dto.FIllDTO) {
+			for fill := range ch {
+				merged <- fill
 			}
 		}(s.ch)
 	}
 
 	for {
 		select {
-		case trade := <-merged:
-			data, _ := json.Marshal(trade)
+		case fill := <-merged:
+			data, _ := json.Marshal(fill)
 			fmt.Fprintf(c.Writer, "data: %s\n\n", data)
 			c.Writer.Flush()
 		case <-c.Request.Context().Done():

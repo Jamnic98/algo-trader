@@ -28,7 +28,7 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig, strategy strategies.Strategy) (*
 		ActiveStrategy: strategy,
 		CandleCh:       make(chan models.Candle, 100),
 
-		TradeBroadcaster:  &Broadcaster[dto.TradeDTO]{},
+		FillBroadcaster:   &Broadcaster[dto.FIllDTO]{},
 		CandleBroadcaster: &Broadcaster[models.Candle]{},
 		TickBroadcaster:   &Broadcaster[models.Candle]{},
 	}

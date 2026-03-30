@@ -24,7 +24,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
     if (status === 'created') return
 
     const es = new EventSource(
-      `/api/bots/${id}/candles/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+      `/api/bots/${id}/candles/stream?api_key=${encodeURIComponent(import.meta.env.VITE_SERVER_API_KEY)}`
     )
 
     es.onmessage = (e) => {
@@ -80,7 +80,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
     if (status === 'created') return
 
     const es = new EventSource(
-      `/api/bots/${id}/ticks/stream?api_key=${import.meta.env.VITE_SERVER_API_KEY}`
+      `/api/bots/${id}/ticks/stream?api_key=${encodeURIComponent(import.meta.env.VITE_SERVER_API_KEY)}`
     )
 
     es.onmessage = (e) => {

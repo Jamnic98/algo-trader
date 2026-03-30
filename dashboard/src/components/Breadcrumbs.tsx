@@ -5,15 +5,22 @@ const LABEL_MAP: Record<string, string> = {
   accounts: 'Accounts',
   bots: 'Bots',
   diagnostics: 'Diagnostics',
-  trades: 'Trades',
+  fills: 'Fills',
 }
 
 // Segments that look like UUIDs or IDs — shorten to first hyphen chunk
 const looksLikeId = (segment: string) => /^[0-9a-f]{8}-/i.test(segment) || segment.length > 20
 
+const formatSlug = (segment: string): string =>
+  segment
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+
 const formatSegment = (segment: string): string => {
   if (looksLikeId(segment)) return segment.split('-')[0]
   if (LABEL_MAP[segment]) return LABEL_MAP[segment]
+  if (segment.includes('_')) return formatSlug(segment)
   return segment.charAt(0).toUpperCase() + segment.slice(1)
 }
 

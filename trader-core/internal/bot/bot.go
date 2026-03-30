@@ -47,7 +47,7 @@ var (
 // The user picks an existing strategy by ID and optionally overrides params/fees.
 type CreateBotData struct {
 	Mode           BotMode          `json:"mode"`
-	StrategyID     uint             `json:"strategy_id"`
+	StrategySlug   string           `json:"strategy_slug"`
 	ParamOverrides json.RawMessage  `json:"param_overrides"` // optional, overrides strategy defaults
 	MakerFee       *decimal.Decimal `json:"maker_fee"`       // nil = use strategy default
 	TakerFee       *decimal.Decimal `json:"taker_fee"`       // nil = use strategy default
@@ -62,20 +62,19 @@ type CreateBotData struct {
 
 // BotConfig is the DB model for a bot.
 type BotConfig struct {
-	ID             string          `gorm:"primaryKey"         json:"id"`
-	Mode           BotMode         `json:"mode"`
-	StrategyID     uint            `gorm:"not null"           json:"strategy_id"`
-	Strategy       models.Strategy `gorm:"foreignKey:StrategyID" json:"-"` // loaded via Preload
-	ParamOverrides datatypes.JSON  `gorm:"type:jsonb"         json:"param_overrides"`
-	Exchange       string          `json:"exchange"`
-	AssetType      string          `json:"assetType"`
-	Base           string          `json:"base"`
-	Quote          string          `json:"quote"`
-	Interval       string          `json:"interval"`
-	MaxCandles     int             `gorm:"column:max_candles" json:"maxCandles"`
-	Lookback       string          `json:"lookback"`
-	Quantity       string          `json:"quantity"`
-	DeletedAt      gorm.DeletedAt  `gorm:"index"              json:"-"`
+	ID             string         `gorm:"primaryKey"         json:"id"`
+	Mode           BotMode        `json:"mode"`
+	StrategySlug   string         `gorm:"not null"           json:"strategy_slug"` // loaded via Preload
+	ParamOverrides datatypes.JSON `gorm:"type:jsonb"         json:"param_overrides"`
+	Exchange       string         `json:"exchange"`
+	AssetType      string         `json:"assetType"`
+	Base           string         `json:"base"`
+	Quote          string         `json:"quote"`
+	Interval       string         `json:"interval"`
+	MaxCandles     int            `gorm:"column:max_candles" json:"maxCandles"`
+	Lookback       string         `json:"lookback"`
+	Quantity       string         `json:"quantity"`
+	DeletedAt      gorm.DeletedAt `gorm:"index"              json:"-"`
 }
 
 // ResolvedStrategy merges the strategy template defaults with bot-level overrides.
@@ -116,7 +115,7 @@ func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
 	return BotConfig{
 		ID:             id,
 		Mode:           data.Mode,
-		StrategyID:     data.StrategyID,
+		StrategySlug:   data.StrategySlug,
 		ParamOverrides: overrides,
 		Exchange:       data.Exchange,
 		AssetType:      data.AssetType,
@@ -134,16 +133,17 @@ type Bot struct {
 	BotConfig
 
 	Logger         *BotLogger
-	Status         BotStatus           `json:"status"`
-	Started        time.Time           `json:"started"`
-	ActiveStrategy strategies.Strategy // renamed to avoid clash with BotConfig.Strategy (the DB relation)
+	Status         BotStatus `json:"status"`
+	Started        time.Time `json:"started"`
+	StrategyName   string    `json:"strategy_name"`
+	ActiveStrategy strategies.Strategy
 
 	Engine engine.ExecutionEngine
 
 	CandleCh chan models.Candle
 	Candles  []models.Candle
 
-	TradeBroadcaster  *Broadcaster[dto.TradeDTO]
+	FillBroadcaster   *Broadcaster[dto.FIllDTO]
 	CandleBroadcaster *Broadcaster[models.Candle]
 	TickBroadcaster   *Broadcaster[models.Candle]
 

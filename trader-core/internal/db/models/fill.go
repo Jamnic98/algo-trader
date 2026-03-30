@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type Trade struct {
+type Fill struct {
 	ID     uint `gorm:"primaryKey"`
 	BotID  string
 	Symbol string
