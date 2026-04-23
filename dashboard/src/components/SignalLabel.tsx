@@ -1,9 +1,9 @@
-import type { TradeSignal } from 'types'
+import type { OrderSignal } from 'types'
 
-type SignalLabelProps = { signal: TradeSignal }
+type SignalLabelProps = { signal: OrderSignal }
 
 const SignalLabel = ({ signal }: SignalLabelProps) => {
-  const lableColour = (signal: TradeSignal): string => {
+  const lableColour = (signal: OrderSignal): string => {
     switch (signal) {
       case 'BUY':
         return 'text-green-400'

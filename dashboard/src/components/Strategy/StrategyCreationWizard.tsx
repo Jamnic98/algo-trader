@@ -103,9 +103,9 @@ const StrategyCreationWizard = () => {
 
   const loading = loadingStrategies || loadingSchemas
 
-  const schemaFor = (strategyId: number) => {
-    const strategy = strategies?.find((s) => Number(s.id) === strategyId)
-    return strategy ? schemas?.find((sc) => sc.name === strategy.name) : null
+  const schemaFor = (strategySlug: string) => {
+    const strategy = strategies?.find((s) => Number(s.slug === strategySlug))
+    return strategy ? schemas?.find((sc) => sc.display_name === strategy.display_name) : null
   }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -119,11 +119,11 @@ const StrategyCreationWizard = () => {
   const addNode = () => {
     if (!strategies || strategies.length === 0) return
     const first = strategies[0]
-    const schema = schemas?.find((s) => s.name === first.name)
+    const schema = schemas?.find((s) => s.display_name === first.display_name)
     const params = Object.fromEntries(schema?.params.map((p) => [p.key, p.default]) ?? [])
     setForm((prev) => ({
       ...prev,
-      nodes: [...prev.nodes, { strategy_id: Number(first.id), weight: 1, params }],
+      nodes: [...prev.nodes, { strategy_slug: first.slug, weight: 1, params }],
     }))
   }
 
@@ -133,8 +133,8 @@ const StrategyCreationWizard = () => {
       nodes: prev.nodes.map((n, i) => {
         if (i !== index) return n
         // if strategy changed, reset params to new strategy's defaults
-        if (patch.strategy_id !== undefined && patch.strategy_id !== n.strategy_id) {
-          const schema = schemaFor(patch.strategy_id)
+        if (patch.strategy_slug !== undefined && patch.strategy_slug !== n.strategy_slug) {
+          const schema = schemaFor(patch.strategy_slug)
           const params = Object.fromEntries(schema?.params.map((p) => [p.key, p.default]) ?? [])
           return { ...n, ...patch, params }
         }
@@ -156,7 +156,7 @@ const StrategyCreationWizard = () => {
     setForm((prev) => ({ ...prev, nodes: prev.nodes.filter((_, i) => i !== index) }))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault()
     if (form.nodes.length === 0) {
       setError('Add at least one sub-strategy')
@@ -238,18 +238,18 @@ const StrategyCreationWizard = () => {
         )}
 
         {form.nodes.map((node, i) => {
-          const schema = schemaFor(node.strategy_id)
+          const schema = schemaFor(node.strategy_slug)
           return (
             <div key={i} className="flex flex-col gap-2 border border-border rounded p-3">
               <div className="flex items-center gap-2">
                 {/* Strategy picker */}
                 <select
-                  value={node.strategy_id}
-                  onChange={(e) => updateNode(i, { strategy_id: Number(e.target.value) })}
+                  value={node.strategy_slug}
+                  onChange={(e) => updateNode(i, { strategy_slug: e.target.value })}
                   className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors flex-1"
                 >
                   {strategies?.map((s) => (
-                    <option key={s.id} value={s.id}>
+                    <option key={s.slug} value={s.slug}>
                       {s.display_name}
                     </option>
                   ))}

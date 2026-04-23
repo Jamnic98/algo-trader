@@ -169,13 +169,13 @@ const Bots = () => {
   }
 
   const handleStrategyChange = (strategy: Strategy) => {
-    console.log('strategy id:', strategy.id)
+    console.log('strategy id:', strategy.slug)
     setForm((prev) => {
-      const next = { ...prev, strategy_id: strategy.id as number }
+      const next = { ...prev, strategy_id: strategy.slug }
       console.log('new form:', next)
       return next
     })
-    const config = STRATEGY_CONFIG[strategy.id]
+    const config = STRATEGY_CONFIG[strategy.slug]
     if (config?.defaultLookback) setMaxCandles(config.defaultLookback)
   }
 

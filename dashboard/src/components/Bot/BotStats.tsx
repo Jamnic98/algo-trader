@@ -13,7 +13,7 @@ import {
 import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
 
 import { getBotFills, getPrice } from 'api'
-import type { Bot, Trade } from 'types'
+import type { Bot, Fill } from 'types'
 import { BarLoader } from 'components/Loaders'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ type Stats = {
   chartData: { time: string; pnl: number }[]
 }
 
-const deriveStats = (fills: Trade[], currentPrice: number): Stats => {
+const deriveStats = (fills: Fill[], currentPrice: number): Stats => {
   const sorted = [...fills].sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   )
@@ -154,7 +154,7 @@ const ChartTooltip = ({ active, payload, label }: TooltipContentProps<ValueType,
 // ─── main ────────────────────────────────────────────────────────────────────
 
 const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
-  const [fills, setTrades] = useState<Trade[]>([])
+  const [fills, setFills] = useState<Fill[]>([])
   const [currentPrice, setCurrentPrice] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
@@ -166,7 +166,7 @@ const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
     Promise.all([getBotFills(bot.id, 1, 500), getPrice(symbol)])
       .then(([tradesRes, price]) => {
         if (cancelled) return
-        setTrades(tradesRes.data)
+        setFills(tradesRes.data)
         setCurrentPrice(price)
         setLoading(false)
       })
