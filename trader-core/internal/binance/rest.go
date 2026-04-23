@@ -1,11 +1,15 @@
 package binance
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
+	"trader-core/internal/engine"
 )
 
 const restBaseURL = "https://api.binance.com"
@@ -135,4 +139,76 @@ func FetchPrice(symbol string) (string, error) {
 	}
 
 	return result.Price, nil
+}
+
+// place a trade
+func PlaceTrade(symbol string, side engine.Side, quantity float64) (string, error) {
+	serverTime, err := CheckServerTime()
+	if err != nil {
+		return "", fmt.Errorf("place trade request failed: %w", err)
+	}
+
+	var apiKey = "hUXyZHWZkKpbQjsGIDBIPM1fTBSXvq68tNRd1pBwMnC4hVuUnE82Qu7zJaweFqdA"
+	var secretKey = []byte("LczIw8EO18jdWYE7W2942pnSmOLKERcrPEKf110ShoNmsRlgt59TKXqqBEvqIxwk")
+	mac := hmac.New(sha256.New, secretKey)
+	hexEncodedKey := hex.EncodeToString(mac.Sum(nil))
+
+	url := fmt.Sprintf("%s/api/v3/order?symbol=%s&side=%s&recvWindow=5000&timestamp=%d&signature=%s", restBaseURL, symbol, side, serverTime, hexEncodedKey)
+	if quantity != 0 {
+		url += fmt.Sprintf("&quantity=%f", quantity)
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("place trade request failed: %w", err)
+	}
+
+	req.Header.Add("X-MBX-APIKEY", apiKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("place trade request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("place trade bad status: %s, body: %s", resp.Status, body)
+	}
+
+	fmt.Println("status", resp.StatusCode)
+
+	var result struct {
+		Price string `json:"price"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("place trade response decode failed: %w", err)
+	}
+
+	return result.Price, nil
+}
+
+func CheckServerTime() (int, error) {
+	url := fmt.Sprintf("%s/api/v3/time", restBaseURL)
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return 0, fmt.Errorf("check time request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return 0, fmt.Errorf("check time bad status: %s, body: %s", resp.Status, body)
+	}
+
+	var result struct {
+		ServerTime int `json:"serverTime"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, fmt.Errorf("time check decode failed: %w", err)
+	}
+
+	return result.ServerTime, nil
 }

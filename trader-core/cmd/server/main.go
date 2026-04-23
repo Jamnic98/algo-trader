@@ -122,6 +122,12 @@ func main() {
 		}
 	}()
 
+	serverTime, err := binance.PlaceTrade("XRP/USDT", "BUY", 0.01)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("time", serverTime)
+
 	<-ctx.Done()
 	log.Println("shutdown complete")
 }

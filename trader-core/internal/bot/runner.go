@@ -91,44 +91,41 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				Qty:    quantity,
 			}
 
-			fill, err := b.Engine.ExecuteTrade(order)
+			f, err := b.Engine.ExecuteFill(order)
 			if err != nil {
-				log.Println("trade error:", err)
+				log.Println("fill error:", err)
 				continue
 			}
 
-			trade := models.Fill{
-				BotID:       fill.BotID,
-				Symbol:      fill.Symbol,
+			fill := models.Fill{
+				BotID:       f.BotID,
+				Symbol:      f.Symbol,
 				Base:        b.Base,
 				Quote:       b.Quote,
-				Side:        string(fill.Signal),
-				PriceInt:    ToInt64(fill.Price, priceScale),
-				QuantityInt: ToInt64(fill.Qty, quantityScale),
-				FeeInt:      ToInt64(fill.Fee, feeScale),
-
-				// TODO: replace
-				FeeAsset: b.Quote,
-				Exchange: b.Exchange,
-
-				Timestamp: fill.Time,
+				Side:        string(f.Signal),
+				PriceInt:    ToInt64(f.Price, priceScale),
+				QuantityInt: ToInt64(f.Qty, quantityScale),
+				FeeInt:      ToInt64(f.Fee, feeScale),
+				FeeAsset:    b.Quote,
+				Exchange:    b.Exchange,
+				Timestamp:   f.Time,
 			}
 
-			if err := db.DB.Create(&trade).Error; err != nil {
-				log.Println("Failed to insert trade into DB")
+			if err := db.DB.Create(&fill).Error; err != nil {
+				log.Println("Failed to insert fill into DB")
 				return
 			}
 
 			// broadcast to SSE subscribers
-			b.FillBroadcaster.Publish(dto.FIllToDTO(&trade))
+			b.FillBroadcaster.Publish(dto.FIllToDTO(&fill))
 
 			b.Logger.Info(
 				"%s %s %s @ %s (fee %s)\n",
-				fill.Signal,
-				fill.Symbol,
-				fill.Qty.String(),
-				fill.Price.String(),
-				fill.Fee.String(),
+				f.Signal,
+				f.Symbol,
+				f.Qty.String(),
+				f.Price.String(),
+				f.Fee.String(),
 			)
 		}
 	}

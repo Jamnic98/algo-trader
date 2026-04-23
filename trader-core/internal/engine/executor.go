@@ -1,5 +1,5 @@
 package engine
 
 type ExecutionEngine interface {
-	ExecuteTrade(Order) (*Fill, error)
+	ExecuteFill(Order) (*Fill, error)
 }

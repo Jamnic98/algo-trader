@@ -2,38 +2,37 @@ package engine
 
 import (
 	"fmt"
-	"maps"
 	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
 )
 
-type PaperAccount struct {
+type LiveAccount struct {
 	balance   decimal.Decimal            // total available funds
 	Fee       decimal.Decimal            // fee rate, e.g. 0.001
 	Positions map[string]decimal.Decimal // symbol -> qty
 	mu        sync.RWMutex               // thread-safety
 }
 
-func NewPaperAccount(startBalance, fee string) *PaperAccount {
-	return &PaperAccount{
+func NewLiveAccount(startBalance, fee string) *LiveAccount {
+	return &LiveAccount{
 		balance:   decimal.RequireFromString(startBalance),
 		Fee:       decimal.RequireFromString(fee),
 		Positions: make(map[string]decimal.Decimal),
 	}
 }
 
-type PaperExecutor struct {
-	Account *PaperAccount
+type LiveExecutor struct {
+	Account *LiveAccount
 }
 
-func NewPaperExecutor(account *PaperAccount) *PaperExecutor {
-	return &PaperExecutor{Account: account}
+func NewLiveExecutor(account *LiveAccount) *LiveExecutor {
+	return &LiveExecutor{Account: account}
 }
 
-// Fill execution with paper trading engine
-func (pe *PaperExecutor) ExecuteFill(order Order) (*Fill, error) {
+// Fill execution with Live trading engine
+func (pe *LiveExecutor) ExecuteFill(order Order) (*Fill, error) {
 	price := order.Price
 	qty := order.Qty
 	feeRate := pe.Account.Fee
@@ -62,7 +61,7 @@ func (pe *PaperExecutor) ExecuteFill(order Order) (*Fill, error) {
 	return fill, nil
 }
 
-func (a *PaperAccount) ApplyFill(f *Fill) error {
+func (a *LiveAccount) ApplyFill(f *Fill) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -94,12 +93,12 @@ func (a *PaperAccount) ApplyFill(f *Fill) error {
 	return nil
 }
 
-func (a *PaperAccount) Snapshot() AccountSnapshot {
-	a.mu.RLock()
-	defer a.mu.RUnlock()
+// func (a *LiveAccount) Snapshot() AccountSnapshot {
+// 	a.mu.RLock()
+// 	defer a.mu.RUnlock()
 
-	positionsCopy := make(map[string]decimal.Decimal, len(a.Positions))
-	maps.Copy(positionsCopy, a.Positions)
+// 	positionsCopy := make(map[string]decimal.Decimal, len(a.Positions))
+// 	maps.Copy(positionsCopy, a.Positions)
 
-	return AccountSnapshot{a.balance, positionsCopy}
-}
+// 	return AccountSnapshot{a.balance, positionsCopy}
+// }
