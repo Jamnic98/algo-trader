@@ -144,3 +144,46 @@ func TestBacktestHandlerBacktesterDown(t *testing.T) {
 		t.Fatalf("status = %d, want 502; body: %s", w.Code, w.Body.String())
 	}
 }
+
+func TestBacktestHandlerForwardsExchange(t *testing.T) {
+	var gotPayload map[string]any
+	backtester := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if err := json.Unmarshal(body, &gotPayload); err != nil {
+			t.Errorf("bad payload: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"stats":{"num_trades":1}}`))
+	}))
+	defer backtester.Close()
+
+	r := setupBacktestRouter(t, func(string) error { return nil }, backtester.URL)
+	w := doBacktest(t, r, `{"strategy_slug":"simple","exchange":"alpaca","symbol":"BTC/USD","interval":"1h","start":"2024-01-01","end":"2024-02-01"}`)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", w.Code, w.Body.String())
+	}
+	if gotPayload["exchange"] != "alpaca" || gotPayload["symbol"] != "BTC/USD" {
+		t.Fatalf("payload = %v", gotPayload)
+	}
+}
+
+func TestBacktestHandlerDefaultsExchangeToBinance(t *testing.T) {
+	var gotPayload map[string]any
+	backtester := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(body, &gotPayload)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"stats":{"num_trades":0}}`))
+	}))
+	defer backtester.Close()
+
+	r := setupBacktestRouter(t, func(string) error { return nil }, backtester.URL)
+	w := doBacktest(t, r, `{"strategy_slug":"simple","symbol":"BTCUSDT","interval":"1h","start":"2024-01-01","end":"2024-02-01"}`)
+	if w.Code != http.StatusOK {
+		t.Fatalf("status = %d; body: %s", w.Code, w.Body.String())
+	}
+	if gotPayload["exchange"] != "binance" {
+		t.Fatalf("default exchange = %v, want binance", gotPayload["exchange"])
+	}
+}

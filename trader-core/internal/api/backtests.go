@@ -21,7 +21,8 @@ import (
 // BacktestRequest is forwarded to the Python backtester service.
 type BacktestRequest struct {
 	StrategySlug   string `json:"strategy_slug" binding:"required"`
-	Symbol         string `json:"symbol" binding:"required"`
+	Exchange       string `json:"exchange"` // venue for market data, default "binance"
+	Symbol         string `json:"symbol" binding:"required"` // venue-native symbol (BTCUSDT, BTC/USD, AAPL)
 	Interval       string `json:"interval" binding:"required"`
 	Start          string `json:"start" binding:"required"` // RFC3339, YYYY-MM-DD or unix ms
 	End            string `json:"end" binding:"required"`
@@ -78,9 +79,13 @@ func runBacktestHandler(c *gin.Context, backtesterURL string) {
 	if req.FeeRate == "" {
 		req.FeeRate = "0.001"
 	}
+	if req.Exchange == "" {
+		req.Exchange = "binance"
+	}
 
 	payload := map[string]any{
 		"strategy_slug":   req.StrategySlug,
+		"exchange":        req.Exchange,
 		"symbol":          req.Symbol,
 		"interval":        req.Interval,
 		"start":           startMs,

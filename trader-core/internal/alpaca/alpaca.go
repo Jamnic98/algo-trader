@@ -23,6 +23,9 @@ func init() {
 	exchange.Register("alpaca", func(cfg exchange.Config) (exchange.Broker, error) {
 		return New(cfg), nil
 	})
+	exchange.RegisterSymbolMapper("alpaca", func(base, quote, assetType string) string {
+		return SymbolFor(base, quote, assetType == "crypto")
+	})
 }
 
 // Broker is an Alpaca venue (paper or live).

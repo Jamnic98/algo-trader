@@ -65,3 +65,26 @@ func TestConfigFromEnv(t *testing.T) {
 		t.Fatalf("cfg = %+v", cfg)
 	}
 }
+
+func TestSymbolMapperRegistry(t *testing.T) {
+	RegisterSymbolMapper("mapperx", func(base, quote, assetType string) string {
+		return base + "/" + quote + ":" + assetType
+	})
+	if got := SymbolFor("MAPPERX", "btc", "usd", "crypto"); got != "btc/usd:crypto" {
+		t.Fatalf("SymbolFor = %q", got)
+	}
+	// fallback for a venue without a registered mapper
+	if got := SymbolFor("unregistered-venue", "btc", "usdt", "crypto"); got != "BTCUSDT" {
+		t.Fatalf("fallback SymbolFor = %q", got)
+	}
+}
+
+func TestKnown(t *testing.T) {
+	Register("knownx", func(cfg Config) (Broker, error) { return fakeBroker{"knownx"}, nil })
+	if !Known("KNOWNX") {
+		t.Fatal("Known(KNOWNX) = false, want true")
+	}
+	if Known("definitely-not-registered") {
+		t.Fatal("Known = true for unknown venue")
+	}
+}

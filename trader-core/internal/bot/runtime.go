@@ -3,9 +3,11 @@ package bot
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 	"trader-core/internal/db/models"
 	"trader-core/internal/engine"
+	"trader-core/internal/exchange"
 	"trader-core/internal/monitoring"
 	"trader-core/internal/strategies"
 
@@ -22,12 +24,38 @@ type Runtime struct {
 	MarketManager *MarketDataManager
 	Messenger     *monitoring.Messenger
 	Errors        chan string
+	Brokers       map[string]exchange.Broker // venue name -> broker, for market data + live orders
+}
+
+// brokerFor returns the broker for a venue name ("" = default "binance").
+func (r *Runtime) brokerFor(exchangeName string) (exchange.Broker, error) {
+	if exchangeName == "" {
+		exchangeName = "binance"
+	}
+	br, ok := r.Brokers[strings.ToLower(exchangeName)]
+	if !ok {
+		return nil, fmt.Errorf("no broker for exchange %q (registered: %v)", exchangeName, exchange.Names())
+	}
+	return br, nil
 }
 
 func (r *Runtime) newBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
 	switch cfg.Mode {
 	case BotModeLive:
-		return r.BotFactory.NewLiveBot(cfg, strategy)
+		// live bots place real orders on their own exchange; the live ledger
+		// is synced from that venue's balances (quote = cfg.Quote, e.g. USDT/USD)
+		br, err := r.brokerFor(cfg.Exchange)
+		if err != nil {
+			return nil, err
+		}
+		if r.Accounts != nil {
+			if bals, berr := br.Balances(); berr == nil {
+				r.Accounts.SyncLive(bals, strings.ToUpper(cfg.Quote))
+			} else {
+				return nil, fmt.Errorf("fetching %s balances: %w", cfg.Exchange, berr)
+			}
+		}
+		return r.BotFactory.NewLiveBot(cfg, strategy, br)
 	default:
 		// each paper bot trades on its own account (cfg.AccountName, default "default")
 		acc, err := r.Accounts.Paper(cfg.AccountName)
@@ -48,6 +76,10 @@ func (r *Runtime) CreateBot(data CreateBotData) (*Bot, error) {
 	activeStrategy, err := ResolveStrategy(r.DB, strategyModel)
 	if err != nil {
 		return nil, fmt.Errorf("resolving strategy: %w", err)
+	}
+
+	if data.Exchange != "" && !exchange.Known(data.Exchange) {
+		return nil, fmt.Errorf("unknown exchange %q (registered: %v)", data.Exchange, exchange.Names())
 	}
 
 	id := uuid.New().String()
@@ -97,8 +129,8 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 		return fmt.Errorf("cannot attach bot: MarketManager not running")
 	}
 
-	if !rt.MarketManager.client.IsAlive() {
-		return fmt.Errorf("cannot attach bot: Binance client not connected")
+	if !rt.MarketManager.ExchangeReady(b.Exchange) {
+		return fmt.Errorf("cannot attach bot: exchange %q market data not connected", b.Exchange)
 	}
 
 	// Parse interval + lookback from config strings at attach time
@@ -115,7 +147,7 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	intervalDur := interval.Duration()
 	b.MaxCandles = max(int(lookback/intervalDur), 1)
 
-	candles, err := rt.MarketManager.FetchCandles(b.Symbol(), interval, b.MaxCandles+1)
+	candles, err := rt.MarketManager.FetchCandles(b.Exchange, b.Symbol(), interval, b.MaxCandles+1)
 	if err != nil {
 		return fmt.Errorf("failed to fetch historical candles: %w", err)
 	}
@@ -125,7 +157,10 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	// Subscribe to OHLC_Candle stream
 	rt.Dispatcher.Subscribe(b.Symbol(), interval, b)
 	b.Logger.Info("subscribed to %s_%s", b.Symbol(), interval.String())
-	rt.MarketManager.Subscribe(b.Symbol(), interval)
+	if err := rt.MarketManager.Subscribe(b.Exchange, b.Symbol(), interval); err != nil {
+		rt.Dispatcher.Unsubscribe(b.Symbol(), interval, b)
+		return fmt.Errorf("failed to subscribe market stream: %w", err)
+	}
 
 	// Run the bot
 	b.ctx, b.cancel = context.WithCancel(context.Background())
@@ -152,7 +187,7 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 	}
 
 	rt.Dispatcher.Unsubscribe(b.Symbol(), interval, b)
-	rt.MarketManager.Unsubscribe(b.Symbol(), interval)
+	rt.MarketManager.Unsubscribe(b.Exchange, b.Symbol(), interval)
 
 	if b.cancel != nil {
 		b.cancel()

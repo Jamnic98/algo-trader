@@ -64,17 +64,25 @@ func main() {
 	go messenger.Run()
 	defer close(messenger.Quit)
 
-	// market data
+	// market data: one shared Binance WS client + a broker per registered venue
+	// (binance, alpaca, ...) for historical klines, streaming, balances and orders
 	dispatcher := bot.NewDispatcher()
 	binanceClient := binance.NewClient(ctx)
-	marketManager := bot.NewMarketDataManager(binanceClient, dispatcher)
+	brokers := map[string]exchange.Broker{}
+	for _, name := range exchange.Names() {
+		br, err := exchange.New(name, exchange.ConfigFromEnv(name))
+		if err != nil {
+			log.Printf("exchange %q unavailable: %v", name, err)
+			continue
+		}
+		brokers[name] = br
+		log.Printf("exchange %q ready (paper=%v)", name, exchange.ConfigFromEnv(name).Paper)
+	}
+	marketManager := bot.NewMarketDataManager(binanceClient, dispatcher, brokers)
 	go marketManager.Run(ctx)
 
-	// default broker from the exchange registry (binance for now; alpaca registers itself)
-	broker, berr := exchange.New("binance", exchange.ConfigFromEnv("binance"))
-	if berr != nil {
-		log.Println("exchange registry:", berr)
-	}
+	// default order placer (binance); live bots pick their own venue's broker
+	broker := brokers["binance"]
 	var placer engine.OrderPlacer = binance.SpotPlacer{}
 	if broker != nil {
 		placer = broker // a Broker satisfies engine.OrderPlacer
@@ -120,6 +128,7 @@ func main() {
 		MarketManager: marketManager,
 		Messenger:     messenger,
 		Errors:        make(chan string, 10),
+		Brokers:       brokers,
 	}
 
 	// inject dependencies into API handlers

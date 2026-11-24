@@ -25,6 +25,11 @@ INTERVALS = {
 MAX_PER_REQUEST = 1000
 
 
+def normalize_symbol(symbol: str) -> str:
+    """Uppercase and strip separators: btc/usd -> BTCUSDT-style venue symbol."""
+    return "".join(c for c in symbol.upper() if c.isalnum())
+
+
 @dataclass
 class Candle:
     open_time: int  # ms

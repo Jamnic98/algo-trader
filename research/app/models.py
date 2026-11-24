@@ -3,7 +3,8 @@ from pydantic import BaseModel
 
 class BacktestRequest(BaseModel):
     strategy_slug: str
-    symbol: str
+    exchange: str = "binance"  # venue for market data: "binance" or "alpaca"
+    symbol: str  # venue-native symbol (BTCUSDT, BTC/USD, AAPL)
     interval: str
     start: str | int  # unix ms, RFC3339 or YYYY-MM-DD
     end: str | int
@@ -42,6 +43,7 @@ class EquityPoint(BaseModel):
 
 class BacktestResult(BaseModel):
     strategy_slug: str
+    exchange: str = "binance"
     symbol: str
     interval: str
     start: int

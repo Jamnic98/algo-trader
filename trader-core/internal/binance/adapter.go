@@ -15,6 +15,9 @@ func init() {
 	exchange.Register("binance", func(cfg exchange.Config) (exchange.Broker, error) {
 		return NewBroker(cfg), nil
 	})
+	exchange.RegisterSymbolMapper("binance", func(base, quote, _ string) string {
+		return NormalizeSymbol(base + quote)
+	})
 }
 
 // Broker adapts the existing Binance REST/WS code to exchange.Broker.

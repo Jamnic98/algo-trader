@@ -188,3 +188,92 @@ def test_backtest_binance_error_502(client: TestClient) -> None:
         },
     )
     assert resp.status_code == 502
+
+
+@pytest.fixture
+def alpaca_client(store) -> Iterator[TestClient]:
+    from app.main import get_alpaca_client
+
+    def fake_bars(request: httpx.Request) -> httpx.Response:
+        assert (
+            request.url.raw_path.split(b"?")[0] == b"/v1beta3/crypto/us/BTC%2FUSD/bars"
+        )
+        closes = ["50000", "49000", "51000", "52000"]
+        bars = [
+            {
+                "t": f"2024-01-01T0{i}:00:00Z",
+                "o": c,
+                "h": c,
+                "l": c,
+                "c": c,
+                "v": "1.5",
+            }
+            for i, c in enumerate(closes)
+        ]
+        return httpx.Response(200, json={"bars": bars, "next_page_token": ""})
+
+    app.dependency_overrides[get_store] = lambda: store
+    app.dependency_overrides[get_http_client] = lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda r: httpx.Response(200, json=[])),
+        base_url="https://api.binance.com",
+    )
+    app.dependency_overrides[get_alpaca_client] = lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(fake_bars),
+        base_url="https://data.alpaca.markets",
+        headers={"APCA-API-KEY-ID": "k", "APCA-API-SECRET-KEY": "s"},
+    )
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+def test_backtest_alpaca_exchange(alpaca_client: TestClient) -> None:
+    resp = alpaca_client.post(
+        "/backtest",
+        json={
+            "strategy_slug": "simple",
+            "exchange": "alpaca",
+            "symbol": "btc/usd",
+            "interval": "1h",
+            "start": "2024-01-01",
+            "end": 1704067200000 + 4 * 3_600_000,
+            "initial_balance": "1000",
+            "fee_rate": "0.001",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["exchange"] == "alpaca"
+    assert body["symbol"] == "BTC/USD"  # normalized
+    assert body["stats"]["num_trades"] >= 1
+
+
+def test_backtest_unsupported_exchange_400(client: TestClient) -> None:
+    resp = client.post(
+        "/backtest",
+        json={
+            "strategy_slug": "simple",
+            "exchange": "kraken",
+            "symbol": "BTC/USD",
+            "interval": "1h",
+            "start": "2024-01-01",
+            "end": "2024-02-01",
+        },
+    )
+    assert resp.status_code == 400
+    assert "unsupported exchange" in resp.json()["detail"]
+
+
+def test_backtest_alpaca_bad_interval_400(alpaca_client: TestClient) -> None:
+    resp = alpaca_client.post(
+        "/backtest",
+        json={
+            "strategy_slug": "simple",
+            "exchange": "alpaca",
+            "symbol": "AAPL",
+            "interval": "3m",  # not offered by Alpaca
+            "start": "2024-01-01",
+            "end": "2024-02-01",
+        },
+    )
+    assert resp.status_code == 400
+    assert "unsupported interval" in resp.json()["detail"]

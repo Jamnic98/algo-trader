@@ -118,3 +118,37 @@ func Names() []string {
 	}
 	return out
 }
+
+// Known reports whether a venue name is registered.
+func Known(name string) bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	_, ok := registry[strings.ToLower(name)]
+	return ok
+}
+
+// SymbolMapper builds the venue-native symbol from a base/quote pair and asset
+// type (e.g. binance "BTC"+"USDT" -> "BTCUSDT", alpaca crypto -> "BTC/USD",
+// alpaca stocks -> "AAPL").
+type SymbolMapper func(base, quote, assetType string) string
+
+var symbolMappers = map[string]SymbolMapper{}
+
+// RegisterSymbolMapper registers how a venue maps base/quote to its native symbol.
+func RegisterSymbolMapper(name string, m SymbolMapper) {
+	mu.Lock()
+	defer mu.Unlock()
+	symbolMappers[strings.ToLower(name)] = m
+}
+
+// SymbolFor maps base/quote to the venue-native symbol. Falls back to
+// uppercased base+quote for venues without a registered mapper.
+func SymbolFor(exchangeName, base, quote, assetType string) string {
+	mu.RLock()
+	m, ok := symbolMappers[strings.ToLower(exchangeName)]
+	mu.RUnlock()
+	if !ok {
+		return strings.ToUpper(base + quote)
+	}
+	return m(base, quote, assetType)
+}

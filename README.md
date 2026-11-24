@@ -60,6 +60,32 @@ docker compose -f docker-compose.local.yml up --build
 Required env in `.env.local`: `SERVER_API_KEY`, `DB_DSN`, and for live trading
 `BINANCE_API_KEY` / `BINANCE_SECRET_KEY` (never commit these).
 
+## Multi-exchange (Alpaca)
+
+Bots carry an `exchange` field (`binance` by default). Venues register themselves
+in the `internal/exchange` registry (`internal/binance`, `internal/alpaca`), which
+provides klines, websocket streaming, balances and market orders behind one
+`exchange.Broker` interface. The backtester accepts `"exchange": "binance" |
+"alpaca"` on `POST /api/backtests` / `POST /backtest` (Alpaca bars come from
+`data.alpaca.markets`: stocks via `/v2/stocks/{sym}/bars`, crypto via
+`/v1beta3/crypto/us/{sym}/bars`).
+
+Alpaca env (paper trading API by default, live when `ALPACA_PAPER` is unset/false):
+
+```
+ALPACA_API_KEY=...
+ALPACA_SECRET=...
+ALPACA_PAPER=true            # use https://paper-api.alpaca.markets for orders
+# optional overrides:
+ALPACA_BASE_URL=...          # trading REST (default paper/live api.alpaca.markets)
+ALPACA_DATA_URL=...          # market data (default https://data.alpaca.markets)
+ALPACA_WS_URL=...            # market data websocket
+```
+
+The research service reads `ALPACA_DATA_URL` / `ALPACA_API_KEY` / `ALPACA_SECRET`
+for backtests; the trader-core reads the same vars (compose passes `.env.prod`
+through to both).
+
 ## Run in prod
 
 ```bash

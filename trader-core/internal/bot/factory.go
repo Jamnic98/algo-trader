@@ -46,11 +46,15 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig, strategy strategies.Strategy) (*
 	return f.newBot(cfg, strategy, f.Engine())
 }
 
-// NewLiveBot builds a bot whose fills are placed on the exchange via Placer.
-func (f *BotFactory) NewLiveBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
+// NewLiveBot builds a bot whose fills are placed on the exchange via placer
+// (the broker for cfg.Exchange). Falls back to the factory default Placer when nil.
+func (f *BotFactory) NewLiveBot(cfg BotConfig, strategy strategies.Strategy, placer engine.OrderPlacer) (*Bot, error) {
+	if placer == nil {
+		placer = f.Placer
+	}
 	acc := f.LiveAccount
 	if acc == nil {
 		acc = engine.NewLiveAccount("0", "0.001")
 	}
-	return f.newBot(cfg, strategy, engine.NewLiveExecutor(acc, f.Placer))
+	return f.newBot(cfg, strategy, engine.NewLiveExecutor(acc, placer))
 }

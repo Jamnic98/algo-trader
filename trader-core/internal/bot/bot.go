@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
+	_ "trader-core/internal/alpaca" // register the alpaca venue + symbol mapper
 	"trader-core/internal/db/models"
 	"trader-core/internal/dto"
 	"trader-core/internal/engine"
+	"trader-core/internal/exchange"
 	"trader-core/internal/strategies"
 
 	"github.com/shopspring/decimal"
@@ -118,13 +119,17 @@ func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
 	if account == "" {
 		account = "default"
 	}
+	exchangeName := data.Exchange
+	if exchangeName == "" {
+		exchangeName = "binance"
+	}
 	return BotConfig{
 		ID:             id,
 		Mode:           data.Mode,
 		AccountName:    account,
 		StrategySlug:   data.StrategySlug,
 		ParamOverrides: overrides,
-		Exchange:       data.Exchange,
+		Exchange:       exchangeName,
 		AssetType:      data.AssetType,
 		Base:           data.Base,
 		Quote:          data.Quote,
@@ -158,10 +163,8 @@ type Bot struct {
 	cancel context.CancelFunc
 }
 
+// Symbol returns the venue-native symbol for this bot's pair
+// (binance "BTCUSDT", alpaca crypto "BTC/USD", alpaca stocks "AAPL").
 func (b *Bot) Symbol() string {
-	switch b.Exchange {
-	case "binance":
-		return strings.ToUpper(b.Base + b.Quote)
-	}
-	return strings.ToUpper(b.Base + b.Quote)
+	return exchange.SymbolFor(b.Exchange, b.Base, b.Quote, b.AssetType)
 }
