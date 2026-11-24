@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "description": "Single source of truth for strategy definitions. Both trader-core (Go) and research (Python backtester) load this file: it declares each primitive's template, param schema/defaults, and test vectors that both engines' test suites execute. The /api/strategies/schemas endpoint is served from this file.",
+  "composite": {
+    "template": "weighted_vote",
+    "default_threshold": 0.6
+  },
+  "primitives": [
+    {
+      "name": "simple",
+      "display_name": "Simple",
+      "template": "prev_close",
+      "params": [],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [
+          { "candles": [100, 90, 95, 94], "expect": ["HOLD", "BUY", "SELL", "BUY"] },
+          { "candles": [100, 90, 90.05], "expect": ["HOLD", "BUY", "HOLD"] }
+        ]
+      }
+    },
+    {
+      "name": "simple_dca",
+      "display_name": "Simple DCA",
+      "template": "always_buy",
+      "params": [],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [{ "candles": [100, 90, 95], "expect": ["BUY", "BUY", "BUY"] }]
+      }
+    },
+    {
+      "name": "sma_cross",
+      "display_name": "SMA Crossover",
+      "template": "sma_cross",
+      "params": [
+        { "key": "fast", "label": "Fast SMA", "type": "number", "default": 5, "min": 1 },
+        { "key": "slow", "label": "Slow SMA", "type": "number", "default": 10, "min": 2 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [
+          {
+            "candles": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 110, 80],
+            "expect": ["HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "BUY", "SELL"]
+          },
+          {
+            "candles": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+            "expect": ["HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ml_example",
+      "display_name": "ML Example (HTTP)",
+      "template": "http",
+      "params": [
+        { "key": "url", "label": "Model endpoint", "type": "string", "default": "http://127.0.0.1:8001/predict" },
+        { "key": "window", "label": "Candle window", "type": "number", "default": 20, "min": 2 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [],
+        "note": "http-template strategies are tested per-engine with mock servers (remote callable, not a pure function)"
+      }
+    },
+    {
+      "name": "smart_dca",
+      "display_name": "Smart DCA",
+      "template": "dca",
+      "params": [
+        { "key": "fixed_spend", "label": "Fixed Spend", "type": "string", "default": "10.00", "min": 0.01 },
+        { "key": "take_profit", "label": "Take Profit Multiplier", "type": "number", "default": 1.05, "min": 1.0 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [
+          { "candles": [100, 106], "expect": ["BUY", "SELL"] },
+          { "candles": [100, 102], "expect": ["BUY", "BUY"] }
+        ]
+      }
+    }
+  ]
+}

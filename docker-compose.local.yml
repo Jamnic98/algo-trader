@@ -1,0 +1,73 @@
+services:
+  dashboard:
+    container_name: dashboard
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile.local
+    ports:
+      - "5173:5173"
+    networks:
+      - app-network
+    env_file:
+      - .env.local
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    depends_on:
+      - trader-core
+
+  trader-core:
+    container_name: trader-core-local
+    build:
+      context: .
+      dockerfile: trader-core/Dockerfile.local
+    expose:
+      - "8080"
+    ports:
+      - "8080:8080"
+    networks:
+      - app-network
+    env_file:
+      - .env.local
+    environment:
+      - BACKTESTER_URL=http://research:8000
+    volumes:
+      - ./trader-core:/app
+      - ./shared:/app/shared
+      - /root/go/pkg:/root/go/pkg
+
+  research:
+    container_name: research-local
+    build:
+      context: .
+      dockerfile: research/Dockerfile.local
+    ports:
+      - "8000:8000"
+    networks:
+      - app-network
+    env_file:
+      - .env.local
+    volumes:
+      - ./research:/app
+      - ./shared:/app/shared
+
+networks:
+  app-network:
+
+  # redis:
+  #   image: redis:8.6-alpine
+  #   container_name: redis
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - app-network
+  #   volumes:
+  #     - redis-data:/data
+  #   restart: unless-stopped
+
+# networks:
+#   app-network:
+# external: true
+
+# volumes:
+#   redis-data:

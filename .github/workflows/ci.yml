@@ -1,0 +1,124 @@
+name: CI Full
+
+on:
+  push:
+    paths:
+      - "dashboard/**"
+      - "trader-core/**"
+      - "research/**"
+      - "shared/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+
+  pull_request:
+    paths:
+      - "dashboard/**"
+      - "trader-core/**"
+      - "research/**"
+      - "shared/**"
+      - "scripts/**"
+      - ".github/workflows/**"
+
+jobs:
+  test-dashboard:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 24
+
+      - name: Cache Node modules
+        uses: actions/cache@v3
+        with:
+          path: dashboard/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('dashboard/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Run Vitest
+        working-directory: dashboard
+        run: npx vitest --passWithNoTests --reporter=dot
+
+  test-go:
+    name: Test Go API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 5s --health-timeout 5s --health-retries 5
+    env:
+      TEST_DB_DSN: postgres://test:test@localhost:5432/test?sslmode=disable
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.25
+
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Check generated strategy schema is fresh
+        run: python3 scripts/generate_strategies.py --check
+
+      - name: Run Go tests
+        working-directory: trader-core
+        run: go test -v ./...
+
+  test-research:
+    name: Test Backtester (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('research/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        working-directory: research
+        run: pip install -r requirements.txt
+
+      - name: Lint and typecheck
+        working-directory: research
+        run: |
+          ruff check .
+          black --check .
+          mypy .
+
+      - name: Run tests
+        working-directory: research
+        run: pytest -v

@@ -1,0 +1,14 @@
+pre-push:
+  commands:
+    test-dashboard:
+      run: npm run test --prefix dashboard
+      root: .
+      execute_always: true
+    build-dashboard:
+      run: npm run build --prefix dashboard
+      root: .
+      execute_always: true
+    test-go:
+      run: go test -v ./...
+      root: trader-core
+      execute_always: true
