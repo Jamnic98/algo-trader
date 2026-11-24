@@ -17,6 +17,7 @@ export interface Bot extends CreateBot {
 
 export interface CreateBot {
   mode: BotMode
+  account?: string // paper account name; 'live' when mode is live
   exchange: Exchange
   assetType: AssetType
   base: string

@@ -47,6 +47,7 @@ var (
 // The user picks an existing strategy by ID and optionally overrides params/fees.
 type CreateBotData struct {
 	Mode           BotMode          `json:"mode"`
+	Account        string           `json:"account"` // paper account name; empty = "default"; "live" for live trading
 	StrategySlug   string           `json:"strategy_slug"`
 	ParamOverrides json.RawMessage  `json:"param_overrides"` // optional, overrides strategy defaults
 	MakerFee       *decimal.Decimal `json:"maker_fee"`       // nil = use strategy default
@@ -64,6 +65,7 @@ type CreateBotData struct {
 type BotConfig struct {
 	ID             string         `gorm:"primaryKey"         json:"id"`
 	Mode           BotMode        `json:"mode"`
+	AccountName    string         `gorm:"not null;default:'default'" json:"account"` // paper account name, or "live"
 	StrategySlug   string         `gorm:"not null"           json:"strategy_slug"` // loaded via Preload
 	ParamOverrides datatypes.JSON `gorm:"type:jsonb"         json:"param_overrides"`
 	Exchange       string         `json:"exchange"`
@@ -112,9 +114,14 @@ func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
 		overrides = datatypes.JSON(data.ParamOverrides)
 	}
 
+	account := data.Account
+	if account == "" {
+		account = "default"
+	}
 	return BotConfig{
 		ID:             id,
 		Mode:           data.Mode,
+		AccountName:    account,
 		StrategySlug:   data.StrategySlug,
 		ParamOverrides: overrides,
 		Exchange:       data.Exchange,

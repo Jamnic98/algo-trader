@@ -24,6 +24,7 @@ const validateCreateBotForm = (formData: CreateBot): ValidationResult => {
 
 const defaultFormData: CreateBot = {
   mode: 'paper',
+  account: 'default',
   exchange: 'binance',
   assetType: 'crypto',
   base: '',
@@ -192,7 +193,11 @@ const Bots = () => {
           onChange={handleChange}
           onStrategyChange={handleStrategyChange}
           onModeToggle={() =>
-            setForm((f) => ({ ...f, mode: f.mode === 'live' ? 'paper' : 'live' }))
+            setForm((f) => ({
+              ...f,
+              mode: f.mode === 'live' ? 'paper' : 'live',
+              account: f.mode === 'live' ? 'default' : 'live',
+            }))
           }
           onSubmit={handleCreateBot}
         />

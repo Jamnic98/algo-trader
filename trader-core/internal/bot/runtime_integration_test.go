@@ -28,8 +28,14 @@ func TestRestoreBotResolvesStrategyBySlug(t *testing.T) {
 	db.SeedStrategies(db.DB)
 
 	acc := engine.NewPaperAccount("10000", "0.001")
+	accounts := engine.NewAccountManager(db.DB, engine.NewLiveAccount("0", "0.001"))
+	if _, err := accounts.Paper(engine.DefaultPaperName); err != nil {
+		t.Fatalf("default paper account: %v", err)
+	}
 	rt := &Runtime{
-		DB: db.DB,
+		DB:       db.DB,
+		Account:  acc,
+		Accounts: accounts,
 		BotFactory: &BotFactory{
 			Account: acc,
 			Engine:  func() engine.ExecutionEngine { return engine.NewPaperExecutor(acc) },

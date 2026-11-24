@@ -14,7 +14,8 @@ import (
 )
 
 type Runtime struct {
-	Account       engine.Account
+	Account       engine.Account // default paper account (back-compat)
+	Accounts      *engine.AccountManager
 	BotFactory    *BotFactory
 	DB            *gorm.DB
 	Dispatcher    *Dispatcher
@@ -28,7 +29,12 @@ func (r *Runtime) newBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, err
 	case BotModeLive:
 		return r.BotFactory.NewLiveBot(cfg, strategy)
 	default:
-		return r.BotFactory.NewPaperBot(cfg, strategy)
+		// each paper bot trades on its own account (cfg.AccountName, default "default")
+		acc, err := r.Accounts.Paper(cfg.AccountName)
+		if err != nil {
+			return nil, err
+		}
+		return r.BotFactory.NewBot(cfg, strategy, engine.NewPaperExecutor(acc))
 	}
 }
 
