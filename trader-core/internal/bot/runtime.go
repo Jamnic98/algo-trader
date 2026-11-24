@@ -165,7 +165,7 @@ func (rt *Runtime) DetachBot(b *Bot) error {
 
 func (r *Runtime) RestoreBot(cfg BotConfig) (*Bot, error) {
 	var strategyModel models.Strategy
-	if err := r.DB.First(&strategyModel, cfg.StrategySlug).Error; err != nil {
+	if err := r.DB.First(&strategyModel, "slug = ?", cfg.StrategySlug).Error; err != nil {
 		return nil, fmt.Errorf("strategy %s not found: %w", cfg.StrategySlug, err)
 	}
 
