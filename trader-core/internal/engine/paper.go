@@ -14,6 +14,42 @@ type PaperAccount struct {
 	Fee       decimal.Decimal            // fee rate, e.g. 0.001
 	Positions map[string]decimal.Decimal // symbol -> qty
 	mu        sync.RWMutex               // thread-safety
+
+	// OnChange is called after every ledger mutation (fills, reset, top-up)
+	// so an AccountManager can persist the balance.
+	OnChange func()
+}
+
+// SetBalance replaces the available balance.
+func (a *PaperAccount) SetBalance(amount decimal.Decimal) {
+	a.mu.Lock()
+	a.balance = amount
+	a.mu.Unlock()
+	a.notifyChange()
+}
+
+// AddBalance tops up the available balance.
+func (a *PaperAccount) AddBalance(amount decimal.Decimal) {
+	a.mu.Lock()
+	a.balance = a.balance.Add(amount)
+	a.mu.Unlock()
+	a.notifyChange()
+}
+
+// Reset clears positions and restores the balance/fee.
+func (a *PaperAccount) Reset(balance, fee decimal.Decimal) {
+	a.mu.Lock()
+	a.balance = balance
+	a.Fee = fee
+	a.Positions = make(map[string]decimal.Decimal)
+	a.mu.Unlock()
+	a.notifyChange()
+}
+
+func (a *PaperAccount) notifyChange() {
+	if a.OnChange != nil {
+		a.OnChange()
+	}
 }
 
 func NewPaperAccount(startBalance, fee string) *PaperAccount {
@@ -91,6 +127,7 @@ func (a *PaperAccount) ApplyFill(f *Fill) error {
 		return fmt.Errorf("invalid side")
 	}
 
+	a.notifyChange()
 	return nil
 }
 

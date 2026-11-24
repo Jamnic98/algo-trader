@@ -15,6 +15,8 @@ import (
 	"trader-core/internal/engine"
 	"trader-core/internal/monitoring"
 	"trader-core/setup"
+
+	"github.com/shopspring/decimal"
 )
 
 func main() {
@@ -66,14 +68,24 @@ func main() {
 	marketManager := bot.NewMarketDataManager(binanceClient, dispatcher)
 	go marketManager.Run(ctx)
 
-	// paper trading account + live ledger (synced from Binance balances) + bot factory
-	account := engine.NewPaperAccount("10000", "0.001")
+	// account manager: default paper account + live ledger synced from Binance
 	liveAccount := engine.NewLiveAccount("0", "0.001")
-	if balances, err := binance.FetchAccount(); err != nil {
+	var balances map[string]decimal.Decimal
+	if b, err := binance.FetchAccount(); err != nil {
 		log.Println("could not fetch Binance balances (live ledger starts at 0):", err)
-	} else if usdt, ok := balances["USDT"]; ok {
-		liveAccount.SetBalance(usdt)
-		log.Println("live USDT balance:", usdt.String())
+	} else {
+		balances = b
+		if usdt, ok := b["USDT"]; ok {
+			log.Println("live USDT balance:", usdt.String())
+		}
+	}
+	accountManager := engine.NewAccountManager(db, liveAccount)
+	if balances != nil {
+		accountManager.SyncLive(balances, "USDT")
+	}
+	account, err := accountManager.Paper(engine.DefaultPaperName) // "default": 10000 USDT paper
+	if err != nil {
+		log.Fatal(err)
 	}
 	botFactory := bot.BotFactory{
 		Account: account,
@@ -87,6 +99,7 @@ func main() {
 	// shared bot runtime
 	runtime := &bot.Runtime{
 		Account:       account,
+		Accounts:      accountManager,
 		BotFactory:    &botFactory,
 		DB:            db,
 		Dispatcher:    dispatcher,
