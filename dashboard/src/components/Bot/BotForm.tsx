@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 
 import { BarLoader } from 'components'
-import { useStrategies } from 'hooks'
+import { useAccounts, useStrategies } from 'hooks'
 import { lookbackToString } from 'utils'
 import {
   CANDLE_INTERVALS,
@@ -32,6 +32,7 @@ const BotForm = ({
   onSubmit,
 }: BotFormProps) => {
   const { data: strategies, loading: loadingStrategies } = useStrategies()
+  const { data: accounts } = useAccounts()
   // const availableAssetTypes = EXCHANGE_CONFIG[form.exchange]?.assetTypes ?? []
   const strategyConfig = STRATEGY_CONFIG[form.strategy_slug] ?? {}
 
@@ -96,6 +97,31 @@ const BotForm = ({
               />
             </div>
           </div>
+        </div>
+
+        {/* Account */}
+        <div className="flex flex-col gap-1">
+          <label className="text-content-secondary text-xs uppercase tracking-wider">Account</label>
+          <select
+            name="account"
+            value={form.account ?? (form.mode === 'live' ? 'live' : 'default')}
+            onChange={onChange}
+            className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
+          >
+            {form.mode === 'live' && <option value="live">live (Binance)</option>}
+            {(accounts ?? [])
+              .filter((a) => a.type === 'paper')
+              .map((a) => (
+                <option key={a.name} value={a.name}>
+                  {a.name} ({a.balance})
+                </option>
+              ))}
+            {form.mode !== 'live' && (
+              <option value="live" disabled>
+                live (switch mode to live)
+              </option>
+            )}
+          </select>
         </div>
 
         {/* Exchange */}
