@@ -6,6 +6,11 @@ Monorepo: Go trading core + React dashboard + Python backtester.
 - `dashboard/` — React + Vite frontend on `:5173` (dev).
 - `research/` — Python (FastAPI) backtester service on `:8000`. Reads saved strategies
   from Postgres and runs them against historical Binance klines.
+- `shared/strategies.json` — **single source of truth for strategy definitions**
+  (templates, param schemas/defaults, behavior test vectors). Both `trader-core` and
+  `research` load it at startup (`STRATEGIES_SCHEMA_PATH` to override); the
+  `/api/strategies/schemas` endpoint is served from it, and both test suites execute
+  its test vectors, so the Go and Python engines can't silently drift apart.
 
 ## Strategy → backtest flow
 

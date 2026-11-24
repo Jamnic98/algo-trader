@@ -47,7 +47,7 @@ func resolveComposite(db *gorm.DB, s models.Strategy) (strategies.Strategy, erro
 
 	threshold := cfg.Threshold
 	if threshold <= 0 {
-		threshold = 0.6
+		threshold = strategies.Definitions().Composite.DefaultThreshold
 	}
 
 	composer := &strategies.WeightedComposer{Threshold: threshold}

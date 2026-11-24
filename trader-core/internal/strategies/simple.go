@@ -14,15 +14,7 @@ type SimpleStrategy struct {
 	buyPrice    decimal.Decimal
 }
 
-func init() {
-	Register("simple", StrategySchema{
-		Name:        "simple",
-		DisplayName: "Simple",
-		Params:      []ParamSchema{}, // no params
-	}, func(_ []byte) (Strategy, error) {
-		return NewSimpleStrategy(SimpleParams{}), nil
-	})
-}
+// registration happens in definitions.go, driven by shared/strategies.json
 
 func NewSimpleStrategy(params SimpleParams) *SimpleStrategy {
 	return &SimpleStrategy{}

@@ -30,8 +30,8 @@ services:
   trader-core:
     container_name: trader-core
     build:
-      context: ./trader-core
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: trader-core/Dockerfile.prod
     expose:
       - "8080"
     networks:
@@ -46,8 +46,8 @@ services:
   research:
     container_name: research
     build:
-      context: ./research
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: research/Dockerfile.prod
     expose:
       - "8000"
     networks:

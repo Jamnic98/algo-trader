@@ -19,8 +19,8 @@ services:
   trader-core:
     container_name: trader-core-local
     build:
-      context: ./trader-core
-      dockerfile: Dockerfile.local
+      context: .
+      dockerfile: trader-core/Dockerfile.local
     expose:
       - "8080"
     ports:
@@ -33,13 +33,14 @@ services:
       - BACKTESTER_URL=http://research:8000
     volumes:
       - ./trader-core:/app
+      - ./shared:/app/shared
       - /root/go/pkg:/root/go/pkg
 
   research:
     container_name: research-local
     build:
-      context: ./research
-      dockerfile: Dockerfile.local
+      context: .
+      dockerfile: research/Dockerfile.local
     ports:
       - "8000:8000"
     networks:
@@ -48,6 +49,7 @@ services:
       - .env.local
     volumes:
       - ./research:/app
+      - ./shared:/app/shared
 
 networks:
   app-network:

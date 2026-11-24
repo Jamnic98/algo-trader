@@ -1,14 +1,16 @@
+# Build context is the repo root so shared/ is available.
 # Use slim Python
 FROM python:3.12-slim
 
 WORKDIR /app
 
 # Install dependencies
-COPY requirements.txt .
+COPY research/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the backtester app
-COPY . /app
+# Copy the backtester app and the shared strategy schema
+COPY research/ .
+COPY shared/ ./shared/
 
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

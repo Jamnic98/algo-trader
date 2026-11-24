@@ -1,8 +1,9 @@
-from typing import Any, Callable
+from typing import Any
 
 from ..store import StrategyRow, StrategyStore
 from .base import CandleContext, Decision, Signal, Strategy
 from .composer import WeightedComposer
+from .definitions import composite_default_threshold, find_primitive, param_defaults
 from .dca import SimpleDCAStrategy, SmartDCAStrategy
 from .simple import SimpleStrategy
 
@@ -15,20 +16,25 @@ __all__ = [
     "resolve",
 ]
 
-PRIMITIVES: dict[str, Callable[[dict[str, Any]], Strategy]] = {
-    "simple": SimpleStrategy,
-    "simple_dca": SimpleDCAStrategy,
-    "smart_dca": SmartDCAStrategy,
+# Templates are declared in shared/strategies.json and implemented in both
+# this package and trader-core/internal/strategies (see definitions.go).
+# The shared test vectors in strategies.json pin the behavior on both sides.
+TEMPLATES: dict[str, type] = {
+    "always_buy": SimpleDCAStrategy,
+    "prev_close": SimpleStrategy,
+    "dca": SmartDCAStrategy,
 }
 
-DEFAULT_THRESHOLD = 0.6
 
-
-def build_primitive(slug: str, params: dict[str, Any]) -> Strategy:
-    cls = PRIMITIVES.get(slug)
-    if cls is None:
+def build_primitive(slug: str, params: dict[str, Any] | None) -> Strategy:
+    defn = find_primitive(slug)
+    if defn is None:
         raise ValueError(f"unknown strategy {slug!r}")
-    return cls(params)
+    merged = {**param_defaults(defn), **(params or {})}
+    cls = TEMPLATES.get(defn["template"])
+    if cls is None:
+        raise ValueError(f"unknown template {defn['template']!r} for strategy {slug!r}")
+    return cls(merged)
 
 
 def _params_of(config: dict[str, Any]) -> dict[str, Any]:
@@ -53,7 +59,7 @@ def resolve(
     if not nodes_cfg:
         raise ValueError(f"composite strategy {row.slug!r} has no nodes")
 
-    threshold = float(config.get("threshold") or DEFAULT_THRESHOLD)
+    threshold = float(config.get("threshold") or composite_default_threshold())
     nodes: list[tuple[Strategy, float]] = []
     for node in nodes_cfg:
         sub = store.get(node["strategy_slug"])

@@ -15,15 +15,17 @@ class SimpleDCAStrategy:
 
 class SmartDCAStrategy:
     """Mirrors Go strategies.SmartDCAStrategy: fixed-spend DCA buys, sells once
-    price exceeds avg entry * take-profit and the sell fee is covered."""
-
-    TAKE_PROFIT = Decimal("1.05")
+    price exceeds avg entry * take_profit and the sell fee is covered."""
 
     def __init__(self, params: dict) -> None:
         fixed_spend = Decimal(str(params.get("fixed_spend") or "10.00"))
         if fixed_spend <= 0:
             fixed_spend = Decimal(10)
+        take_profit = Decimal(str(params.get("take_profit") or "1.05"))
+        if take_profit <= 0:
+            take_profit = Decimal("1.05")
         self.fixed_spend = fixed_spend
+        self.take_profit = take_profit
         self.total_spent = Decimal(0)
         self.total_bought = Decimal(0)
 
@@ -32,7 +34,7 @@ class SmartDCAStrategy:
 
         if self.total_bought > 0:
             avg_entry = self.total_spent / self.total_bought
-            threshold = avg_entry * self.TAKE_PROFIT
+            threshold = avg_entry * self.take_profit
 
             if price > threshold:
                 sell_value = price * self.total_bought

@@ -1,10 +1,13 @@
+# Build context is the repo root so shared/ is available.
 FROM golang:1.25.4-bookworm
 
 WORKDIR /app
 
 RUN go install github.com/air-verse/air@latest
 
-COPY go.mod go.sum ./
+COPY trader-core/go.mod trader-core/go.sum ./
 RUN go mod download
+
+COPY shared/ ./shared/
 
 CMD ["air"]

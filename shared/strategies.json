@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "description": "Single source of truth for strategy definitions. Both trader-core (Go) and research (Python backtester) load this file: it declares each primitive's template, param schema/defaults, and test vectors that both engines' test suites execute. The /api/strategies/schemas endpoint is served from this file.",
+  "composite": {
+    "template": "weighted_vote",
+    "default_threshold": 0.6
+  },
+  "primitives": [
+    {
+      "name": "simple",
+      "display_name": "Simple",
+      "template": "prev_close",
+      "params": [],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [
+          { "candles": [100, 90, 95, 94], "expect": ["HOLD", "BUY", "SELL", "BUY"] },
+          { "candles": [100, 90, 90.05], "expect": ["HOLD", "BUY", "HOLD"] }
+        ]
+      }
+    },
+    {
+      "name": "simple_dca",
+      "display_name": "Simple DCA",
+      "template": "always_buy",
+      "params": [],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [{ "candles": [100, 90, 95], "expect": ["BUY", "BUY", "BUY"] }]
+      }
+    },
+    {
+      "name": "smart_dca",
+      "display_name": "Smart DCA",
+      "template": "dca",
+      "params": [
+        { "key": "fixed_spend", "label": "Fixed Spend", "type": "string", "default": "10.00", "min": 0.01 },
+        { "key": "take_profit", "label": "Take Profit Multiplier", "type": "number", "default": 1.05, "min": 1.0 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [
+          { "candles": [100, 106], "expect": ["BUY", "SELL"] },
+          { "candles": [100, 102], "expect": ["BUY", "BUY"] }
+        ]
+      }
+    }
+  ]
+}
