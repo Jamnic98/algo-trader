@@ -5,11 +5,15 @@ on:
     paths:
       - "dashboard/**"
       - "trader-core/**"
+      - "research/**"
+      - ".github/workflows/**"
 
   pull_request:
     paths:
       - "dashboard/**"
       - "trader-core/**"
+      - "research/**"
+      - ".github/workflows/**"
 
 jobs:
   test-dashboard:
@@ -64,30 +68,37 @@ jobs:
         working-directory: trader-core
         run: go test -v ./...
 
-  # test-python:
-  #   name: Test Python Service
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  test-research:
+    name: Test Backtester (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: 3.12
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
 
-  #     - name: Cache Python packages
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: ~/.cache/pip
-  #         key: ${{ runner.os }}-pip-${{ hashFiles('strategy-service/requirements.txt') }}
-  #         restore-keys: |
-  #           ${{ runner.os }}-pip-
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('research/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-  #     - name: Install dependencies
-  #       working-directory: strategy-service
-  #       run: pip install -r requirements.txt
+      - name: Install dependencies
+        working-directory: research
+        run: pip install -r requirements.txt
 
-  #     - name: Run Python tests
-  #       working-directory: strategy-service
-  #       run: pytest --verbose --junitxml=report.xml
+      - name: Lint and typecheck
+        working-directory: research
+        run: |
+          ruff check .
+          black --check .
+          mypy .
+
+      - name: Run tests
+        working-directory: research
+        run: pytest -v

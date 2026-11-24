@@ -7,8 +7,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the Python subscriber code
-COPY app/ /app/
+# Copy the backtester app
+COPY . /app
 
-# No need to expose ports, just run the script
-CMD ["python", "subscriber.py"]
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

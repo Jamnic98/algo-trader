@@ -8,7 +8,7 @@ import { BarLoader } from 'components'
 import type { CreateStrategy, StrategyNode, ParamSchema } from 'types'
 
 const defaultForm: CreateStrategy = {
-  name: '',
+  slug: '',
   display_name: '',
   threshold: 0.6,
   nodes: [],
@@ -103,10 +103,8 @@ const StrategyCreationWizard = () => {
 
   const loading = loadingStrategies || loadingSchemas
 
-  const schemaFor = (strategySlug: string) => {
-    const strategy = strategies?.find((s) => Number(s.slug === strategySlug))
-    return strategy ? schemas?.find((sc) => sc.display_name === strategy.display_name) : null
-  }
+  const schemaFor = (strategySlug: string) =>
+    schemas?.find((sc) => sc.name === strategySlug) ?? null
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -119,7 +117,7 @@ const StrategyCreationWizard = () => {
   const addNode = () => {
     if (!strategies || strategies.length === 0) return
     const first = strategies[0]
-    const schema = schemas?.find((s) => s.display_name === first.display_name)
+    const schema = schemas?.find((s) => s.name === first.slug)
     const params = Object.fromEntries(schema?.params.map((p) => [p.key, p.default]) ?? [])
     setForm((prev) => ({
       ...prev,
@@ -178,12 +176,12 @@ const StrategyCreationWizard = () => {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6 max-w-lg">
-      {/* Name */}
+      {/* Slug */}
       <div className="flex flex-col gap-1">
-        <label className="text-content-secondary text-xs uppercase tracking-wider">Name</label>
+        <label className="text-content-secondary text-xs uppercase tracking-wider">Slug</label>
         <input
-          name="name"
-          value={form.name}
+          name="slug"
+          value={form.slug}
           onChange={handleChange}
           placeholder="my_strategy"
           className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"

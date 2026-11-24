@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	ApiKey         string
+	BacktesterURL  string
 	Env            string
 	Dsn            string
 	Port           string
@@ -49,8 +50,14 @@ func GetConfig() Config {
 		redisURL = "redis://redis:6379/0"
 	}
 
+	backtesterURL := os.Getenv("BACKTESTER_URL")
+	if backtesterURL == "" {
+		backtesterURL = "http://localhost:8000"
+	}
+
 	return Config{
 		ApiKey:         apiKey,
+		BacktesterURL:  backtesterURL,
 		Env:            env,
 		Dsn:            dsn,
 		Port:           port,

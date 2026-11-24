@@ -38,8 +38,22 @@ services:
       - app-network
     env_file:
       - .env.prod
+    environment:
+      - BACKTESTER_URL=http://research:8000
     volumes:
       - ./logs:/app/logs
+
+  research:
+    container_name: research
+    build:
+      context: ./research
+      dockerfile: Dockerfile.prod
+    expose:
+      - "8000"
+    networks:
+      - app-network
+    env_file:
+      - .env.prod
 
 networks:
   app-network:

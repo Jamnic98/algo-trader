@@ -29,9 +29,25 @@ services:
       - app-network
     env_file:
       - .env.local
+    environment:
+      - BACKTESTER_URL=http://research:8000
     volumes:
       - ./trader-core:/app
       - /root/go/pkg:/root/go/pkg
+
+  research:
+    container_name: research-local
+    build:
+      context: ./research
+      dockerfile: Dockerfile.local
+    ports:
+      - "8000:8000"
+    networks:
+      - app-network
+    env_file:
+      - .env.local
+    volumes:
+      - ./research:/app
 
 networks:
   app-network:

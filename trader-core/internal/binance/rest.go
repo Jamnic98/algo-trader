@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
+	"strconv"
 	"time"
 	"trader-core/internal/engine"
 )
@@ -57,13 +60,13 @@ func (r *RawKline) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// FetchKlines calls Binance REST API and returns raw klines.
-// limit is capped at 1000 by Binance.
+// FetchKlines calls Binance REST API and returns the most recent `limit` klines.
+// limit is capped at 1000 per request by Binance; larger limits are paginated.
 func FetchKlines(symbol, interval string, limit int) ([]RawKline, error) {
 	const maxPerRequest = 1000
 
 	if limit <= maxPerRequest {
-		return fetchKlinesBatch(symbol, interval, limit, 0)
+		return fetchKlinesBatch(symbol, interval, limit, 0, 0)
 	}
 
 	var all []RawKline
@@ -71,7 +74,7 @@ func FetchKlines(symbol, interval string, limit int) ([]RawKline, error) {
 
 	for limit > 0 {
 		batch := min(limit, maxPerRequest)
-		klines, err := fetchKlinesBatch(symbol, interval, batch, endTime)
+		klines, err := fetchKlinesBatch(symbol, interval, batch, 0, endTime)
 		if err != nil {
 			return nil, err
 		}
@@ -87,17 +90,50 @@ func FetchKlines(symbol, interval string, limit int) ([]RawKline, error) {
 	return all, nil
 }
 
-func fetchKlinesBatch(symbol, interval string, limit int, endTime int64) ([]RawKline, error) {
-	url := fmt.Sprintf(
-		"%s/api/v3/klines?symbol=%s&interval=%s&limit=%d",
-		restBaseURL, symbol, interval, limit,
-	)
-	if endTime > 0 {
-		url += fmt.Sprintf("&endTime=%d", endTime)
+// FetchKlinesRange fetches klines with openTime in [startTime, endTime] (ms),
+// paginating forward in batches of 1000. Used by backtests over a date range.
+func FetchKlinesRange(symbol, interval string, startTime, endTime int64) ([]RawKline, error) {
+	const maxPerRequest = 1000
+
+	var all []RawKline
+	cursor := startTime
+
+	for {
+		batch, err := fetchKlinesBatch(symbol, interval, maxPerRequest, cursor, endTime)
+		if err != nil {
+			return nil, err
+		}
+		if len(batch) == 0 {
+			break
+		}
+
+		all = append(all, batch...)
+
+		last := batch[len(batch)-1].OpenTime
+		if last >= endTime || len(batch) < maxPerRequest {
+			break
+		}
+		cursor = last + 1
 	}
 
+	return all, nil
+}
+
+func fetchKlinesBatch(symbol, interval string, limit int, startTime, endTime int64) ([]RawKline, error) {
+	params := url.Values{}
+	params.Set("symbol", symbol)
+	params.Set("interval", interval)
+	params.Set("limit", strconv.Itoa(limit))
+	if startTime > 0 {
+		params.Set("startTime", strconv.FormatInt(startTime, 10))
+	}
+	if endTime > 0 {
+		params.Set("endTime", strconv.FormatInt(endTime, 10))
+	}
+	reqURL := fmt.Sprintf("%s/api/v3/klines?%s", restBaseURL, params.Encode())
+
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(url)
+	resp, err := client.Get(reqURL)
 	if err != nil {
 		return nil, fmt.Errorf("FetchKlines request failed: %w", err)
 	}
@@ -114,6 +150,32 @@ func fetchKlinesBatch(symbol, interval string, limit int, endTime int64) ([]RawK
 	}
 
 	return klines, nil
+}
+
+// signedRequest builds a signed Binance request. Credentials come from the
+// BINANCE_API_KEY / BINANCE_SECRET_KEY environment variables — never hardcode them.
+func signedRequest(method, path string, params url.Values) (*http.Request, error) {
+	apiKey := os.Getenv("BINANCE_API_KEY")
+	secretKey := os.Getenv("BINANCE_SECRET_KEY")
+	if apiKey == "" || secretKey == "" {
+		return nil, fmt.Errorf("BINANCE_API_KEY / BINANCE_SECRET_KEY not set")
+	}
+
+	params.Set("timestamp", strconv.FormatInt(time.Now().UnixMilli(), 10))
+	params.Set("recvWindow", "5000")
+
+	mac := hmac.New(sha256.New, []byte(secretKey))
+	if _, err := mac.Write([]byte(params.Encode())); err != nil {
+		return nil, err
+	}
+	params.Set("signature", hex.EncodeToString(mac.Sum(nil)))
+
+	req, err := http.NewRequest(method, fmt.Sprintf("%s%s?%s", restBaseURL, path, params.Encode()), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("X-MBX-APIKEY", apiKey)
+	return req, nil
 }
 
 func FetchPrice(symbol string) (string, error) {
@@ -141,30 +203,22 @@ func FetchPrice(symbol string) (string, error) {
 	return result.Price, nil
 }
 
-// place a trade
+// place a market trade (signed endpoint, credentials from env)
 func PlaceTrade(symbol string, side engine.Side, quantity float64) (string, error) {
-	serverTime, err := CheckServerTime()
-	if err != nil {
-		return "", fmt.Errorf("place trade request failed: %w", err)
+	params := url.Values{}
+	params.Set("symbol", symbol)
+	params.Set("side", string(side))
+	params.Set("type", "MARKET")
+	if quantity != 0 {
+		params.Set("quantity", strconv.FormatFloat(quantity, 'f', -1, 64))
 	}
 
-	var apiKey = "hUXyZHWZkKpbQjsGIDBIPM1fTBSXvq68tNRd1pBwMnC4hVuUnE82Qu7zJaweFqdA"
-	var secretKey = []byte("LczIw8EO18jdWYE7W2942pnSmOLKERcrPEKf110ShoNmsRlgt59TKXqqBEvqIxwk")
-	mac := hmac.New(sha256.New, secretKey)
-	hexEncodedKey := hex.EncodeToString(mac.Sum(nil))
-
-	url := fmt.Sprintf("%s/api/v3/order?symbol=%s&side=%s&recvWindow=5000&timestamp=%d&signature=%s", restBaseURL, symbol, side, serverTime, hexEncodedKey)
-	if quantity != 0 {
-		url += fmt.Sprintf("&quantity=%f", quantity)
+	req, err := signedRequest(http.MethodPost, "/api/v3/order", params)
+	if err != nil {
+		return "", fmt.Errorf("place trade request failed: %w", err)
 	}
 
 	client := &http.Client{Timeout: 5 * time.Second}
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", fmt.Errorf("place trade request failed: %w", err)
-	}
-
-	req.Header.Add("X-MBX-APIKEY", apiKey)
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("place trade request failed: %w", err)

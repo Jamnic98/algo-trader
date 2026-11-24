@@ -11,7 +11,7 @@ export type ParamSchema = {
 }
 
 export type StrategySchema = {
-  slug: string
+  name: string
   display_name: string
   params: ParamSchema[]
 }
@@ -23,7 +23,7 @@ export type StrategyNode = {
 }
 
 export type CreateStrategy = {
-  name: string
+  slug: string
   display_name: string
   threshold: number
   nodes: StrategyNode[]

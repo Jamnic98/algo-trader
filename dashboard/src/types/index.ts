@@ -4,6 +4,7 @@ export * from './bot'
 export * from './candle'
 export * from './diagnostic'
 export * from './strategy'
+export * from './backtest'
 export * from './tab'
 export * from './fill'
 

@@ -72,12 +72,23 @@ func createStrategyHandler(c *gin.Context) {
 		return
 	}
 
+	// keep the Nodes column in sync for backwards compatibility
+	nodes := make([]models.StrategyNode, len(req.Nodes))
+	for i, n := range req.Nodes {
+		nodes[i] = models.StrategyNode{StrategySlug: n.StrategySlug, Weight: n.Weight}
+	}
+	nodesJSON, err := json.Marshal(nodes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode nodes"})
+		return
+	}
+
 	strategy := models.Strategy{
 		Slug:          req.Slug,
 		DisplayName:   req.DisplayName,
 		IsComposite:   true,
 		DefaultConfig: cfgJSON,
-		Nodes:         []byte("[]"), // kept for backwards compat, real data is in DefaultConfig
+		Nodes:         nodesJSON,
 	}
 
 	if err := db.DB.Create(&strategy).Error; err != nil {

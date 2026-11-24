@@ -29,6 +29,7 @@ func InitServer(cfg Config) *gin.Engine {
 		api.RegisterDiagnosticsRoutes(route.Group("/diagnostics"))
 		api.RegisterPriceRoutes(route.Group("/price"))
 		api.RegisterStrategyRoutes(route.Group("/strategies"))
+		api.RegisterBacktestRoutes(route.Group("/backtests"), cfg.BacktesterURL)
 		api.RegisterFillRoutes(route.Group("/fills"))
 	}
 

@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { /* useNavigate, */ useParams } from 'react-router-dom'
 
-import { BarLoader, Heading } from 'components'
+import { BarLoader, Heading, BacktestPanel, SectionLabel } from 'components'
 import { useStrategy, useStrategies, useBreadcrumbs } from 'hooks'
 
 const StrategyDetails = () => {
@@ -68,6 +68,12 @@ const StrategyDetails = () => {
             </div>
           </>
         )}
+      </div>
+
+      <div className="w-full h-px bg-border" />
+      <div className="flex flex-col gap-4">
+        <SectionLabel>Backtest</SectionLabel>
+        <BacktestPanel strategySlug={slug!} />
       </div>
     </div>
   )

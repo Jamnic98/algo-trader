@@ -57,9 +57,9 @@ type CompositeConfig struct {
 }
 
 type CompositeNode struct {
-	StrategyID uint            `json:"strategy_id"`
-	Weight     float64         `json:"weight"`
-	Params     json.RawMessage `json:"params,omitempty"`
+	StrategySlug string          `json:"strategy_slug"`
+	Weight       float64         `json:"weight"`
+	Params       json.RawMessage `json:"params,omitempty"`
 }
 
 // keep decimal import happy
