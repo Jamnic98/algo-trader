@@ -16,9 +16,10 @@ class HTTPStrategy:
     def __init__(
         self, params: dict[str, Any], client: httpx.Client | None = None
     ) -> None:
-        self.url = params.get("url")
-        if not self.url:
+        url = params.get("url")
+        if not url:
             raise ValueError('http strategy requires a "url" param')
+        self.url: str = str(url)
         self.window = int(params.get("window") or 100)
         if self.window <= 0:
             self.window = 100
