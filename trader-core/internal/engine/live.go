@@ -2,17 +2,27 @@ package engine
 
 import (
 	"fmt"
+	"maps"
 	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
 )
 
+// OrderPlacer places real orders on an exchange. Implemented by
+// binance.SpotPlacer (the binance package imports engine, so the interface
+// lives here to avoid an import cycle).
+type OrderPlacer interface {
+	PlaceMarketOrder(symbol string, side Side, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error)
+}
+
+// LiveAccount is the local ledger for live trading: initialized from the
+// exchange's real balances, then updated from each executed fill.
 type LiveAccount struct {
-	balance   decimal.Decimal            // total available funds
-	Fee       decimal.Decimal            // fee rate, e.g. 0.001
+	mu        sync.RWMutex
+	balance   decimal.Decimal            // quote currency (e.g. USDT) available
+	Fee       decimal.Decimal            // fallback fee rate if the venue doesn't report one
 	Positions map[string]decimal.Decimal // symbol -> qty
-	mu        sync.RWMutex               // thread-safety
 }
 
 func NewLiveAccount(startBalance, fee string) *LiveAccount {
@@ -23,38 +33,48 @@ func NewLiveAccount(startBalance, fee string) *LiveAccount {
 	}
 }
 
+// SetBalance sets the available quote-currency balance (e.g. from FetchAccount).
+func (a *LiveAccount) SetBalance(amount decimal.Decimal) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.balance = amount
+}
+
+// LiveExecutor implements ExecutionEngine by placing real orders through an
+// OrderPlacer, then recording the executed fill in the local ledger.
 type LiveExecutor struct {
 	Account *LiveAccount
+	Placer  OrderPlacer
 }
 
-func NewLiveExecutor(account *LiveAccount) *LiveExecutor {
-	return &LiveExecutor{Account: account}
+func NewLiveExecutor(account *LiveAccount, placer OrderPlacer) *LiveExecutor {
+	return &LiveExecutor{Account: account, Placer: placer}
 }
 
-// Fill execution with Live trading engine
-func (pe *LiveExecutor) ExecuteFill(order Order) (*Fill, error) {
-	price := order.Price
-	qty := order.Qty
-	feeRate := pe.Account.Fee
+func (le *LiveExecutor) ExecuteFill(order Order) (*Fill, error) {
+	if le.Placer == nil {
+		return nil, fmt.Errorf("live executor has no order placer configured")
+	}
 
-	// Calculate notional (Price * Quantity)
-	notional := price.Mul(qty)
-	// Fee amount = notional * feeRate
-	fee := notional.Mul(feeRate)
+	avgPrice, executedQty, fee, err := le.Placer.PlaceMarketOrder(order.Symbol, Side(order.Signal), order.Qty)
+	if err != nil {
+		return nil, err
+	}
+	if fee.IsZero() {
+		fee = avgPrice.Mul(executedQty).Mul(le.Account.Fee)
+	}
 
-	// Create fill
 	fill := &Fill{
 		BotID:  order.BotID,
 		Symbol: order.Symbol,
 		Signal: order.Signal,
-		Price:  price,
+		Price:  avgPrice,
+		Qty:    executedQty,
 		Fee:    fee,
-		Qty:    qty,
 		Time:   time.Now(),
 	}
 
-	// Apply to account
-	if err := pe.Account.ApplyFill(fill); err != nil {
+	if err := le.Account.ApplyFill(fill); err != nil {
 		return nil, err
 	}
 
@@ -65,7 +85,6 @@ func (a *LiveAccount) ApplyFill(f *Fill) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	// initialize position if missing
 	if _, ok := a.Positions[f.Symbol]; !ok {
 		a.Positions[f.Symbol] = decimal.NewFromInt(0)
 	}
@@ -93,12 +112,12 @@ func (a *LiveAccount) ApplyFill(f *Fill) error {
 	return nil
 }
 
-// func (a *LiveAccount) Snapshot() AccountSnapshot {
-// 	a.mu.RLock()
-// 	defer a.mu.RUnlock()
+func (a *LiveAccount) Snapshot() AccountSnapshot {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
 
-// 	positionsCopy := make(map[string]decimal.Decimal, len(a.Positions))
-// 	maps.Copy(positionsCopy, a.Positions)
+	positionsCopy := make(map[string]decimal.Decimal, len(a.Positions))
+	maps.Copy(positionsCopy, a.Positions)
 
-// 	return AccountSnapshot{a.balance, positionsCopy}
-// }
+	return AccountSnapshot{Balance: a.balance, Positions: positionsCopy}
+}
