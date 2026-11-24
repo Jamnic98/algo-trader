@@ -107,3 +107,13 @@ def test_resolve_composite_missing_nodes_raises(store) -> None:
     )
     with pytest.raises(ValueError, match="no nodes"):
         resolve(row, None, store)
+
+
+def test_resolve_nested_composite(store) -> None:
+    # combo_nested = weighted_vote(combo(simple_dca + simple), simple_dca)
+    strat = resolve(store.get("combo_nested"), None, store)
+
+    # c1: inner combo 1/2 -> HOLD, dca BUY -> 1/2 votes -> HOLD
+    assert strat.on_candle(ctx(candle("100"))).signal == Signal.HOLD
+    # c2 (down): inner combo BUY (2/2), dca BUY -> 2/2 -> BUY
+    assert strat.on_candle(ctx(candle("90"))).signal == Signal.BUY

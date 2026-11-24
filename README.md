@@ -17,6 +17,29 @@ Monorepo: Go trading core + React dashboard + Python backtester.
 To add a strategy on an existing template: add an entry to `shared/strategies.json`
 and re-run the generator — no Go/Python code changes needed.
 
+### Combining strategies (composites)
+
+Any saved strategy — primitive **or composite** — can be used as a sub-strategy node
+in another composite (`{"threshold": 0.6, "nodes": [{"strategy_slug": ..., "weight": ...,
+"params": {...}}]}`), nested arbitrarily deep. Both engines resolve recursively.
+Create them from the dashboard wizard (`/strategies/create`), which lists all saved
+strategies as node options.
+
+### Custom / ML strategies (the `http` template)
+
+For logic that isn't a built-in template (e.g. a machine-learning model), add a
+primitive with `"template": "http"` and a `url` param pointing at your inference
+service. On every candle, both engines POST `{"closes": [...window...], "params": {...}}`
+to that URL and expect `{"signal": "BUY"|"SELL"|"HOLD", "quantity": "..." (optional)}`.
+Unreachable/invalid responses safely return HOLD. See the seeded `ml_example`
+strategy and `scripts/ml_example_service.py` (toy model server on :8001) for a
+working example:
+
+```bash
+python3 scripts/ml_example_service.py   # model endpoint on 127.0.0.1:8001
+# then backtest "ml_example" from the dashboard, or combine it into a composite
+```
+
 ## Strategy → backtest flow
 
 1. Create a strategy in the dashboard (`/strategies/create`) → `POST /api/strategies`

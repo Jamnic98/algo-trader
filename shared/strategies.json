@@ -52,6 +52,20 @@
       }
     },
     {
+      "name": "ml_example",
+      "display_name": "ML Example (HTTP)",
+      "template": "http",
+      "params": [
+        { "key": "url", "label": "Model endpoint", "type": "string", "default": "http://127.0.0.1:8001/predict" },
+        { "key": "window", "label": "Candle window", "type": "number", "default": 20, "min": 2 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [],
+        "note": "http-template strategies are tested per-engine with mock servers (remote callable, not a pure function)"
+      }
+    },
+    {
       "name": "smart_dca",
       "display_name": "Smart DCA",
       "template": "dca",

@@ -117,6 +117,12 @@ func constructorFor(name, template string) Constructor {
 				return nil, fmt.Errorf("parsing %s params: %w", name, err)
 			}
 			return NewSMACrossStrategy(p), nil
+		case "http":
+			var p map[string]any
+			if err := json.Unmarshal(params, &p); err != nil {
+				return nil, fmt.Errorf("parsing %s params: %w", name, err)
+			}
+			return NewHTTPStrategy(p, nil)
 		default:
 			return nil, fmt.Errorf("unknown template %q for strategy %q", template, name)
 		}

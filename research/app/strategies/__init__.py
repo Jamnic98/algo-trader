@@ -5,6 +5,7 @@ from .base import CandleContext, Decision, Signal, Strategy
 from .composer import WeightedComposer
 from .definitions import composite_default_threshold, find_primitive, param_defaults
 from .dca import SimpleDCAStrategy, SmartDCAStrategy
+from .http import HTTPStrategy
 from .simple import SimpleStrategy
 from .sma_cross import SMACrossStrategy
 
@@ -25,6 +26,7 @@ TEMPLATES: dict[str, type] = {
     "prev_close": SimpleStrategy,
     "dca": SmartDCAStrategy,
     "sma_cross": SMACrossStrategy,
+    "http": HTTPStrategy,
 }
 
 

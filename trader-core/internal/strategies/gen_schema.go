@@ -57,6 +57,20 @@ const generatedSchemaJSON = `{
       }
     },
     {
+      "name": "ml_example",
+      "display_name": "ML Example (HTTP)",
+      "template": "http",
+      "params": [
+        { "key": "url", "label": "Model endpoint", "type": "string", "default": "http://127.0.0.1:8001/predict" },
+        { "key": "window", "label": "Candle window", "type": "number", "default": 20, "min": 2 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [],
+        "note": "http-template strategies are tested per-engine with mock servers (remote callable, not a pure function)"
+      }
+    },
+    {
       "name": "smart_dca",
       "display_name": "Smart DCA",
       "template": "dca",
@@ -83,6 +97,10 @@ func init() {
 		{Key: "fast", Label: "Fast SMA", Type: ParamTypeNumber, Default: 5, Min: ptrFloat(1)},
 		{Key: "slow", Label: "Slow SMA", Type: ParamTypeNumber, Default: 10, Min: ptrFloat(2)},
 	}}, constructorFor("sma_cross", "sma_cross"))
+	Register("ml_example", StrategySchema{Name: "ml_example", DisplayName: "ML Example (HTTP)", Params: []ParamSchema{
+		{Key: "url", Label: "Model endpoint", Type: ParamTypeString, Default: "http://127.0.0.1:8001/predict"},
+		{Key: "window", Label: "Candle window", Type: ParamTypeNumber, Default: 20, Min: ptrFloat(2)},
+	}}, constructorFor("ml_example", "http"))
 	Register("smart_dca", StrategySchema{Name: "smart_dca", DisplayName: "Smart DCA", Params: []ParamSchema{
 		{Key: "fixed_spend", Label: "Fixed Spend", Type: ParamTypeString, Default: "10.00", Min: ptrFloat(0.01)},
 		{Key: "take_profit", Label: "Take Profit Multiplier", Type: ParamTypeNumber, Default: 1.05, Min: ptrFloat(1.0)},

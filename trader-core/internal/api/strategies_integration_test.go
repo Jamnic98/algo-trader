@@ -32,7 +32,7 @@ func TestCreateStrategyThenResolveIntegration(t *testing.T) {
 	db.ConnectPostgres(dsn)
 	db.Migrate(&models.Strategy{})
 	db.SeedStrategies(db.DB) // primitives the composite references
-	db.DB.Exec("DELETE FROM strategies WHERE slug = ?", "itest_combo") // idempotent
+	db.DB.Exec("DELETE FROM strategies WHERE slug IN ('itest_combo', 'itest_inner', 'itest_outer')") // idempotent
 
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
@@ -112,5 +112,36 @@ func TestCreateStrategyThenResolveIntegration(t *testing.T) {
 	}
 	if d := strat.OnCandle(c(90)); d.Signal != strategies.Buy {
 		t.Fatalf("candle 2: %v, want BUY", d.Signal)
+	}
+
+	// Nested composites: outer = weighted_vote(inner=combo, simple_dca).
+	// The UI can build these because the strategy picker lists composite rows too.
+	create := func(slug string, nodes string) {
+		b := `{"slug":"` + slug + `","display_name":"` + slug + `","threshold":0.6,"nodes":` + nodes + `}`
+		req := httptest.NewRequest(http.MethodPost, "/api/strategies", strings.NewReader(b))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("create %s: %d %s", slug, w.Code, w.Body.String())
+		}
+	}
+	create("itest_inner", `[{"strategy_slug":"simple_dca","weight":1},{"strategy_slug":"simple","weight":1}]`)
+	create("itest_outer", `[{"strategy_slug":"itest_inner","weight":1},{"strategy_slug":"simple_dca","weight":1}]`)
+
+	var outer models.Strategy
+	if err := db.DB.First(&outer, "slug = ?", "itest_outer").Error; err != nil {
+		t.Fatalf("load outer: %v", err)
+	}
+	nested, err := bot.ResolveStrategy(db.DB, outer)
+	if err != nil {
+		t.Fatalf("ResolveStrategy(outer): %v", err)
+	}
+	// c1: inner 1/2 HOLD + dca BUY -> 1/2 -> HOLD; c2 (down): inner BUY + dca BUY -> BUY
+	if d := nested.OnCandle(c(100)); d.Signal != strategies.Hold {
+		t.Fatalf("nested candle 1: %v, want HOLD", d.Signal)
+	}
+	if d := nested.OnCandle(c(90)); d.Signal != strategies.Buy {
+		t.Fatalf("nested candle 2: %v, want BUY", d.Signal)
 	}
 }

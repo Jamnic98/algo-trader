@@ -42,5 +42,18 @@ def store() -> StaticStrategyStore:
                 },
                 nodes=[],
             ),
+            "combo_nested": StrategyRow(
+                slug="combo_nested",
+                display_name="Nested Combo",
+                is_composite=True,
+                default_config={
+                    "threshold": 0.6,
+                    "nodes": [
+                        {"strategy_slug": "combo", "weight": 1.0},
+                        {"strategy_slug": "simple_dca", "weight": 1.0},
+                    ],
+                },
+                nodes=[],
+            ),
         }
     )

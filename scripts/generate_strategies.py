@@ -26,7 +26,7 @@ OUT_PATH = ROOT / "trader-core" / "internal" / "strategies" / "gen_schema.go"
 # research/app/strategies. Adding a new template = implement it in both
 # engines + allow it here; adding a new primitive on an existing template =
 # edit shared/strategies.json only and re-run this script.
-KNOWN_TEMPLATES = {"prev_close", "always_buy", "dca", "sma_cross", "weighted_vote"}
+KNOWN_TEMPLATES = {"prev_close", "always_buy", "dca", "sma_cross", "http", "weighted_vote"}
 
 PARAM_TYPES = {
     "number": "ParamTypeNumber",
@@ -54,6 +54,10 @@ def validate(schema: dict[str, Any]) -> None:
         for case in p.get("test", {}).get("cases", []):
             if len(case["candles"]) != len(case["expect"]):
                 raise ValueError(f"{p['name']}: candles/expect length mismatch in {case}")
+        if p["template"] == "http":
+            keys = [param["key"] for param in p.get("params", [])]
+            if "url" not in keys:
+                raise ValueError(f"{p['name']}: http template requires a 'url' param")
     if schema.get("composite", {}).get("template") not in KNOWN_TEMPLATES:
         raise ValueError("composite: unknown template")
 
