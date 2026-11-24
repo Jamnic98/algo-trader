@@ -47,19 +47,29 @@ export const CANDLE_INTERVALS = [
 
 // --- Config ---
 // When you add a new exchange, just add it here.
-// assetTypes drives what's shown in the Asset Type dropdown.
-export const EXCHANGE_CONFIG: Record<Exchange, { assetTypes: AssetType[] }> = {
+// assetTypes drives the Asset Type dropdown, intervals the Interval dropdown
+// (venues like Alpaca only offer a subset), defaultQuote the quote currency.
+export const EXCHANGE_CONFIG: Record<
+  Exchange,
+  { assetTypes: AssetType[]; intervals: string[]; defaultQuote: string; defaultSymbol: string }
+> = {
   binance: {
     assetTypes: ['crypto'],
+    intervals: CANDLE_INTERVALS,
+    defaultQuote: 'USDT',
+    defaultSymbol: 'BTCUSDT',
   },
-  // alpaca: {
-  //   assetTypes: ['crypto', 'stocks'],
-  // },
+  alpaca: {
+    assetTypes: ['crypto', 'stocks'],
+    intervals: ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'],
+    defaultQuote: 'USD',
+    defaultSymbol: 'BTC/USD',
+  },
 }
 
 export const AVAILABLE_EXCHANGES: { name: Exchange; label: string }[] = [
   { name: 'binance', label: 'Binance' },
-  // { name: 'alpaca', label: 'Alpaca' },
+  { name: 'alpaca', label: 'Alpaca' },
 ]
 
 export const getExchangeLabel = (name: string): string => {

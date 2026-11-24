@@ -2,9 +2,8 @@ import type { OHLCVCandle } from 'types'
 
 export type BotStatus = 'created' | 'trading' | 'dead'
 export type BotMode = 'paper' | 'live'
-// TODO: Add exchange
-export type Exchange = 'binance' //| 'alpaca'
-export type AssetType = 'crypto' // | 'stocks'
+export type Exchange = 'binance' | 'alpaca'
+export type AssetType = 'crypto' | 'stocks'
 
 export interface Bot extends CreateBot {
   id: string

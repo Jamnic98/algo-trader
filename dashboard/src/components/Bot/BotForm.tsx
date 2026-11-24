@@ -6,9 +6,10 @@ import { useAccounts, useStrategies } from 'hooks'
 import { lookbackToString } from 'utils'
 import {
   CANDLE_INTERVALS,
+  EXCHANGE_CONFIG,
   MAX_CANDLES,
-  // EXCHANGE_CONFIG,
   STRATEGY_CONFIG,
+  getExchangeLabel,
 } from 'utils/constants'
 import type { CreateBot, Strategy } from 'types'
 
@@ -33,7 +34,9 @@ const BotForm = ({
 }: BotFormProps) => {
   const { data: strategies, loading: loadingStrategies } = useStrategies()
   const { data: accounts } = useAccounts()
-  // const availableAssetTypes = EXCHANGE_CONFIG[form.exchange]?.assetTypes ?? []
+  const exchangeConfig = EXCHANGE_CONFIG[form.exchange]
+  const availableAssetTypes = exchangeConfig?.assetTypes ?? ['crypto']
+  const availableIntervals = exchangeConfig?.intervals ?? CANDLE_INTERVALS
   const strategyConfig = STRATEGY_CONFIG[form.strategy_slug] ?? {}
 
   const renderStrategyField = () => {
@@ -108,7 +111,9 @@ const BotForm = ({
             onChange={onChange}
             className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
           >
-            {form.mode === 'live' && <option value="live">live (Binance)</option>}
+            {form.mode === 'live' && (
+              <option value="live">live ({getExchangeLabel(form.exchange)})</option>
+            )}
             {(accounts ?? [])
               .filter((a) => a.type === 'paper')
               .map((a) => (
@@ -125,7 +130,7 @@ const BotForm = ({
         </div>
 
         {/* Exchange */}
-        {/* <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">
             Exchange
           </label>
@@ -138,14 +143,14 @@ const BotForm = ({
           >
             {Object.keys(EXCHANGE_CONFIG).map((exchange) => (
               <option key={exchange} value={exchange}>
-                {exchange}
+                {getExchangeLabel(exchange)}
               </option>
             ))}
           </select>
-        </div> */}
+        </div>
 
         {/* Asset Type */}
-        {/* <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">
             Asset Type
           </label>
@@ -162,31 +167,33 @@ const BotForm = ({
               </option>
             ))}
           </select>
-        </div> */}
+        </div>
 
-        {/* Base/Quote */}
-        {form.assetType === 'crypto' && (
-          <div className="flex items-center border border-border rounded bg-surface-secondary focus-within:border-accent transition-colors">
-            <input
-              autoFocus
-              name="base"
-              value={form.base}
-              onChange={onChange}
-              placeholder="BTC"
-              className="bg-transparent px-3 py-1.5 w-16 text-center uppercase text-content-primary focus:outline-none placeholder:text-content-secondary/20 text-sm"
-              required
-            />
-            <span className="text-content-secondary px-1 text-sm select-none">/</span>
-            <input
-              name="quote"
-              value={form.quote ?? ''}
-              onChange={onChange}
-              placeholder="USDT"
-              className="bg-transparent px-3 py-1.5 w-16 text-center text-content-primary uppercase text-sm focus:outline-none placeholder:text-content-secondary/20"
-              required
-            />
-          </div>
-        )}
+        {/* Base/Quote (quote only for pairs, e.g. crypto; stocks are just the ticker) */}
+        <div className="flex items-center border border-border rounded bg-surface-secondary focus-within:border-accent transition-colors">
+          <input
+            autoFocus
+            name="base"
+            value={form.base}
+            onChange={onChange}
+            placeholder={form.assetType === 'stocks' ? 'AAPL' : 'BTC'}
+            className="bg-transparent px-3 py-1.5 w-16 text-center uppercase text-content-primary focus:outline-none placeholder:text-content-secondary/20 text-sm"
+            required
+          />
+          {form.assetType === 'crypto' && (
+            <>
+              <span className="text-content-secondary px-1 text-sm select-none">/</span>
+              <input
+                name="quote"
+                value={form.quote ?? ''}
+                onChange={onChange}
+                placeholder={exchangeConfig?.defaultQuote ?? 'USDT'}
+                className="bg-transparent px-3 py-1.5 w-16 text-center text-content-primary uppercase text-sm focus:outline-none placeholder:text-content-secondary/20"
+                required
+              />
+            </>
+          )}
+        </div>
 
         {/* Strategy */}
         {renderStrategyField()}
@@ -251,7 +258,7 @@ const BotForm = ({
                         className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
                         required
                       >
-                        {CANDLE_INTERVALS.map((i) => (
+                        {availableIntervals.map((i) => (
                           <option key={i} value={i}>
                             {i}
                           </option>

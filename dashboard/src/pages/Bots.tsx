@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, createBot, deleteBot } from 'api'
 import { useAlert } from 'hooks'
-import { MAX_CANDLES, STRATEGY_CONFIG } from 'utils/constants'
-import type { Bot, CreateBot, LoadingAction, Strategy } from 'types'
+import { EXCHANGE_CONFIG, MAX_CANDLES, STRATEGY_CONFIG } from 'utils/constants'
+import type { Bot, CreateBot, Exchange, LoadingAction, Strategy } from 'types'
 
 // interval, quantity, maxCandles live on the form now
 const createBotValidators: ((f: CreateBot) => ValidationResult)[] = [
@@ -78,6 +78,15 @@ const Bots = () => {
       if (name === 'base') next.base = value.toUpperCase()
       if (name === 'quote') next.quote = value.toUpperCase()
       if (name === 'assetType' && value !== 'crypto') next.quote = undefined
+      if (name === 'exchange') {
+        const cfg = EXCHANGE_CONFIG[value as Exchange]
+        if (cfg) {
+          next.exchange = value as Exchange
+          next.assetType = cfg.assetTypes[0]
+          next.quote = cfg.defaultQuote
+          if (!cfg.intervals.includes(next.interval)) next.interval = '1h'
+        }
+      }
 
       return next
     })
@@ -85,6 +94,11 @@ const Bots = () => {
     if (name === 'interval') {
       const max = MAX_CANDLES[value] ?? 100
       setMaxCandles(max) // always set to max of new interval
+    }
+    if (name === 'exchange') {
+      const cfg = EXCHANGE_CONFIG[value as Exchange]
+      const interval = cfg && !cfg.intervals.includes(form.interval) ? '1h' : form.interval
+      setMaxCandles(MAX_CANDLES[interval] ?? 100)
     }
   }
 

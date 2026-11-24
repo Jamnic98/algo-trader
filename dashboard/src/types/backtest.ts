@@ -1,6 +1,9 @@
+import type { Exchange } from './bot'
+
 export type BacktestRequest = {
   strategy_slug: string
-  symbol: string
+  exchange?: Exchange // venue for market data, default binance
+  symbol: string // venue-native symbol (BTCUSDT, BTC/USD, AAPL)
   interval: string
   start: string
   end: string
@@ -37,6 +40,7 @@ export type EquityPoint = {
 
 export type BacktestResult = {
   strategy_slug: string
+  exchange?: string
   symbol: string
   interval: string
   start: number

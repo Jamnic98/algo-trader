@@ -51,3 +51,22 @@ describe('runBacktest', () => {
     await expect(runBacktest(req)).rejects.toThrow('HTTP 404')
   })
 })
+
+describe('runBacktest with exchange', () => {
+  it('sends the exchange field in the JSON body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ strategy_slug: 'simple', exchange: 'alpaca', stats: { num_trades: 1 } }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const res = await runBacktest({ ...req, exchange: 'alpaca', symbol: 'BTC/USD' })
+
+    expect(res.exchange).toBe('alpaca')
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const body = JSON.parse(options.body as string)
+    expect(body.exchange).toBe('alpaca')
+    expect(body.symbol).toBe('BTC/USD')
+  })
+})

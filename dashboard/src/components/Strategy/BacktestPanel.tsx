@@ -3,8 +3,13 @@ import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 
 import { runBacktest } from 'api'
 import { SectionLabel, StatCard } from 'components'
-import { CANDLE_INTERVALS } from 'utils'
-import type { BacktestResult } from 'types'
+import {
+  AVAILABLE_EXCHANGES,
+  CANDLE_INTERVALS,
+  EXCHANGE_CONFIG,
+  getExchangeLabel,
+} from 'utils'
+import type { BacktestResult, Exchange } from 'types'
 
 const inputCls =
   'border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors'
@@ -13,7 +18,8 @@ const fmtPct = (v: string) => `${Number(v).toFixed(2)}%`
 const fmtNum = (v: string | null) => (v === null ? '—' : Number(v).toFixed(4))
 
 const BacktestPanel = ({ strategySlug }: { strategySlug: string }) => {
-  const [symbol, setSymbol] = useState('BTCUSDT')
+  const [exchange, setExchange] = useState<Exchange>('binance')
+  const [symbol, setSymbol] = useState(EXCHANGE_CONFIG.binance.defaultSymbol)
   const [interval, setInterval] = useState('1h')
   const [start, setStart] = useState(() => new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10))
   const [end, setEnd] = useState(() => new Date().toISOString().slice(0, 10))
@@ -32,6 +38,7 @@ const BacktestPanel = ({ strategySlug }: { strategySlug: string }) => {
     try {
       const res = await runBacktest({
         strategy_slug: strategySlug,
+        exchange,
         symbol: symbol.toUpperCase(),
         interval,
         start,
@@ -54,14 +61,38 @@ const BacktestPanel = ({ strategySlug }: { strategySlug: string }) => {
     equity: Number(p.equity),
   }))
 
+  const exchangeConfig = EXCHANGE_CONFIG[exchange]
+  const availableIntervals = exchangeConfig?.intervals ?? CANDLE_INTERVALS
+
+  const handleExchangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const next = e.target.value as Exchange
+    setExchange(next)
+    const cfg = EXCHANGE_CONFIG[next]
+    if (cfg) {
+      setSymbol(cfg.defaultSymbol)
+      if (!cfg.intervals.includes(interval)) setInterval('1h')
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <form onSubmit={handleRun} className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1">
+          <label className="text-content-secondary text-xs uppercase tracking-wider">Exchange</label>
+          <select value={exchange} onChange={handleExchangeChange} className={inputCls}>
+            {AVAILABLE_EXCHANGES.map((ex) => (
+              <option key={ex.name} value={ex.name}>
+                {ex.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">Symbol</label>
           <input
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
+            placeholder={exchangeConfig?.defaultSymbol ?? 'BTCUSDT'}
             className={`${inputCls} w-32`}
             required
           />
@@ -69,7 +100,7 @@ const BacktestPanel = ({ strategySlug }: { strategySlug: string }) => {
         <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">Interval</label>
           <select value={interval} onChange={(e) => setInterval(e.target.value)} className={inputCls}>
-            {CANDLE_INTERVALS.map((i) => (
+            {availableIntervals.map((i) => (
               <option key={i} value={i}>
                 {i}
               </option>
@@ -146,7 +177,10 @@ const BacktestPanel = ({ strategySlug }: { strategySlug: string }) => {
       {result && (
         <div className="flex flex-col gap-6">
           <div>
-            <SectionLabel>Results — {result.symbol} {result.interval}</SectionLabel>
+            <SectionLabel>
+              Results — {getExchangeLabel((result.exchange as Exchange) ?? exchange)}{' '}
+              {result.symbol} {result.interval}
+            </SectionLabel>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <StatCard
                 label="Total return"
