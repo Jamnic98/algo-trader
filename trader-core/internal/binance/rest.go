@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 	"trader-core/internal/engine"
 )
@@ -204,10 +205,22 @@ func FetchPrice(symbol string) (string, error) {
 	return result.Price, nil
 }
 
+// NormalizeSymbol converts display formats like "xrp/usdt" or "BTC-USDT"
+// into the Binance format "XRPUSDT" (uppercase alphanumerics only).
+func NormalizeSymbol(symbol string) string {
+	var b strings.Builder
+	for _, r := range strings.ToUpper(symbol) {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 // place a market trade (signed endpoint, credentials from env)
 func PlaceTrade(symbol string, side engine.Side, quantity float64) (string, error) {
 	params := url.Values{}
-	params.Set("symbol", symbol)
+	params.Set("symbol", NormalizeSymbol(symbol))
 	params.Set("side", string(side))
 	params.Set("type", "MARKET")
 	if quantity != 0 {
