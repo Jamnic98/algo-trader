@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strconv"
 	"testing"
+
+	"trader-core/internal/engine"
 )
 
 func klineJSON(openTime int64, close string) []any {
@@ -218,5 +220,54 @@ func TestSignedRequestRequiresEnv(t *testing.T) {
 	_, err := signedRequest(http.MethodPost, "/api/v3/order", url.Values{})
 	if err == nil {
 		t.Fatal("expected error when credentials are not set")
+	}
+}
+
+func TestNormalizeSymbol(t *testing.T) {
+	cases := map[string]string{
+		"XRP/USDT":   "XRPUSDT",
+		"xrp/usdt":   "XRPUSDT",
+		"BTC-USDT":   "BTCUSDT",
+		"BTCUSDT":    "BTCUSDT",
+		"btc.usdt":   "BTCUSDT",
+		" SOL/USDC ": "SOLUSDC",
+	}
+	for in, want := range cases {
+		if got := NormalizeSymbol(in); got != want {
+			t.Errorf("NormalizeSymbol(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestPlaceTradeNormalizesSymbol(t *testing.T) {
+	t.Setenv("BINANCE_API_KEY", "k")
+	t.Setenv("BINANCE_SECRET_KEY", "s")
+
+	var gotQuery url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v3/order" || r.Method != http.MethodPost {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		gotQuery = r.URL.Query()
+		_ = json.NewEncoder(w).Encode(map[string]string{"price": "1.23"})
+	}))
+	defer server.Close()
+	withServer(t, server)
+
+	price, err := PlaceTrade("xrp/usdt", engine.BUY, 0.01)
+	if err != nil {
+		t.Fatalf("PlaceTrade: %v", err)
+	}
+	if price != "1.23" {
+		t.Fatalf("price = %q", price)
+	}
+	if gotQuery.Get("symbol") != "XRPUSDT" {
+		t.Errorf("symbol = %q, want XRPUSDT", gotQuery.Get("symbol"))
+	}
+	if gotQuery.Get("side") != "BUY" || gotQuery.Get("type") != "MARKET" || gotQuery.Get("quantity") != "0.01" {
+		t.Errorf("query = %v", gotQuery)
+	}
+	if gotQuery.Get("signature") == "" {
+		t.Error("missing signature")
 	}
 }
