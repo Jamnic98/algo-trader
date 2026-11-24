@@ -34,6 +34,12 @@ func RegisterBacktestRoutes(rg *gin.RouterGroup, backtesterURL string) {
 	rg.POST("", func(c *gin.Context) { runBacktestHandler(c, backtesterURL) })
 }
 
+// strategyLookup is a var so tests can stub the DB lookup.
+var strategyLookup = func(slug string) error {
+	var strategy models.Strategy
+	return db.DB.First(&strategy, "slug = ?", slug).Error
+}
+
 func runBacktestHandler(c *gin.Context, backtesterURL string) {
 	var req BacktestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -46,8 +52,7 @@ func runBacktestHandler(c *gin.Context, backtesterURL string) {
 		return
 	}
 
-	var strategy models.Strategy
-	if err := db.DB.First(&strategy, "slug = ?", req.StrategySlug).Error; err != nil {
+	if err := strategyLookup(req.StrategySlug); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "strategy not found"})
 		return
 	}

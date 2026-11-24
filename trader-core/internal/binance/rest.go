@@ -15,7 +15,8 @@ import (
 	"trader-core/internal/engine"
 )
 
-const restBaseURL = "https://api.binance.com"
+// var (not const) so tests can point it at a local httptest server
+var restBaseURL = "https://api.binance.com"
 
 type RawKline struct {
 	OpenTime  int64

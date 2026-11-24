@@ -124,3 +124,67 @@ def test_backtest_end_before_start_400(client: TestClient) -> None:
         },
     )
     assert resp.status_code == 400
+
+
+def test_backtest_invalid_decimal_400(client: TestClient) -> None:
+    resp = client.post(
+        "/backtest",
+        json={
+            "strategy_slug": "simple",
+            "symbol": "BTCUSDT",
+            "interval": "1h",
+            "start": 1704067200000,
+            "end": 1704070800000,
+            "initial_balance": "not-a-number",
+        },
+    )
+    assert resp.status_code == 400
+
+
+def test_backtest_no_klines_404(client: TestClient) -> None:
+    import httpx
+
+    from app.main import get_http_client
+
+    def empty_klines(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[])
+
+    app.dependency_overrides[get_http_client] = lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(empty_klines), base_url="https://api.binance.com"
+    )
+    resp = client.post(
+        "/backtest",
+        json={
+            "strategy_slug": "simple",
+            "symbol": "BTCUSDT",
+            "interval": "1h",
+            "start": 1704067200000,
+            "end": 1704070800000,
+        },
+    )
+    assert resp.status_code == 404
+    assert "no klines" in resp.json()["detail"]
+
+
+def test_backtest_binance_error_502(client: TestClient) -> None:
+    import httpx
+
+    from app.main import get_http_client
+
+    def boom(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, text="server error")
+
+    app.dependency_overrides[get_http_client] = lambda: httpx.AsyncClient(
+        transport=httpx.MockTransport(boom), base_url="https://api.binance.com"
+    )
+    resp = client.post(
+        "/backtest",
+        json={
+            "strategy_slug": "simple",
+            "symbol": "BTCUSDT",
+            "interval": "1h",
+            "start": 1704067200000,
+            "end": 1704070800000,
+        },
+    )
+    assert resp.status_code == 502

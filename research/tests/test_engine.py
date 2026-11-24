@@ -125,3 +125,43 @@ def test_compute_stats_profit_factor_no_losses() -> None:
     equity = [EquityPoint(time=0, equity="100"), EquityPoint(time=1, equity="110")]
     stats = _compute_stats(equity, Decimal("100"), [Decimal("10")], num_trades=1)
     assert stats.profit_factor == "inf"
+
+
+def test_backtest_records_equity_even_when_fill_fails() -> None:
+    # regression: a rejected fill must not skip the equity point for that candle
+    candles = make_candles(["100", "100", "100"])
+    strat = build_primitive("simple_dca", {})
+    result = run_backtest(candles, strat, "BTCUSDT", Decimal("100"), FEE, quantity="5")
+
+    # first buy costs 500.5 > 100 balance -> rejected; equity still recorded per candle
+    assert result["stats"].num_trades == 0
+    assert len(result["equity_curve"]) == 3
+    assert all(Decimal(p.equity) == Decimal("100") for p in result["equity_curve"])
+
+
+def test_backtest_sell_without_position_is_skipped() -> None:
+    class AlwaysSell:
+        def on_candle(self, ctx):
+            from app.strategies.base import Decision, Signal
+
+            return Decision(Signal.SELL)
+
+    candles = make_candles(["100", "110"])
+    result = run_backtest(candles, AlwaysSell(), "BTCUSDT", Decimal("1000"), FEE)
+
+    assert result["stats"].num_trades == 0
+    assert len(result["equity_curve"]) == 2
+    assert Decimal(result["stats"].final_balance) == Decimal("1000")
+
+
+def test_backtest_fixed_quantity_sell_closes_position() -> None:
+    # simple: buy @90 then sell @100 with fixed qty 1
+    candles = make_candles(["100", "90", "100"])
+    strat = build_primitive("simple", {})
+    result = run_backtest(candles, strat, "BTCUSDT", Decimal("1000"), FEE, quantity="1")
+
+    sides = [t.side for t in result["trades"]]
+    assert sides == ["BUY", "SELL"]
+    assert all(t.qty == "1" for t in result["trades"])
+    # pnl = (100-90)*1 - sell fee 0.1 = 9.9
+    assert Decimal(result["trades"][1].pnl) == Decimal("9.9")
