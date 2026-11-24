@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { BarLoader, BotForm, BotTable, Heading } from 'components'
 import { getAllBots, startBot, stopBot, createBot, deleteBot } from 'api'
 import { useAlert } from 'hooks'
-import { MAX_CANDLES, STRATEGY_CONFIG } from 'utils'
+import { MAX_CANDLES, STRATEGY_CONFIG } from 'utils/constants'
 import type { Bot, CreateBot, LoadingAction, Strategy } from 'types'
 
 // interval, quantity, maxCandles live on the form now

@@ -92,7 +92,7 @@ func main() {
 	api.InitDiagnosticsAPI(sysmon)
 
 	// start API server
-	server := setup.InitServer(cfg, sysmon)
+	server := setup.InitServer(cfg)
 	go func() {
 		if err := server.Run(":" + cfg.Port); err != nil {
 			log.Fatal("failed to start API server:", err)
@@ -122,6 +122,7 @@ func main() {
 		}
 	}()
 
+	// TODO: remove hardcoded trade
 	serverTime, err := binance.PlaceTrade("XRP/USDT", "BUY", 0.01)
 	if err != nil {
 		fmt.Println(err)

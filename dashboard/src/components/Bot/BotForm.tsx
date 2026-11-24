@@ -3,13 +3,13 @@ import { Plus } from 'lucide-react'
 
 import { BarLoader } from 'components'
 import { useStrategies } from 'hooks'
+import { lookbackToString } from 'utils'
 import {
-  candleIntervals,
-  lookbackToString,
-  EXCHANGE_CONFIG,
+  CANDLE_INTERVALS,
   MAX_CANDLES,
+  // EXCHANGE_CONFIG,
   STRATEGY_CONFIG,
-} from 'utils'
+} from 'utils/constants'
 import type { CreateBot, Strategy } from 'types'
 
 type BotFormProps = {
@@ -32,7 +32,7 @@ const BotForm = ({
   onSubmit,
 }: BotFormProps) => {
   const { data: strategies, loading: loadingStrategies } = useStrategies()
-  const availableAssetTypes = EXCHANGE_CONFIG[form.exchange]?.assetTypes ?? []
+  // const availableAssetTypes = EXCHANGE_CONFIG[form.exchange]?.assetTypes ?? []
   const strategyConfig = STRATEGY_CONFIG[form.strategy_slug] ?? {}
 
   const renderStrategyField = () => {
@@ -99,7 +99,7 @@ const BotForm = ({
         </div>
 
         {/* Exchange */}
-        <div className="flex flex-col gap-1">
+        {/* <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">
             Exchange
           </label>
@@ -116,10 +116,10 @@ const BotForm = ({
               </option>
             ))}
           </select>
-        </div>
+        </div> */}
 
         {/* Asset Type */}
-        <div className="flex flex-col gap-1">
+        {/* <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">
             Asset Type
           </label>
@@ -136,7 +136,7 @@ const BotForm = ({
               </option>
             ))}
           </select>
-        </div>
+        </div> */}
 
         {/* Base/Quote */}
         {form.assetType === 'crypto' && (
@@ -225,7 +225,7 @@ const BotForm = ({
                         className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors"
                         required
                       >
-                        {candleIntervals.map((i) => (
+                        {CANDLE_INTERVALS.map((i) => (
                           <option key={i} value={i}>
                             {i}
                           </option>

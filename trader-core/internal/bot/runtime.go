@@ -77,7 +77,7 @@ func (r *Runtime) DeleteBot(b *Bot) error {
 
 func (r *Runtime) LoadBots() ([]BotConfig, error) {
 	var cfgs []BotConfig
-	return cfgs, r.DB.Preload("Strategy").Find(&cfgs).Error
+	return cfgs, r.DB.Find(&cfgs).Error
 }
 
 func (rt *Runtime) AttachBot(b *Bot) error {

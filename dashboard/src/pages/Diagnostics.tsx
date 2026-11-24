@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { BarLoader, ChartCard, Heading, PieCard, SectionLabel, StatCard } from 'components'
-import type { ConnStatus, DiagnosticData, HistoryPoint } from 'types'
 import { useAlert } from 'hooks'
+import type { ConnStatus, DiagnosticData, HistoryPoint } from 'types'
 
 const toHHMMSS = (secs: number): string => {
   const h = Math.floor(secs / 3600)

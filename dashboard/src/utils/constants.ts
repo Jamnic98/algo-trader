@@ -27,7 +27,7 @@ export const STRATEGY_CONFIG: Record<string, StrategyFieldConfig> = {
   // },
 }
 
-export const candleIntervals = [
+export const CANDLE_INTERVALS = [
   '1m',
   '3m',
   '5m',

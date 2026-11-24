@@ -73,7 +73,7 @@ func getBotsHandler(c *gin.Context) {
 
 	var cfgs []bot.BotConfig
 	if includeDeleted {
-		runtime.DB.Unscoped().Preload("Strategy").Where("deleted_at IS NOT NULL").Find(&cfgs)
+		runtime.DB.Unscoped().Where("deleted_at IS NOT NULL").Find(&cfgs)
 		dtos := make([]BotDTO, len(cfgs))
 		for i, cfg := range cfgs {
 			dtos[i] = configToDTO(cfg)

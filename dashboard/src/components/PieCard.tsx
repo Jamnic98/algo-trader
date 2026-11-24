@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Tooltip, ResponsiveContainer, Sector } from 'recharts'
 
 const fmt = (b: number): string => {
   if (b >= 1_073_741_824) return `${(b / 1_073_741_824).toFixed(1)} GB`
@@ -52,11 +52,22 @@ const PieCard = ({ rssBytes, heapAllocMB, totalBytes, usedBytes }: PieCardProps)
             outerRadius="75%"
             paddingAngle={2}
             style={{ outline: 'none' }}
-          >
-            {slices.map((s) => (
-              <Cell key={s.label} fill={s.fill} style={{ outline: 'none' }} />
-            ))}
-          </Pie>
+            shape={(props) => {
+              const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, payload } = props
+              return (
+                <Sector
+                  cx={cx}
+                  cy={cy}
+                  innerRadius={innerRadius}
+                  outerRadius={outerRadius}
+                  startAngle={startAngle}
+                  endAngle={endAngle}
+                  fill={payload.fill} // ← pulls fill from each slice object
+                  style={{ outline: 'none' }}
+                />
+              )
+            }}
+          />
           <Tooltip
             formatter={(value, name) => [fmt(value as number), name]}
             contentStyle={{
@@ -64,7 +75,10 @@ const PieCard = ({ rssBytes, heapAllocMB, totalBytes, usedBytes }: PieCardProps)
               border: '1px solid var(--color-border)',
               borderRadius: 6,
               fontSize: 12,
+              color: 'var(--color-text-primary)',
             }}
+            itemStyle={{ color: 'var(--color-text-primary)' }}
+            labelStyle={{ color: 'var(--color-text-primary)' }}
           />
         </PieChart>
       </ResponsiveContainer>

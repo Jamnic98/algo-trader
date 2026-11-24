@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"time"
 	"trader-core/internal/api"
-	"trader-core/internal/monitoring"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func InitServer(cfg Config, mon *monitoring.SysMonitor) *gin.Engine {
+func InitServer(cfg Config) *gin.Engine {
 	engine := gin.Default()
 
 	if cfg.Env == "local" {

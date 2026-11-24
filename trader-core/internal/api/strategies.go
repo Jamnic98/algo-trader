@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+
 	"trader-core/internal/db"
 	"trader-core/internal/db/models"
 	"trader-core/internal/dto"
@@ -13,8 +14,8 @@ import (
 
 func RegisterStrategyRoutes(rg *gin.RouterGroup) {
 	rg.GET("", getStrategiesHandler)
-	rg.GET("/:slug", getStrategyHandler)
 	rg.GET("/schemas", getSchemasHandler)
+	rg.GET("/:slug", getStrategyHandler)
 	rg.POST("", createStrategyHandler)
 }
 
@@ -23,12 +24,8 @@ func getSchemasHandler(c *gin.Context) {
 }
 
 func getStrategiesHandler(c *gin.Context) {
-	query := db.DB.Model(&models.Strategy{})
-
 	var strategies []models.Strategy
-	if err := query.
-		// Order("timestamp DESC").
-		Find(&strategies).Error; err != nil {
+	if err := db.DB.Select("slug", "display_name", "is_composite").Find(&strategies).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
