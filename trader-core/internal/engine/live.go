@@ -9,11 +9,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// OrderPlacer places real orders on an exchange. Implemented by
-// binance.SpotPlacer (the binance package imports engine, so the interface
-// lives here to avoid an import cycle).
+// OrderPlacer places real orders on an exchange. A exchange.Broker satisfies
+// this interface directly (side is "BUY"/"SELL").
 type OrderPlacer interface {
-	PlaceMarketOrder(symbol string, side Side, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error)
+	PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error)
 }
 
 // LiveAccount is the local ledger for live trading: initialized from the
@@ -56,7 +55,7 @@ func (le *LiveExecutor) ExecuteFill(order Order) (*Fill, error) {
 		return nil, fmt.Errorf("live executor has no order placer configured")
 	}
 
-	avgPrice, executedQty, fee, err := le.Placer.PlaceMarketOrder(order.Symbol, Side(order.Signal), order.Qty)
+	avgPrice, executedQty, fee, err := le.Placer.PlaceMarketOrder(order.Symbol, string(order.Signal), order.Qty)
 	if err != nil {
 		return nil, err
 	}

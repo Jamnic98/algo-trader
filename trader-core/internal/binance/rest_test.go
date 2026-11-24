@@ -13,8 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"trader-core/internal/engine"
-
 	"github.com/shopspring/decimal"
 )
 
@@ -267,7 +265,7 @@ func TestSpotPlacerPlaceMarketOrder(t *testing.T) {
 	defer server.Close()
 	withServer(t, server)
 
-	avgPrice, executedQty, fee, err := SpotPlacer{}.PlaceMarketOrder("xrp/usdt", engine.BUY, decimal.NewFromFloat(10))
+	avgPrice, executedQty, fee, err := SpotPlacer{}.PlaceMarketOrder("xrp/usdt", "BUY", decimal.NewFromFloat(10))
 	if err != nil {
 		t.Fatalf("PlaceMarketOrder: %v", err)
 	}
@@ -302,7 +300,7 @@ func TestSpotPlacerBadStatus(t *testing.T) {
 	defer server.Close()
 	withServer(t, server)
 
-	_, _, _, err := SpotPlacer{}.PlaceMarketOrder("XRPUSDT", engine.BUY, decimal.NewFromInt(1))
+	_, _, _, err := SpotPlacer{}.PlaceMarketOrder("XRPUSDT", "BUY", decimal.NewFromInt(1))
 	if err == nil || !strings.Contains(err.Error(), "-1100") {
 		t.Fatalf("expected -1100 error, got %v", err)
 	}

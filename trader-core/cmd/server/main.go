@@ -13,6 +13,7 @@ import (
 	"trader-core/internal/binance"
 	"trader-core/internal/bot"
 	"trader-core/internal/engine"
+	"trader-core/internal/exchange"
 	"trader-core/internal/monitoring"
 	"trader-core/setup"
 
@@ -68,15 +69,27 @@ func main() {
 	marketManager := bot.NewMarketDataManager(binanceClient, dispatcher)
 	go marketManager.Run(ctx)
 
-	// account manager: default paper account + live ledger synced from Binance
+	// default broker from the exchange registry (binance for now; alpaca registers itself)
+	broker, berr := exchange.New("binance", exchange.ConfigFromEnv("binance"))
+	if berr != nil {
+		log.Println("exchange registry:", berr)
+	}
+	var placer engine.OrderPlacer = binance.SpotPlacer{}
+	if broker != nil {
+		placer = broker // a Broker satisfies engine.OrderPlacer
+	}
+
+	// account manager: default paper account + live ledger synced from the broker
 	liveAccount := engine.NewLiveAccount("0", "0.001")
 	var balances map[string]decimal.Decimal
-	if b, err := binance.FetchAccount(); err != nil {
-		log.Println("could not fetch Binance balances (live ledger starts at 0):", err)
-	} else {
-		balances = b
-		if usdt, ok := b["USDT"]; ok {
-			log.Println("live USDT balance:", usdt.String())
+	if broker != nil {
+		if b, err := broker.Balances(); err != nil {
+			log.Println("could not fetch exchange balances (live ledger starts at 0):", err)
+		} else {
+			balances = b
+			if usdt, ok := b["USDT"]; ok {
+				log.Println("live USDT balance:", usdt.String())
+			}
 		}
 	}
 	accountManager := engine.NewAccountManager(db, liveAccount)
@@ -93,7 +106,7 @@ func main() {
 			return engine.NewPaperExecutor(account)
 		},
 		LiveAccount: liveAccount,
-		Placer:      binance.SpotPlacer{},
+		Placer:      placer,
 	}
 
 	// shared bot runtime

@@ -1,0 +1,67 @@
+package exchange
+
+import (
+	"context"
+	"testing"
+
+	"github.com/shopspring/decimal"
+)
+
+type fakeBroker struct{ name string }
+
+func (f fakeBroker) Name() string { return f.name }
+func (f fakeBroker) Klines(symbol, interval string, startMs, endMs int64, limit int) ([]Kline, error) {
+	return []Kline{{OpenTime: startMs, Close: decimal.NewFromInt(1)}}, nil
+}
+func (f fakeBroker) StreamKlines(ctx context.Context, symbol, interval string, onKline func(Kline)) error {
+	return nil
+}
+func (f fakeBroker) Balances() (map[string]decimal.Decimal, error) {
+	return map[string]decimal.Decimal{"USD": decimal.NewFromInt(100)}, nil
+}
+func (f fakeBroker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+	return decimal.NewFromInt(1), qty, decimal.Zero, nil
+}
+
+func TestRegistryRegisterAndNew(t *testing.T) {
+	Register("fake", func(cfg Config) (Broker, error) { return fakeBroker{"fake"}, nil })
+
+	b, err := New("FAKE", Config{}) // case-insensitive lookup
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if b.Name() != "fake" {
+		t.Fatalf("name = %q", b.Name())
+	}
+
+	kl, err := b.Klines("BTCUSDT", "1h", 100, 200, 10)
+	if err != nil || len(kl) != 1 || kl[0].OpenTime != 100 {
+		t.Fatalf("klines = %v, %v", kl, err)
+	}
+
+	if _, err := New("nope", Config{}); err == nil {
+		t.Fatal("expected unknown exchange error")
+	}
+
+	found := false
+	for _, n := range Names() {
+		if n == "fake" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("Names() = %v", Names())
+	}
+}
+
+func TestConfigFromEnv(t *testing.T) {
+	t.Setenv("ALPACA_API_KEY", "k")
+	t.Setenv("ALPACA_SECRET", "s")
+	t.Setenv("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")
+	t.Setenv("ALPACA_PAPER", "true")
+
+	cfg := ConfigFromEnv("alpaca")
+	if cfg.APIKey != "k" || cfg.Secret != "s" || cfg.BaseURL != "https://paper-api.alpaca.markets" || !cfg.Paper {
+		t.Fatalf("cfg = %+v", cfg)
+	}
+}

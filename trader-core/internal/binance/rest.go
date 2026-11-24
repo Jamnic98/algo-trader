@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"trader-core/internal/engine"
 
 	"github.com/shopspring/decimal"
 )
@@ -225,7 +224,7 @@ type SpotPlacer struct{}
 
 // PlaceMarketOrder places a spot MARKET order and returns the executed
 // average price, executed quantity and total commission (fee).
-func (SpotPlacer) PlaceMarketOrder(symbol string, side engine.Side, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error) {
+func (SpotPlacer) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error) {
 	params := url.Values{}
 	params.Set("symbol", NormalizeSymbol(symbol))
 	params.Set("side", string(side))
@@ -250,13 +249,13 @@ func (SpotPlacer) PlaceMarketOrder(symbol string, side engine.Side, qty decimal.
 	}
 
 	var result struct {
-		OrderID               int64  `json:"orderId"`
-		Symbol                string `json:"symbol"`
-		Side                  string `json:"side"`
-		Status                string `json:"status"`
-		ExecutedQty           string `json:"executedQty"`
-		CummulativeQuoteQty   string `json:"cummulativeQuoteQty"`
-		Fills                 []struct {
+		OrderID             int64  `json:"orderId"`
+		Symbol              string `json:"symbol"`
+		Side                string `json:"side"`
+		Status              string `json:"status"`
+		ExecutedQty         string `json:"executedQty"`
+		CummulativeQuoteQty string `json:"cummulativeQuoteQty"`
+		Fills               []struct {
 			Price           string `json:"price"`
 			Qty             string `json:"qty"`
 			Commission      string `json:"commission"`

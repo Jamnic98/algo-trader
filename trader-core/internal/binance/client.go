@@ -23,7 +23,8 @@ type Client struct {
 	lastMessage time.Time
 }
 
-const binanceWSURL = "wss://stream.binance.com:443/ws"
+// var (not const) so tests/adapters can point it at a local server
+var binanceWSURL = "wss://stream.binance.com:443/ws"
 
 // NewClient constructor
 func NewClient(ctx context.Context) *Client {
