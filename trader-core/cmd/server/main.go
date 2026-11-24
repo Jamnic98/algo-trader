@@ -66,13 +66,22 @@ func main() {
 	marketManager := bot.NewMarketDataManager(binanceClient, dispatcher)
 	go marketManager.Run(ctx)
 
-	// paper trading account and bot factory
+	// paper trading account + live ledger (synced from Binance balances) + bot factory
 	account := engine.NewPaperAccount("10000", "0.001")
+	liveAccount := engine.NewLiveAccount("0", "0.001")
+	if balances, err := binance.FetchAccount(); err != nil {
+		log.Println("could not fetch Binance balances (live ledger starts at 0):", err)
+	} else if usdt, ok := balances["USDT"]; ok {
+		liveAccount.SetBalance(usdt)
+		log.Println("live USDT balance:", usdt.String())
+	}
 	botFactory := bot.BotFactory{
 		Account: account,
 		Engine: func() engine.ExecutionEngine {
 			return engine.NewPaperExecutor(account)
 		},
+		LiveAccount: liveAccount,
+		Placer:      binance.SpotPlacer{},
 	}
 
 	// shared bot runtime

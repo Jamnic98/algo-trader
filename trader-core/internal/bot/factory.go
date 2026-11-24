@@ -10,20 +10,22 @@ import (
 )
 
 type BotFactory struct {
-	Account engine.Account
-	Engine  func() engine.ExecutionEngine
+	Account     engine.Account
+	Engine      func() engine.ExecutionEngine
+	LiveAccount *engine.LiveAccount
+	Placer      engine.OrderPlacer
 }
 
-func (f *BotFactory) NewPaperBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
+func (f *BotFactory) newBot(cfg BotConfig, strategy strategies.Strategy, exec engine.ExecutionEngine) (*Bot, error) {
 	if cfg.ID == "" {
 		cfg.ID = uuid.New().String()
 	}
 
-	b := &Bot{
+	return &Bot{
 		BotConfig: cfg,
 		Status:    BotCreated,
 
-		Engine:         f.Engine(),
+		Engine:         exec,
 		Logger:         NewBotLogger(cfg.ID),
 		ActiveStrategy: strategy,
 		CandleCh:       make(chan models.Candle, 100),
@@ -31,7 +33,18 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig, strategy strategies.Strategy) (*
 		FillBroadcaster:   &Broadcaster[dto.FIllDTO]{},
 		CandleBroadcaster: &Broadcaster[models.Candle]{},
 		TickBroadcaster:   &Broadcaster[models.Candle]{},
-	}
+	}, nil
+}
 
-	return b, nil
+func (f *BotFactory) NewPaperBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
+	return f.newBot(cfg, strategy, f.Engine())
+}
+
+// NewLiveBot builds a bot whose fills are placed on the exchange via Placer.
+func (f *BotFactory) NewLiveBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
+	acc := f.LiveAccount
+	if acc == nil {
+		acc = engine.NewLiveAccount("0", "0.001")
+	}
+	return f.newBot(cfg, strategy, engine.NewLiveExecutor(acc, f.Placer))
 }

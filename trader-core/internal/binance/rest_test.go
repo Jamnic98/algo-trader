@@ -10,9 +10,12 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strconv"
+	"strings"
 	"testing"
 
 	"trader-core/internal/engine"
+
+	"github.com/shopspring/decimal"
 )
 
 func klineJSON(openTime int64, close string) []any {
@@ -239,7 +242,7 @@ func TestNormalizeSymbol(t *testing.T) {
 	}
 }
 
-func TestPlaceTradeNormalizesSymbol(t *testing.T) {
+func TestSpotPlacerPlaceMarketOrder(t *testing.T) {
 	t.Setenv("BINANCE_API_KEY", "k")
 	t.Setenv("BINANCE_SECRET_KEY", "s")
 
@@ -249,25 +252,92 @@ func TestPlaceTradeNormalizesSymbol(t *testing.T) {
 			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
 		}
 		gotQuery = r.URL.Query()
-		_ = json.NewEncoder(w).Encode(map[string]string{"price": "1.23"})
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"orderId":             42,
+			"symbol":              "XRPUSDT",
+			"side":                "BUY",
+			"status":              "FILLED",
+			"executedQty":         "10",
+			"cummulativeQuoteQty": "12.30",
+			"fills": []map[string]string{
+				{"price": "1.23", "qty": "10", "commission": "0.01", "commissionAsset": "USDT"},
+			},
+		})
 	}))
 	defer server.Close()
 	withServer(t, server)
 
-	price, err := PlaceTrade("xrp/usdt", engine.BUY, 0.01)
+	avgPrice, executedQty, fee, err := SpotPlacer{}.PlaceMarketOrder("xrp/usdt", engine.BUY, decimal.NewFromFloat(10))
 	if err != nil {
-		t.Fatalf("PlaceTrade: %v", err)
+		t.Fatalf("PlaceMarketOrder: %v", err)
 	}
-	if price != "1.23" {
-		t.Fatalf("price = %q", price)
+	if !avgPrice.Equal(decimal.NewFromFloat(1.23)) {
+		t.Errorf("avgPrice = %s, want 1.23", avgPrice)
+	}
+	if !executedQty.Equal(decimal.NewFromInt(10)) {
+		t.Errorf("executedQty = %s, want 10", executedQty)
+	}
+	if !fee.Equal(decimal.NewFromFloat(0.01)) {
+		t.Errorf("fee = %s, want 0.01", fee)
 	}
 	if gotQuery.Get("symbol") != "XRPUSDT" {
 		t.Errorf("symbol = %q, want XRPUSDT", gotQuery.Get("symbol"))
 	}
-	if gotQuery.Get("side") != "BUY" || gotQuery.Get("type") != "MARKET" || gotQuery.Get("quantity") != "0.01" {
+	if gotQuery.Get("side") != "BUY" || gotQuery.Get("type") != "MARKET" || gotQuery.Get("quantity") != "10" {
 		t.Errorf("query = %v", gotQuery)
 	}
 	if gotQuery.Get("signature") == "" {
 		t.Error("missing signature")
+	}
+}
+
+func TestSpotPlacerBadStatus(t *testing.T) {
+	t.Setenv("BINANCE_API_KEY", "k")
+	t.Setenv("BINANCE_SECRET_KEY", "s")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"code":-1100,"msg":"Illegal characters found in parameter 'symbol'"}`))
+	}))
+	defer server.Close()
+	withServer(t, server)
+
+	_, _, _, err := SpotPlacer{}.PlaceMarketOrder("XRPUSDT", engine.BUY, decimal.NewFromInt(1))
+	if err == nil || !strings.Contains(err.Error(), "-1100") {
+		t.Fatalf("expected -1100 error, got %v", err)
+	}
+}
+
+func TestFetchAccount(t *testing.T) {
+	t.Setenv("BINANCE_API_KEY", "k")
+	t.Setenv("BINANCE_SECRET_KEY", "s")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v3/account" || r.Method != http.MethodGet {
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"balances": []map[string]string{
+				{"asset": "USDT", "free": "1234.56"},
+				{"asset": "XRP", "free": "0"},
+				{"asset": "BTC", "free": "0.5"},
+			},
+		})
+	}))
+	defer server.Close()
+	withServer(t, server)
+
+	balances, err := FetchAccount()
+	if err != nil {
+		t.Fatalf("FetchAccount: %v", err)
+	}
+	if !balances["USDT"].Equal(decimal.NewFromFloat(1234.56)) {
+		t.Errorf("USDT = %s", balances["USDT"])
+	}
+	if _, ok := balances["XRP"]; ok {
+		t.Error("zero-balance XRP should be omitted")
+	}
+	if !balances["BTC"].Equal(decimal.NewFromFloat(0.5)) {
+		t.Errorf("BTC = %s", balances["BTC"])
 	}
 }

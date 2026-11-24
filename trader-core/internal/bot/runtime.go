@@ -25,6 +25,8 @@ type Runtime struct {
 
 func (r *Runtime) newBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
 	switch cfg.Mode {
+	case BotModeLive:
+		return r.BotFactory.NewLiveBot(cfg, strategy)
 	default:
 		return r.BotFactory.NewPaperBot(cfg, strategy)
 	}

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 	"trader-core/internal/engine"
+
+	"github.com/shopspring/decimal"
 )
 
 // var (not const) so tests can point it at a local httptest server
@@ -217,43 +219,128 @@ func NormalizeSymbol(symbol string) string {
 	return b.String()
 }
 
-// place a market trade (signed endpoint, credentials from env)
-func PlaceTrade(symbol string, side engine.Side, quantity float64) (string, error) {
+// SpotPlacer implements engine.OrderPlacer against Binance spot REST
+// (signed endpoint, credentials from BINANCE_API_KEY / BINANCE_SECRET_KEY).
+type SpotPlacer struct{}
+
+// PlaceMarketOrder places a spot MARKET order and returns the executed
+// average price, executed quantity and total commission (fee).
+func (SpotPlacer) PlaceMarketOrder(symbol string, side engine.Side, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error) {
 	params := url.Values{}
 	params.Set("symbol", NormalizeSymbol(symbol))
 	params.Set("side", string(side))
 	params.Set("type", "MARKET")
-	if quantity != 0 {
-		params.Set("quantity", strconv.FormatFloat(quantity, 'f', -1, 64))
-	}
+	params.Set("quantity", qty.String())
 
 	req, err := signedRequest(http.MethodPost, "/api/v3/order", params)
 	if err != nil {
-		return "", fmt.Errorf("place trade request failed: %w", err)
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("place order request failed: %w", err)
 	}
 
-	client := &http.Client{Timeout: 5 * time.Second}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("place trade request failed: %w", err)
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("place order request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("place trade bad status: %s, body: %s", resp.Status, body)
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("place order bad status: %s, body: %s", resp.Status, body)
 	}
-
-	fmt.Println("status", resp.StatusCode)
 
 	var result struct {
-		Price string `json:"price"`
+		OrderID               int64  `json:"orderId"`
+		Symbol                string `json:"symbol"`
+		Side                  string `json:"side"`
+		Status                string `json:"status"`
+		ExecutedQty           string `json:"executedQty"`
+		CummulativeQuoteQty   string `json:"cummulativeQuoteQty"`
+		Fills                 []struct {
+			Price           string `json:"price"`
+			Qty             string `json:"qty"`
+			Commission      string `json:"commission"`
+			CommissionAsset string `json:"commissionAsset"`
+		} `json:"fills"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("place trade response decode failed: %w", err)
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("place order response decode failed: %w", err)
 	}
 
-	return result.Price, nil
+	executedQty, err = decimal.NewFromString(result.ExecutedQty)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("bad executedQty %q: %w", result.ExecutedQty, err)
+	}
+
+	cum, _ := decimal.NewFromString(result.CummulativeQuoteQty)
+	if executedQty.GreaterThan(decimal.Zero) && cum.GreaterThan(decimal.Zero) {
+		avgPrice = cum.Div(executedQty)
+	} else {
+		// fall back to summing fills
+		var sumQty, sumNotional, sumFee decimal.Decimal
+		for _, f := range result.Fills {
+			p, _ := decimal.NewFromString(f.Price)
+			q, _ := decimal.NewFromString(f.Qty)
+			c, _ := decimal.NewFromString(f.Commission)
+			sumQty = sumQty.Add(q)
+			sumNotional = sumNotional.Add(p.Mul(q))
+			sumFee = sumFee.Add(c)
+		}
+		if sumQty.GreaterThan(decimal.Zero) {
+			avgPrice = sumNotional.Div(sumQty)
+		}
+		fee = sumFee
+	}
+	if fee.IsZero() {
+		for _, f := range result.Fills {
+			c, _ := decimal.NewFromString(f.Commission)
+			fee = fee.Add(c)
+		}
+	}
+
+	return avgPrice, executedQty, fee, nil
+}
+
+// FetchAccount returns free balances per asset from the signed account endpoint.
+func FetchAccount() (map[string]decimal.Decimal, error) {
+	req, err := signedRequest(http.MethodGet, "/api/v3/account", url.Values{})
+	if err != nil {
+		return nil, fmt.Errorf("account request failed: %w", err)
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("account request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("account bad status: %s, body: %s", resp.Status, body)
+	}
+
+	var result struct {
+		Balances []struct {
+			Asset string `json:"asset"`
+			Free  string `json:"free"`
+		} `json:"balances"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("account response decode failed: %w", err)
+	}
+
+	out := make(map[string]decimal.Decimal, len(result.Balances))
+	for _, b := range result.Balances {
+		free, err := decimal.NewFromString(b.Free)
+		if err != nil {
+			continue
+		}
+		if free.GreaterThan(decimal.Zero) {
+			out[b.Asset] = free
+		}
+	}
+	return out, nil
 }
 
 func CheckServerTime() (int, error) {
