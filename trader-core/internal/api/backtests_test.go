@@ -54,13 +54,13 @@ func TestPostBacktest(t *testing.T) {
 	defer server.Close()
 
 	status, body, err := postBacktest(context.Background(), server.URL+"/", map[string]any{
-		"strategy_slug": "simple",
-		"symbol":        "BTCUSDT",
-		"interval":      "1h",
-		"start":         int64(1704067200000),
-		"end":           int64(1706745600000),
+		"strategy_slug":   "simple",
+		"symbol":          "BTCUSDT",
+		"interval":        "1h",
+		"start":           int64(1704067200000),
+		"end":             int64(1706745600000),
 		"initial_balance": "10000",
-		"fee_rate":      "0.001",
+		"fee_rate":        "0.001",
 	})
 	if err != nil {
 		t.Fatalf("postBacktest error: %v", err)

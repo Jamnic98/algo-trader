@@ -3,7 +3,6 @@ package strategies
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sync"
 )
 
@@ -44,17 +43,14 @@ var (
 	defs     *SchemaFile
 )
 
-// Definitions returns the parsed shared/strategies.json (loaded once).
+// Definitions returns the parsed schema. The JSON is embedded in the binary
+// via gen_schema.go (regenerate with scripts/generate_strategies.py after
+// editing shared/strategies.json).
 func Definitions() *SchemaFile {
 	defsOnce.Do(func() {
-		path := schemaPath()
-		data, err := os.ReadFile(path)
-		if err != nil {
-			panic(fmt.Sprintf("strategies: cannot load schema %q: %v", path, err))
-		}
 		var sf SchemaFile
-		if err := json.Unmarshal(data, &sf); err != nil {
-			panic(fmt.Sprintf("strategies: invalid schema %q: %v", path, err))
+		if err := json.Unmarshal([]byte(generatedSchemaJSON), &sf); err != nil {
+			panic(fmt.Sprintf("strategies: invalid embedded schema: %v", err))
 		}
 		if sf.Composite.DefaultThreshold <= 0 {
 			sf.Composite.DefaultThreshold = 0.6
@@ -62,28 +58,6 @@ func Definitions() *SchemaFile {
 		defs = &sf
 	})
 	return defs
-}
-
-// schemaPath resolves the shared schema file: STRATEGIES_SCHEMA_PATH env, then
-// candidate relative paths (works from repo root, trader-core/, any package dir,
-// and inside containers where shared/ is copied next to the app).
-func schemaPath() string {
-	if p := os.Getenv("STRATEGIES_SCHEMA_PATH"); p != "" {
-		return p
-	}
-	candidates := []string{
-		"shared/strategies.json",
-		"../shared/strategies.json",
-		"../../shared/strategies.json",
-		"../../../shared/strategies.json",
-		"../../../../shared/strategies.json",
-	}
-	for _, c := range candidates {
-		if _, err := os.Stat(c); err == nil {
-			return c
-		}
-	}
-	return candidates[0]
 }
 
 // FindPrimitive returns the definition for a strategy slug, or nil.
@@ -96,20 +70,12 @@ func FindPrimitive(name string) *PrimitiveDef {
 	return nil
 }
 
-// init registers every primitive from the shared schema, keyed by template.
-func init() {
-	for _, def := range Definitions().Primitives {
-		d := def
-		Register(d.Name, StrategySchema{
-			Name:        d.Name,
-			DisplayName: d.DisplayName,
-			Params:      d.Params,
-		}, makeConstructor(d))
-	}
-}
-
 // withDefaults fills missing params from the schema defaults.
-func withDefaults(def PrimitiveDef, paramsJSON []byte) []byte {
+func withDefaults(name string, paramsJSON []byte) []byte {
+	def := FindPrimitive(name)
+	if def == nil {
+		return paramsJSON
+	}
 	m := map[string]any{}
 	if len(paramsJSON) > 0 {
 		if err := json.Unmarshal(paramsJSON, &m); err != nil {
@@ -128,13 +94,13 @@ func withDefaults(def PrimitiveDef, paramsJSON []byte) []byte {
 	return out
 }
 
-// makeConstructor maps a schema template name to the Go implementation.
-// Adding a new template means implementing it here AND in research/app/strategies;
-// the shared test vectors in strategies.json pin the behavior on both sides.
-func makeConstructor(def PrimitiveDef) Constructor {
+// constructorFor maps a schema template to the Go implementation. New
+// templates must be implemented here AND in research/app/strategies; the
+// shared test vectors in shared/strategies.json pin behavior on both sides.
+func constructorFor(name, template string) Constructor {
 	return func(paramsJSON []byte) (Strategy, error) {
-		params := withDefaults(def, paramsJSON)
-		switch def.Template {
+		params := withDefaults(name, paramsJSON)
+		switch template {
 		case "always_buy":
 			return NewSimpleDCAStrategy(SimpleDCAParams{}), nil
 		case "prev_close":
@@ -142,11 +108,13 @@ func makeConstructor(def PrimitiveDef) Constructor {
 		case "dca":
 			var p SmartDCAParams
 			if err := json.Unmarshal(params, &p); err != nil {
-				return nil, fmt.Errorf("parsing %s params: %w", def.Name, err)
+				return nil, fmt.Errorf("parsing %s params: %w", name, err)
 			}
 			return NewSmartDCAStrategy(p), nil
 		default:
-			return nil, fmt.Errorf("unknown template %q for strategy %q", def.Template, def.Name)
+			return nil, fmt.Errorf("unknown template %q for strategy %q", template, name)
 		}
 	}
 }
+
+func ptrFloat(f float64) *float64 { return &f }

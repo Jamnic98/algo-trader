@@ -1,6 +1,9 @@
 package strategies
 
 import (
+	"encoding/json"
+	"os"
+	"reflect"
 	"testing"
 
 	"trader-core/internal/db/models"
@@ -98,7 +101,41 @@ func TestSharedTestVectors(t *testing.T) {
 
 // TestUnknownTemplateRejected guards against typos in the shared schema.
 func TestUnknownTemplateRejected(t *testing.T) {
-	if _, err := makeConstructor(PrimitiveDef{Name: "x", Template: "nope"})([]byte("{}")); err == nil {
+	if _, err := constructorFor("x", "nope")([]byte("{}")); err == nil {
 		t.Fatal("expected error for unknown template")
+	}
+}
+
+// TestEmbeddedSchemaMatchesFile is the drift guard: gen_schema.go embeds
+// shared/strategies.json, so this fails if the JSON was edited without
+// re-running scripts/generate_strategies.py (CI also runs --check).
+func TestEmbeddedSchemaMatchesFile(t *testing.T) {
+	candidates := []string{
+		"../../../../shared/strategies.json", // from internal/strategies
+		"../../../shared/strategies.json",    // from internal/
+		"../../shared/strategies.json",       // from trader-core/
+		"shared/strategies.json",             // from repo root
+	}
+
+	var fileData []byte
+	for _, c := range candidates {
+		if data, err := os.ReadFile(c); err == nil {
+			fileData = data
+			break
+		}
+	}
+	if fileData == nil {
+		t.Skip("shared/strategies.json not found from test working directory")
+	}
+
+	var embedded, onDisk any
+	if err := json.Unmarshal([]byte(generatedSchemaJSON), &embedded); err != nil {
+		t.Fatalf("embedded schema invalid: %v", err)
+	}
+	if err := json.Unmarshal(fileData, &onDisk); err != nil {
+		t.Fatalf("on-disk schema invalid: %v", err)
+	}
+	if !reflect.DeepEqual(embedded, onDisk) {
+		t.Fatal("embedded schema != shared/strategies.json; run `python3 scripts/generate_strategies.py`")
 	}
 }

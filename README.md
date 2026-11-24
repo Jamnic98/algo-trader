@@ -7,10 +7,15 @@ Monorepo: Go trading core + React dashboard + Python backtester.
 - `research/` — Python (FastAPI) backtester service on `:8000`. Reads saved strategies
   from Postgres and runs them against historical Binance klines.
 - `shared/strategies.json` — **single source of truth for strategy definitions**
-  (templates, param schemas/defaults, behavior test vectors). Both `trader-core` and
-  `research` load it at startup (`STRATEGIES_SCHEMA_PATH` to override); the
-  `/api/strategies/schemas` endpoint is served from it, and both test suites execute
-  its test vectors, so the Go and Python engines can't silently drift apart.
+  (templates, param schemas/defaults, behavior test vectors). `research` (Python)
+  loads it at runtime; `trader-core` (Go) embeds it via the generated
+  `trader-core/internal/strategies/gen_schema.go`. After editing the JSON, run
+  `python3 scripts/generate_strategies.py` (CI runs `--check` and fails if stale).
+  `/api/strategies/schemas` is served from it, and both test suites execute its
+  test vectors, so the Go and Python engines can't silently drift apart.
+
+To add a strategy on an existing template: add an entry to `shared/strategies.json`
+and re-run the generator — no Go/Python code changes needed.
 
 ## Strategy → backtest flow
 

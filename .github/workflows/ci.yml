@@ -7,6 +7,7 @@ on:
       - "trader-core/**"
       - "research/**"
       - "shared/**"
+      - "scripts/**"
       - ".github/workflows/**"
 
   pull_request:
@@ -15,6 +16,7 @@ on:
       - "trader-core/**"
       - "research/**"
       - "shared/**"
+      - "scripts/**"
       - ".github/workflows/**"
 
 jobs:
@@ -65,6 +67,9 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
+      - name: Check generated strategy schema is fresh
+        run: python3 scripts/generate_strategies.py --check
 
       - name: Run Go tests
         working-directory: trader-core
