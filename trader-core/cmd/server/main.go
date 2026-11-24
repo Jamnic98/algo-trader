@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "trader-core/internal/alpaca"
 	"trader-core/internal/api"
 	"trader-core/internal/binance"
 	"trader-core/internal/bot"

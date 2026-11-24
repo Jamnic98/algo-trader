@@ -47,7 +47,8 @@ type Broker interface {
 type Config struct {
 	APIKey  string
 	Secret  string
-	BaseURL string // REST
+	BaseURL string // trading REST (orders/account)
+	DataURL string // market-data REST (bars/klines)
 	WSURL   string // websocket market data
 	Paper   bool
 }
@@ -60,6 +61,7 @@ func ConfigFromEnv(name string) Config {
 		APIKey:  os.Getenv(p + "_API_KEY"),
 		Secret:  os.Getenv(p + "_SECRET"),
 		BaseURL: os.Getenv(p + "_BASE_URL"),
+		DataURL: os.Getenv(p + "_DATA_URL"),
 		WSURL:   os.Getenv(p + "_WS_URL"),
 		Paper:   os.Getenv(p+"_PAPER") == "true",
 	}
