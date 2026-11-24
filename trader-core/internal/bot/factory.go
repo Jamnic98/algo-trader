@@ -36,6 +36,12 @@ func (f *BotFactory) newBot(cfg BotConfig, strategy strategies.Strategy, exec en
 	}, nil
 }
 
+// NewBot builds a bot with an explicit executor (used when the account is
+// chosen per-bot via AccountManager rather than the factory default).
+func (f *BotFactory) NewBot(cfg BotConfig, strategy strategies.Strategy, exec engine.ExecutionEngine) (*Bot, error) {
+	return f.newBot(cfg, strategy, exec)
+}
+
 func (f *BotFactory) NewPaperBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
 	return f.newBot(cfg, strategy, f.Engine())
 }

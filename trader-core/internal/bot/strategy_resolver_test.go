@@ -43,3 +43,21 @@ func TestMergeParams(t *testing.T) {
 		t.Fatal("expected error for invalid overrides")
 	}
 }
+
+func TestBuildBotConfigDefaultsAccount(t *testing.T) {
+	cfg, err := BuildBotConfig("id1", CreateBotData{Mode: BotModePaper, StrategySlug: "simple", Interval: "1h"})
+	if err != nil {
+		t.Fatalf("BuildBotConfig: %v", err)
+	}
+	if cfg.AccountName != "default" {
+		t.Fatalf("AccountName = %q, want default", cfg.AccountName)
+	}
+
+	cfg2, err := BuildBotConfig("id2", CreateBotData{Mode: BotModeLive, Account: "live", StrategySlug: "simple", Interval: "1h"})
+	if err != nil {
+		t.Fatalf("BuildBotConfig live: %v", err)
+	}
+	if cfg2.AccountName != "live" || cfg2.Mode != BotModeLive {
+		t.Fatalf("cfg2 = %+v", cfg2)
+	}
+}

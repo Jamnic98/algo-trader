@@ -2,6 +2,7 @@ export * from './useAlert'
 export { default as useDebounce } from './useDebounce'
 export { default as useIsMobile } from './useIsMobile'
 
+export { default as useAccounts } from './useAccounts'
 export { default as useAsync } from './useAsync'
 export { default as useBreadcrumbs } from './useBreadcrumbs'
 export { default as useStrategy } from './useStrategy'
