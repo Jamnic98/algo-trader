@@ -18,6 +18,7 @@ type primitiveSeed struct {
 var primitiveStrategies = []primitiveSeed{
 	{Slug: "simple", DisplayName: "Simple", DefaultConfig: map[string]any{}},
 	{Slug: "simple_dca", DisplayName: "Simple DCA", DefaultConfig: map[string]any{}},
+	{Slug: "sma_cross", DisplayName: "SMA Crossover", DefaultConfig: map[string]any{}},
 	// {Name: "smart_dca", DisplayName: "Smart DCA", DefaultConfig: map[string]any{"fixed_spend": "10.00"}},
 	// {Name: "macd", DisplayName: "MACD", DefaultConfig: map[string]any{"fast": 12, "slow": 26, "signal": 9}},
 }

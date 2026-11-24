@@ -30,6 +30,28 @@
       }
     },
     {
+      "name": "sma_cross",
+      "display_name": "SMA Crossover",
+      "template": "sma_cross",
+      "params": [
+        { "key": "fast", "label": "Fast SMA", "type": "number", "default": 5, "min": 1 },
+        { "key": "slow", "label": "Slow SMA", "type": "number", "default": 10, "min": 2 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [
+          {
+            "candles": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 110, 80],
+            "expect": ["HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "BUY", "SELL"]
+          },
+          {
+            "candles": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+            "expect": ["HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD"]
+          }
+        ]
+      }
+    },
+    {
       "name": "smart_dca",
       "display_name": "Smart DCA",
       "template": "dca",

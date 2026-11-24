@@ -6,6 +6,7 @@ from .composer import WeightedComposer
 from .definitions import composite_default_threshold, find_primitive, param_defaults
 from .dca import SimpleDCAStrategy, SmartDCAStrategy
 from .simple import SimpleStrategy
+from .sma_cross import SMACrossStrategy
 
 __all__ = [
     "CandleContext",
@@ -23,6 +24,7 @@ TEMPLATES: dict[str, type] = {
     "always_buy": SimpleDCAStrategy,
     "prev_close": SimpleStrategy,
     "dca": SmartDCAStrategy,
+    "sma_cross": SMACrossStrategy,
 }
 
 

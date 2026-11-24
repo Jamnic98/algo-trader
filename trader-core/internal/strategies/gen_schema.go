@@ -35,6 +35,28 @@ const generatedSchemaJSON = `{
       }
     },
     {
+      "name": "sma_cross",
+      "display_name": "SMA Crossover",
+      "template": "sma_cross",
+      "params": [
+        { "key": "fast", "label": "Fast SMA", "type": "number", "default": 5, "min": 1 },
+        { "key": "slow", "label": "Slow SMA", "type": "number", "default": 10, "min": 2 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [
+          {
+            "candles": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 110, 80],
+            "expect": ["HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "BUY", "SELL"]
+          },
+          {
+            "candles": [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
+            "expect": ["HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD", "HOLD"]
+          }
+        ]
+      }
+    },
+    {
       "name": "smart_dca",
       "display_name": "Smart DCA",
       "template": "dca",
@@ -57,6 +79,10 @@ const generatedSchemaJSON = `{
 func init() {
 	Register("simple", StrategySchema{Name: "simple", DisplayName: "Simple", Params: []ParamSchema{}}, constructorFor("simple", "prev_close"))
 	Register("simple_dca", StrategySchema{Name: "simple_dca", DisplayName: "Simple DCA", Params: []ParamSchema{}}, constructorFor("simple_dca", "always_buy"))
+	Register("sma_cross", StrategySchema{Name: "sma_cross", DisplayName: "SMA Crossover", Params: []ParamSchema{
+		{Key: "fast", Label: "Fast SMA", Type: ParamTypeNumber, Default: 5, Min: ptrFloat(1)},
+		{Key: "slow", Label: "Slow SMA", Type: ParamTypeNumber, Default: 10, Min: ptrFloat(2)},
+	}}, constructorFor("sma_cross", "sma_cross"))
 	Register("smart_dca", StrategySchema{Name: "smart_dca", DisplayName: "Smart DCA", Params: []ParamSchema{
 		{Key: "fixed_spend", Label: "Fixed Spend", Type: ParamTypeString, Default: "10.00", Min: ptrFloat(0.01)},
 		{Key: "take_profit", Label: "Take Profit Multiplier", Type: ParamTypeNumber, Default: 1.05, Min: ptrFloat(1.0)},

@@ -26,7 +26,7 @@ OUT_PATH = ROOT / "trader-core" / "internal" / "strategies" / "gen_schema.go"
 # research/app/strategies. Adding a new template = implement it in both
 # engines + allow it here; adding a new primitive on an existing template =
 # edit shared/strategies.json only and re-run this script.
-KNOWN_TEMPLATES = {"prev_close", "always_buy", "dca", "weighted_vote"}
+KNOWN_TEMPLATES = {"prev_close", "always_buy", "dca", "sma_cross", "weighted_vote"}
 
 PARAM_TYPES = {
     "number": "ParamTypeNumber",

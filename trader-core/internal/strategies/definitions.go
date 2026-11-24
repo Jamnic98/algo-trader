@@ -111,6 +111,12 @@ func constructorFor(name, template string) Constructor {
 				return nil, fmt.Errorf("parsing %s params: %w", name, err)
 			}
 			return NewSmartDCAStrategy(p), nil
+		case "sma_cross":
+			var p SMACrossParams
+			if err := json.Unmarshal(params, &p); err != nil {
+				return nil, fmt.Errorf("parsing %s params: %w", name, err)
+			}
+			return NewSMACrossStrategy(p), nil
 		default:
 			return nil, fmt.Errorf("unknown template %q for strategy %q", template, name)
 		}
