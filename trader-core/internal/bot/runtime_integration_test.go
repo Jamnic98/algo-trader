@@ -20,7 +20,10 @@ func TestRestoreBotResolvesStrategyBySlug(t *testing.T) {
 		t.Skip("TEST_DB_DSN not set; skipping integration test")
 	}
 
-	db.ConnectPostgres(dsn)
+	// dedicated database per package so parallel test binaries don't race on AutoMigrate
+	if err := db.ConnectTestDatabase(dsn, "bot_itest"); err != nil {
+		t.Fatalf("connect test db: %v", err)
+	}
 	db.Migrate(&models.Strategy{}, &BotConfig{})
 	db.SeedStrategies(db.DB)
 

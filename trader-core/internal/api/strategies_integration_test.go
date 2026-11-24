@@ -29,7 +29,10 @@ func TestCreateStrategyThenResolveIntegration(t *testing.T) {
 		t.Skip("TEST_DB_DSN not set; skipping integration test")
 	}
 
-	db.ConnectPostgres(dsn)
+	// dedicated database per package so parallel test binaries don't race on AutoMigrate
+	if err := db.ConnectTestDatabase(dsn, "api_itest"); err != nil {
+		t.Fatalf("connect test db: %v", err)
+	}
 	db.Migrate(&models.Strategy{})
 	db.SeedStrategies(db.DB) // primitives the composite references
 	db.DB.Exec("DELETE FROM strategies WHERE slug IN ('itest_combo', 'itest_inner', 'itest_outer')") // idempotent
