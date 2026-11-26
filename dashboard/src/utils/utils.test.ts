@@ -11,6 +11,15 @@ describe('deriveSymbol', () => {
   it('defaults quote to empty string', () => {
     expect(deriveSymbol('binance', 'crypto', 'btc')).toBe('BTC')
   })
+
+  it('maps alpaca crypto to a slash pair with USD default', () => {
+    expect(deriveSymbol('alpaca', 'crypto', 'btc', 'usd')).toBe('BTC/USD')
+    expect(deriveSymbol('alpaca', 'crypto', 'btc')).toBe('BTC/USD')
+  })
+
+  it('maps alpaca stocks to the bare ticker', () => {
+    expect(deriveSymbol('alpaca', 'stocks', 'aapl', 'usd')).toBe('AAPL')
+  })
 })
 
 describe('displaySymbol', () => {

@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { getBot, startBot, stopBot, deleteBot } from 'api'
 import { BarLoader, BotActionButtons, BotStatusPill, BotTabs, Heading } from 'components'
 import { useAlert } from 'hooks'
+import { displaySymbol } from 'utils'
 import type { Bot, LoadingAction } from 'types'
 
 const BotDetails = () => {
@@ -95,7 +96,9 @@ const BotDetails = () => {
           <div className="w-fit">
             <div className="flex flex-row justify-between items-center gap-4 select-none mb-8 pr-4">
               <div className="space-y-1.5 text-sm text-content-secondary">
-                <p className="tracking-wide">{`${bot.base}/${bot.quote}`}</p>
+                <p className="tracking-wide">
+                  {displaySymbol(bot.assetType, bot.base, bot.quote)}
+                </p>
                 <div className="flex items-center gap-2">
                   <BotStatusPill status={bot.status} />
                 </div>

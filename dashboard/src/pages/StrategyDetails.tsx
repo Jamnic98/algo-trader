@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { /* useNavigate, */ useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 
 import { BarLoader, Heading, BacktestPanel, SectionLabel } from 'components'
 import { useStrategy, useStrategies, useBreadcrumbs } from 'hooks'

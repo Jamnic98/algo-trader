@@ -184,12 +184,9 @@ const Bots = () => {
   }
 
   const handleStrategyChange = (strategy: Strategy) => {
-    console.log('strategy id:', strategy.slug)
-    setForm((prev) => {
-      const next = { ...prev, strategy_id: strategy.slug }
-      console.log('new form:', next)
-      return next
-    })
+    // the select's onChange only fires this handler, so strategy_slug must be
+    // set here — otherwise every bot would be created with the default slug
+    setForm((prev) => ({ ...prev, strategy_slug: strategy.slug }))
     const config = STRATEGY_CONFIG[strategy.slug]
     if (config?.defaultLookback) setMaxCandles(config.defaultLookback)
   }
