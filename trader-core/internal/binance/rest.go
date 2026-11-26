@@ -1,6 +1,7 @@
 package binance
 
 import (
+	"trader-core/internal/engine"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -223,13 +224,19 @@ func NormalizeSymbol(symbol string) string {
 type SpotPlacer struct{}
 
 // PlaceMarketOrder places a spot MARKET order and returns the executed
-// average price, executed quantity and total commission (fee).
-func (SpotPlacer) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error) {
+// average price, executed quantity and total commission (fee). clientOrderID
+// is sent as newClientOrderId; if the request fails at transport level (or
+// 5xx), the order is reconciled by clientOrderID so a filled order is never
+// reported as failed.
+func (SpotPlacer) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal, clientOrderID string) (avgPrice, executedQty, fee decimal.Decimal, err error) {
 	params := url.Values{}
 	params.Set("symbol", NormalizeSymbol(symbol))
 	params.Set("side", string(side))
 	params.Set("type", "MARKET")
 	params.Set("quantity", qty.String())
+	if clientOrderID != "" {
+		params.Set("newClientOrderId", clientOrderID)
+	}
 
 	req, err := signedRequest(http.MethodPost, "/api/v3/order", params)
 	if err != nil {
@@ -239,12 +246,23 @@ func (SpotPlacer) PlaceMarketOrder(symbol string, side string, qty decimal.Decim
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		// transport error: the order may have reached the venue — reconcile
+		if clientOrderID != "" {
+			if a, q, f, rerr := queryOrderByClientID(NormalizeSymbol(symbol), clientOrderID); rerr == nil {
+				return a, q, f, nil
+			}
+		}
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("place order request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode >= 500 && clientOrderID != "" {
+			if a, q, f, rerr := queryOrderByClientID(NormalizeSymbol(symbol), clientOrderID); rerr == nil {
+				return a, q, f, nil
+			}
+		}
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("place order bad status: %s, body: %s", resp.Status, body)
 	}
 
@@ -365,4 +383,106 @@ func CheckServerTime() (int, error) {
 	}
 
 	return result.ServerTime, nil
+}
+
+// queryOrderByClientID fetches an order by its client order id and, if filled,
+// returns avg price, executed qty and fee (reconciliation after transport errors).
+func queryOrderByClientID(symbol, clientOrderID string) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+	params := url.Values{}
+	params.Set("symbol", symbol)
+	params.Set("origClientOrderId", clientOrderID)
+	req, err := signedRequest(http.MethodGet, "/api/v3/order", params)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, decimal.Zero, err
+	}
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, decimal.Zero, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("query order bad status: %s", resp.Status)
+	}
+	var result struct {
+		Status              string `json:"status"`
+		ExecutedQty         string `json:"executedQty"`
+		CummulativeQuoteQty string `json:"cummulativeQuoteQty"`
+		Fills               []struct {
+			Price      string `json:"price"`
+			Qty        string `json:"qty"`
+			Commission string `json:"commission"`
+		} `json:"fills"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return decimal.Zero, decimal.Zero, decimal.Zero, err
+	}
+	if result.Status != "FILLED" {
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("order not filled (status %s)", result.Status)
+	}
+	executedQty, err := decimal.NewFromString(result.ExecutedQty)
+	if err != nil {
+		return decimal.Zero, decimal.Zero, decimal.Zero, err
+	}
+	cum, _ := decimal.NewFromString(result.CummulativeQuoteQty)
+	var avgPrice, fee decimal.Decimal
+	if executedQty.GreaterThan(decimal.Zero) && cum.GreaterThan(decimal.Zero) {
+		avgPrice = cum.Div(executedQty)
+	}
+	for _, f := range result.Fills {
+		c, _ := decimal.NewFromString(f.Commission)
+		fee = fee.Add(c)
+	}
+	return avgPrice, executedQty, fee, nil
+}
+
+// filtersForSymbol fetches /api/v3/exchangeInfo and extracts LOT_SIZE,
+// PRICE_FILTER and MIN_NOTIONAL for the symbol.
+func filtersForSymbol(symbol string) (engine.SymbolFilters, error) {
+	var f engine.SymbolFilters
+	symbol = NormalizeSymbol(symbol)
+	resp, err := http.Get(fmt.Sprintf("%s/api/v3/exchangeInfo?symbol=%s", restBaseURL, symbol))
+	if err != nil {
+		return f, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return f, fmt.Errorf("exchangeInfo bad status: %s", resp.Status)
+	}
+	var info struct {
+		Symbols []struct {
+			Symbol   string `json:"symbol"`
+			Filters  []struct {
+				FilterType string `json:"filterType"`
+				MinQty     string `json:"minQty"`
+				MaxQty     string `json:"maxQty"`
+				StepSize   string `json:"stepSize"`
+				MinPrice   string `json:"minPrice"`
+				TickSize   string `json:"tickSize"`
+				MinNotional string `json:"minNotional"`
+			} `json:"filters"`
+		} `json:"symbols"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return f, err
+	}
+	for _, sym := range info.Symbols {
+		if sym.Symbol != symbol {
+			continue
+		}
+		for _, fl := range sym.Filters {
+			switch fl.FilterType {
+			case "LOT_SIZE":
+				f.MinQty, _ = decimal.NewFromString(fl.MinQty)
+				f.MaxQty, _ = decimal.NewFromString(fl.MaxQty)
+				f.StepQty, _ = decimal.NewFromString(fl.StepSize)
+			case "PRICE_FILTER":
+				f.TickSize, _ = decimal.NewFromString(fl.TickSize)
+			case "MIN_NOTIONAL":
+				f.MinNotional, _ = decimal.NewFromString(fl.MinNotional)
+			}
+		}
+		return f, nil
+	}
+	return f, fmt.Errorf("symbol %s not found in exchangeInfo", symbol)
 }

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"trader-core/internal/engine"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -172,13 +174,15 @@ func (b *Broker) getOrder(id string) (order, error) {
 
 // PlaceMarketOrder places a market order and waits until it reaches a terminal
 // state (Alpaca accepts market orders asynchronously, so the POST alone often
-// returns status "accepted" with filled_qty 0). Alpaca is commission-free, so
-// fee is 0. Polls at pollInterval up to pollTimeout.
-func (b *Broker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
-	return b.placeMarketOrder(symbol, side, qty, 500*time.Millisecond, 15*time.Second)
+// returns status "accepted" with filled_qty 0). clientOrderID is sent as
+// client_order_id; on transport/5xx errors the order is reconciled by that id
+// so a filled order is never reported as failed. Alpaca is commission-free,
+// so fee is 0. Polls at pollInterval up to pollTimeout.
+func (b *Broker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal, clientOrderID string) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+	return b.placeMarketOrder(symbol, side, qty, clientOrderID, 500*time.Millisecond, 15*time.Second)
 }
 
-func (b *Broker) placeMarketOrder(symbol string, side string, qty decimal.Decimal, pollInterval, pollTimeout time.Duration) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+func (b *Broker) placeMarketOrder(symbol string, side string, qty decimal.Decimal, clientOrderID string, pollInterval, pollTimeout time.Duration) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
 	if err := b.requireCreds(); err != nil {
 		return decimal.Zero, decimal.Zero, decimal.Zero, err
 	}
@@ -191,6 +195,9 @@ func (b *Broker) placeMarketOrder(symbol string, side string, qty decimal.Decima
 		"type":          "market",
 		"time_in_force": "day",
 	}
+	if clientOrderID != "" {
+		payload["client_order_id"] = clientOrderID
+	}
 	body, _ := json.Marshal(payload)
 
 	req, err := b.newRequest(http.MethodPost, b.cfg.BaseURL+"/v2/orders", bytes.NewReader(body))
@@ -199,11 +206,22 @@ func (b *Broker) placeMarketOrder(symbol string, side string, qty decimal.Decima
 	}
 	resp, err := b.client.Do(req)
 	if err != nil {
+		// transport error: the order may have reached the venue — reconcile
+		if clientOrderID != "" {
+			if o, rerr := b.getOrderByClientID(clientOrderID); rerr == nil {
+				return filledResult(o)
+			}
+		}
 		return decimal.Zero, decimal.Zero, decimal.Zero, err
 	}
 	respBody, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		if resp.StatusCode >= 500 && clientOrderID != "" {
+			if o, rerr := b.getOrderByClientID(clientOrderID); rerr == nil {
+				return filledResult(o)
+			}
+		}
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("alpaca order bad status: %s, body: %s", resp.Status, respBody)
 	}
 
@@ -226,6 +244,11 @@ func (b *Broker) placeMarketOrder(symbol string, side string, qty decimal.Decima
 		o = next
 	}
 
+	return filledResult(o)
+}
+
+// filledResult converts a terminal order into (avgPrice, executedQty, fee, err).
+func filledResult(o order) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
 	if o.Status == "rejected" || o.RejectReason != "" {
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("alpaca order rejected: %s", o.RejectReason)
 	}
@@ -244,4 +267,69 @@ func (b *Broker) placeMarketOrder(symbol string, side string, qty decimal.Decima
 
 	// Alpaca charges no commission on stocks/crypto spot
 	return avgPrice, filledQty, decimal.Zero, nil
+}
+
+// getOrderByClientID fetches an order by client_order_id (reconciliation).
+func (b *Broker) getOrderByClientID(clientOrderID string) (order, error) {
+	var o order
+	q := url.Values{"client_order_id": {clientOrderID}}
+	req, err := b.newRequest(http.MethodGet, b.cfg.BaseURL+"/v2/orders:by_client_order_id?"+q.Encode(), nil)
+	if err != nil {
+		return o, err
+	}
+	resp, err := b.client.Do(req)
+	if err != nil {
+		return o, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return o, fmt.Errorf("alpaca get order by client id bad status: %s, body: %s", resp.Status, body)
+	}
+	if err := json.Unmarshal(body, &o); err != nil {
+		return o, fmt.Errorf("decode order: %w", err)
+	}
+	return o, nil
+}
+
+// Filters returns the venue's trading rules for the symbol. Stocks via
+// /v2/assets/{symbol}; crypto has no lot-size API, so a $1 min notional applies.
+func (b *Broker) Filters(symbol string) (engine.SymbolFilters, error) {
+	var f engine.SymbolFilters
+	if err := b.requireCreds(); err != nil {
+		return f, err
+	}
+	symbol = NormalizeSymbol(symbol)
+
+	if IsCryptoSymbol(symbol) {
+		f.MinNotional = decimal.NewFromInt(1) // Alpaca crypto minimum order value ~ $1
+		return f, nil
+	}
+
+	req, err := b.newRequest(http.MethodGet, b.cfg.BaseURL+"/v2/assets/"+url.PathEscape(symbol), nil)
+	if err != nil {
+		return f, err
+	}
+	resp, err := b.client.Do(req)
+	if err != nil {
+		return f, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return f, fmt.Errorf("alpaca asset bad status: %s, body: %s", resp.Status, body)
+	}
+	var asset struct {
+		MinOrderSize       string `json:"min_order_size"`
+		MinTradeIncrement  string `json:"min_trade_increment"`
+		PriceIncrement     string `json:"price_increment"`
+	}
+	if err := json.Unmarshal(body, &asset); err != nil {
+		return f, fmt.Errorf("decode asset: %w", err)
+	}
+	f.MinQty, _ = decimal.NewFromString(asset.MinOrderSize)
+	f.StepQty, _ = decimal.NewFromString(asset.MinTradeIncrement)
+	f.TickSize, _ = decimal.NewFromString(asset.PriceIncrement)
+	f.MinNotional = decimal.NewFromInt(1) // Alpaca stock minimum order value $1
+	return f, nil
 }

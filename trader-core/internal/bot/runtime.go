@@ -154,6 +154,19 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 		return fmt.Errorf("invalid risk config: %w", err)
 	}
 	b.Risk = engine.NewRiskState(limits)
+
+	// fetch the venue's trading rules once per attach so orders can be
+	// validated client-side (lot size / tick / min notional)
+	if br, berr := rt.BrokerFor(b.Exchange); berr == nil {
+		if f, ferr := br.Filters(b.Symbol()); ferr == nil {
+			b.Filters = &f
+			b.Logger.Info("filters %s: minQty=%s stepQty=%s tick=%s minNotional=%s",
+				b.Symbol(), f.MinQty.String(), f.StepQty.String(), f.TickSize.String(), f.MinNotional.String())
+		} else {
+			b.Logger.Warn("could not fetch filters for %s: %v (orders unvalidated)", b.Symbol(), ferr)
+		}
+	}
+
 	b.OnKillSwitch = func(reason string) {
 		if rt.Messenger != nil {
 			rt.Messenger.Notify(fmt.Sprintf("bot %s (%s %s) kill switch: %s", b.ID, b.Exchange, b.Symbol(), reason))

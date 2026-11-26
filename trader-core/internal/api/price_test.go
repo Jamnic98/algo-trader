@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"trader-core/internal/bot"
+	"trader-core/internal/engine"
 	"trader-core/internal/exchange"
 
 	"github.com/gin-gonic/gin"
@@ -25,8 +26,11 @@ func (f fakePriceBroker) StreamKlines(ctx context.Context, symbol, interval stri
 }
 func (f fakePriceBroker) Balances() (map[string]decimal.Decimal, error) { return nil, nil }
 func (f fakePriceBroker) Price(symbol string) (decimal.Decimal, error)    { return f.price, nil }
-func (f fakePriceBroker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+func (f fakePriceBroker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal, clientOrderID string) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
 	return decimal.Zero, decimal.Zero, decimal.Zero, nil
+}
+func (f fakePriceBroker) Filters(symbol string) (engine.SymbolFilters, error) {
+	return engine.SymbolFilters{}, nil
 }
 
 func setupPriceRouter(t *testing.T) *gin.Engine {

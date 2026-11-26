@@ -190,6 +190,9 @@ type Bot struct {
 	// invoked once when a kill-switch trips (detach + notify).
 	Risk         *engine.RiskState
 	OnKillSwitch func(reason string)
+
+	// Filters are the venue's trading rules for the symbol, fetched on attach.
+	Filters *engine.SymbolFilters
 }
 
 // Symbol returns the venue-native symbol for this bot's pair
