@@ -14,6 +14,14 @@ export interface Bot extends CreateBot {
   strategy_name: string
 }
 
+export interface RiskLimits {
+  max_position_pct?: string // cap a single BUY notional as % of balance, "100" = no cap
+  max_daily_loss_pct?: string // kill switch vs day-start equity, "0" = off
+  max_drawdown_pct?: string // kill switch vs running peak equity, "0" = off
+  cooldown_losses?: number // consecutive losing sells before buys pause, 0 = off
+  cooldown_minutes?: number // pause length
+}
+
 export interface CreateBot {
   mode: BotMode
   account?: string // paper account name; 'live' when mode is live
@@ -25,4 +33,5 @@ export interface CreateBot {
   maxCandles: number
   quantity?: string
   strategy_slug: string
+  risk?: RiskLimits
 }

@@ -51,6 +51,49 @@ python3 scripts/ml_example_service.py   # model endpoint on 127.0.0.1:8001
    (`GET /api/v3/klines`, paginated), replays them through a paper account and returns
    stats, equity curve and trades.
 
+## Risk management & panic
+
+Every bot carries a `risk` JSON object (stored on the bot's `risk` jsonb column;
+defaults applied when omitted). Set it in the bot form's **Risk** section
+(dashboard) or as `"risk": {...}` in `POST /api/bots`:
+
+```json
+{
+  "max_position_pct": "25",     // cap a single BUY notional as % of account balance (default "100" = no cap)
+  "max_daily_loss_pct": "5",    // kill switch: equity drop vs day-start equity; "0" = off
+  "max_drawdown_pct": "10",     // kill switch: equity drawdown from running peak; "0" = off
+  "cooldown_losses": 3,         // consecutive losing SELLs before BUYs pause; 0 = off
+  "cooldown_minutes": 60        // pause length
+}
+```
+
+Enforcement happens in the bot runner on every candle: position cap before the
+fill, kill-switch checks on equity (a trip stops/detaches the bot and sends a
+Telegram alert), cooldown blocks new BUYs, and each fill's realized pnl (tracked
+via per-position cost basis) feeds the cooldown. `GET /api/bots` returns each
+bot's stored `risk`.
+
+**Panic button / endpoint:** the Bots page has a *Panic — stop all* button
+(confirm, then optional flatten). API equivalent: `POST /api/panic` with
+`{"flatten": true}` stops all running bots and, with `flatten`, market-sells
+every open position at the last candle close (real orders for live bots).
+Response: `{stopped, flattened, errors}`.
+
+## Reliability: disconnects, reconnects, restarts
+
+- The Binance WS client **retries forever in the background** (`StartWithRetry`)
+  — a failed dial or fatal disconnect no longer kills the process, and the REST
+  API / other venues keep working.
+- Subscriptions are **replayed on every (re)connect**, so running bots resume
+  receiving candles after a WS reconnect. (A few closed candles can be missed
+  during the gap itself; strategies just see a slightly stale window.)
+- **Paper positions are persisted** (`accounts.positions` jsonb) and restored on
+  boot, so an open position survives a restart and can still be sold. Live
+  accounts are rehydrated from the venue via `SyncLive`.
+- Known limitation for live trading: if the network drops mid-order, the venue
+  may fill while the local ledger records an error — use client order IDs /
+  order-status reconciliation before going live with real money.
+
 ## Run locally
 
 ```bash

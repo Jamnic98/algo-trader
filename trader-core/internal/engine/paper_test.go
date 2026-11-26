@@ -132,3 +132,34 @@ func TestFeeRater(t *testing.T) {
 		t.Fatalf("live fee = %s", fr2.FeeRate())
 	}
 }
+
+
+
+func TestFillPnlOnSell(t *testing.T) {
+	acc := NewPaperAccount("10000", "0.001")
+	pe := NewPaperExecutor(acc)
+
+	buy, err := pe.ExecuteFill(Order{BotID: "b", Symbol: "BTCUSDT", Signal: "BUY", Price: d("100"), Qty: d("2")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !buy.Pnl.IsZero() {
+		t.Fatalf("buy pnl should be 0, got %s", buy.Pnl)
+	}
+
+	sell, err := pe.ExecuteFill(Order{BotID: "b", Symbol: "BTCUSDT", Signal: "SELL", Price: d("110"), Qty: d("2")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !sell.Pnl.Equal(d("20")) { // (110-100)*2
+		t.Fatalf("sell pnl = %s, want 20", sell.Pnl)
+	}
+
+	snap := acc.Snapshot()
+	if snap.Positions["BTCUSDT"].Equal(d("2")) {
+		t.Fatal("position should be flat after sell")
+	}
+	if !snap.CostBasis["BTCUSDT"].IsZero() {
+		t.Fatalf("cost basis should reset to 0, got %s", snap.CostBasis["BTCUSDT"])
+	}
+}

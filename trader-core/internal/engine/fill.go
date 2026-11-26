@@ -13,6 +13,7 @@ type Fill struct {
 	Qty    decimal.Decimal // positive = buy, negative = sell
 	Price  decimal.Decimal // execution price
 	Fee    decimal.Decimal
+	Pnl    decimal.Decimal // realized pnl on SELLs (0 on BUYs); used by risk cooldown
 	Signal strategies.Signal
 	Time   time.Time
 }

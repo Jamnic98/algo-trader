@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { BarLoader, BotForm, BotTable, Heading } from 'components'
-import { getAllBots, startBot, stopBot, createBot, deleteBot } from 'api'
+import { getAllBots, startBot, stopBot, createBot, deleteBot, panicBots } from 'api'
 import { useAlert } from 'hooks'
 import { EXCHANGE_CONFIG, MAX_CANDLES, STRATEGY_CONFIG } from 'utils/constants'
 import type { Bot, CreateBot, Exchange, LoadingAction, Strategy } from 'types'
@@ -33,6 +33,13 @@ const defaultFormData: CreateBot = {
   maxCandles: 200,
   quantity: '0.001',
   strategy_slug: 'simple',
+  risk: {
+    max_position_pct: '100',
+    max_daily_loss_pct: '0',
+    max_drawdown_pct: '0',
+    cooldown_losses: 0,
+    cooldown_minutes: 0,
+  },
 }
 
 type ValidationResult = { valid: true } | { valid: false; error: string }
@@ -71,6 +78,17 @@ const Bots = () => {
   // Handle form input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
+
+    // nested risk.* fields (pct fields stay strings, cooldown fields are ints)
+    if (name.startsWith('risk.')) {
+      const key = name.slice('risk.'.length)
+      const numeric = key.startsWith('cooldown')
+      setForm((prev) => ({
+        ...prev,
+        risk: { ...prev.risk, [key]: numeric ? Number(value) : value },
+      }))
+      return
+    }
 
     setForm((prev) => {
       const next = { ...prev, [name]: value }
@@ -167,6 +185,26 @@ const Bots = () => {
     }
   }
 
+  const handlePanic = async () => {
+    if (confirm('Stop ALL running bots?') !== true) return
+    const flatten = confirm('Also FLATTEN all open positions (market sell)?') === true
+    try {
+      const res = await panicBots(flatten)
+      showAlert({
+        type: res.errors.length ? 'error' : 'success',
+        title: `Panic: stopped ${res.stopped.length} bot(s)` +
+          (flatten ? `, flattened ${res.flattened.length} position(s)` : ''),
+        message: res.errors.length ? res.errors.join('\n') : undefined,
+      })
+      // refresh bot list to reflect stopped statuses
+      const bots = await getAllBots()
+      setBots(bots)
+    } catch (err) {
+      console.error(err)
+      showAlert({ title: 'Panic failed', type: 'error' })
+    }
+  }
+
   const handleDeleteBot = async (id: string) => {
     try {
       if (confirm(`Delete bot ${id}?`) === true) {
@@ -195,7 +233,16 @@ const Bots = () => {
 
   return (
     <div className="space-y-8">
-      <Heading title="Bots" />
+      <div className="flex items-center justify-between">
+        <Heading title="Bots" />
+        <button
+          onClick={handlePanic}
+          title="Stop all running bots; optionally flatten all open positions"
+          className="px-3 py-1.5 rounded bg-red-500/90 text-white font-semibold text-sm uppercase tracking-wider cursor-pointer hover:opacity-90 active:scale-95 transition-all"
+        >
+          Panic — stop all
+        </button>
+      </div>
       <div className="space-y-4">
         <BotForm
           form={form}

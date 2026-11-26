@@ -277,6 +277,58 @@ const BotForm = ({
             </>
           )}
 
+        {/* Risk limits (collapsible) */}
+        <details className="flex flex-col gap-1">
+          <summary className="text-content-secondary text-xs uppercase tracking-wider cursor-pointer select-none hover:text-content-primary transition-colors">
+            Risk
+          </summary>
+          <div className="flex flex-wrap items-end gap-3 pt-2">
+            <RiskField
+              label="Max pos %"
+              name="risk.max_position_pct"
+              value={form.risk?.max_position_pct ?? '100'}
+              onChange={onChange}
+              min={0}
+              max={100}
+              title="Cap a single BUY notional as % of account balance (100 = no cap)"
+            />
+            <RiskField
+              label="Daily loss %"
+              name="risk.max_daily_loss_pct"
+              value={form.risk?.max_daily_loss_pct ?? '0'}
+              onChange={onChange}
+              min={0}
+              title="Kill switch: equity drop vs day start (0 = off)"
+            />
+            <RiskField
+              label="Drawdown %"
+              name="risk.max_drawdown_pct"
+              value={form.risk?.max_drawdown_pct ?? '0'}
+              onChange={onChange}
+              min={0}
+              title="Kill switch: equity drawdown from running peak (0 = off)"
+            />
+            <RiskField
+              label="Cooldown losses"
+              name="risk.cooldown_losses"
+              value={String(form.risk?.cooldown_losses ?? 0)}
+              onChange={onChange}
+              min={0}
+              step={1}
+              title="Consecutive losing sells before buys pause (0 = off)"
+            />
+            <RiskField
+              label="Cooldown min"
+              name="risk.cooldown_minutes"
+              value={String(form.risk?.cooldown_minutes ?? 0)}
+              onChange={onChange}
+              min={0}
+              step={1}
+              title="How long buys stay paused"
+            />
+          </div>
+        </details>
+
         <button
           type="submit"
           className="flex flex-row flex-nowrap gap-2 px-2 py-1.5 rounded bg-accent text-surface-primary font-semibold text-sm uppercase tracking-wider cursor-pointer hover:opacity-90 active:scale-95 transition-all"
@@ -287,5 +339,39 @@ const BotForm = ({
     </div>
   )
 }
+
+const RiskField = ({
+  label,
+  name,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  title,
+}: {
+  label: string
+  name: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void
+  min?: number
+  max?: number
+  step?: number
+  title?: string
+}) => (
+  <div className="flex flex-col gap-1" title={title}>
+    <label className="text-content-secondary text-xs uppercase tracking-wider">{label}</label>
+    <input
+      type="number"
+      name={name}
+      value={value}
+      onChange={onChange}
+      min={min}
+      max={max}
+      step={step ?? 'any'}
+      className="border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded w-24 text-sm focus:outline-none focus:border-accent transition-colors"
+    />
+  </div>
+)
 
 export default BotForm

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"time"
 	"trader-core/internal/bot"
 	"trader-core/internal/db/models"
@@ -18,6 +19,7 @@ type BotDTO struct {
 	Interval     string             `json:"interval"`
 	MaxCandles   int                `json:"maxCandles"`
 	Quantity     string             `json:"quantity"`
+	Risk         json.RawMessage    `json:"risk,omitempty"`
 	Status       bot.BotStatus      `json:"status"`
 	Started      *string            `json:"started,omitempty"`
 	Candles      []models.CandleDTO `json:"candles,omitempty"`
@@ -47,6 +49,7 @@ func botToDTO(b *bot.Bot) BotDTO {
 		Interval:     b.Interval,
 		MaxCandles:   b.MaxCandles,
 		Quantity:     b.Quantity,
+		Risk:         json.RawMessage(b.BotConfig.Risk),
 		Status:       b.Status,
 		Started:      started,
 		Candles:      candles,
@@ -64,6 +67,7 @@ func configToDTO(cfg bot.BotConfig) BotDTO {
 		Interval:     cfg.Interval,
 		MaxCandles:   cfg.MaxCandles,
 		Quantity:     cfg.Quantity,
+		Risk:         json.RawMessage(cfg.Risk),
 		StrategySlug: cfg.StrategySlug,
 		Status:       "dead",
 	}

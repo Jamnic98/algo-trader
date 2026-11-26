@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -8,6 +9,7 @@ import (
 	"trader-core/internal/db/models"
 
 	"github.com/shopspring/decimal"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
 
@@ -43,11 +45,30 @@ func NewAccountManager(db *gorm.DB, live *LiveAccount) *AccountManager {
 		if err := db.Where("type = ?", AccountTypePaper).Find(&rows).Error; err == nil {
 			for _, row := range rows {
 				acc := NewPaperAccount(row.Balance, row.Fee)
+				acc.RestorePositions(parsePositions(row.Positions), nil)
 				m.attachPaper(row.Name, acc)
 			}
 		}
 	}
 	return m
+}
+
+// parsePositions decodes the persisted positions JSON (symbol -> qty string).
+func parsePositions(raw datatypes.JSON) map[string]decimal.Decimal {
+	out := map[string]decimal.Decimal{}
+	if len(raw) == 0 {
+		return out
+	}
+	var m map[string]string
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return out
+	}
+	for sym, q := range m {
+		if d, err := decimal.NewFromString(q); err == nil {
+			out[sym] = d
+		}
+	}
+	return out
 }
 
 func (m *AccountManager) attachPaper(name string, acc *PaperAccount) {
@@ -60,9 +81,11 @@ func (m *AccountManager) persistPaper(name string, acc *PaperAccount) {
 		return
 	}
 	snap := acc.Snapshot()
+	posJSON, _ := json.Marshal(positionsToString(snap.Positions))
 	m.db.Model(&models.Account{}).Where("name = ?", name).Updates(map[string]any{
-		"balance": snap.Balance.String(),
-		"fee":     acc.Fee.String(),
+		"balance":   snap.Balance.String(),
+		"fee":       acc.Fee.String(),
+		"positions": datatypes.JSON(posJSON),
 	})
 }
 

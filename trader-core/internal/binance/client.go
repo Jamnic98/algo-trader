@@ -19,6 +19,7 @@ type Client struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
 	mu          sync.Mutex
+	subs        map[string]bool // active stream subscriptions, replayed on (re)connect
 	connected   atomic.Bool
 	started     atomic.Bool
 	lastMessage time.Time
@@ -37,6 +38,7 @@ func NewClient(ctx context.Context) *Client {
 		recv:   make(chan []byte, 10),
 		ctx:    cctx,
 		cancel: cancel,
+		subs:   make(map[string]bool),
 	}
 }
 
@@ -100,7 +102,21 @@ func (c *Client) run() error {
 	c.mu.Lock()
 	c.conn = conn
 	c.lastMessage = time.Now()
+	// replay subscriptions on every (re)connect — a fresh connection has none
+	subs := make([]string, 0, len(c.subs))
+	for s := range c.subs {
+		subs = append(subs, s)
+	}
 	c.mu.Unlock()
+
+	if len(subs) > 0 {
+		c.send <- map[string]any{
+			"method": "SUBSCRIBE",
+			"params": subs,
+			"id":     time.Now().Unix(),
+		}
+		log.Printf("resubscribed to %d streams after connect", len(subs))
+	}
 
 	c.connected.Store(true)
 	c.started.Store(true)
@@ -245,10 +261,17 @@ func sleepOrDone(ctx context.Context, d time.Duration) bool {
 	}
 }
 
-// Subscribe/Unsubscribe unchanged
+// Subscribe records the streams (replayed on reconnect) and sends the
+// SUBSCRIBE if the socket is up.
 func (c *Client) Subscribe(streams ...string) {
+	c.mu.Lock()
+	for _, s := range streams {
+		c.subs[s] = true
+	}
+	c.mu.Unlock()
+
 	if !c.Started() {
-		log.Println("WS not started yet, skipping subscribe")
+		log.Println("WS not started yet, will subscribe on connect")
 		return
 	}
 
@@ -260,6 +283,15 @@ func (c *Client) Subscribe(streams ...string) {
 }
 
 func (c *Client) Unsubscribe(streams ...string) {
+	c.mu.Lock()
+	for _, s := range streams {
+		delete(c.subs, s)
+	}
+	c.mu.Unlock()
+
+	if !c.Started() {
+		return
+	}
 	c.send <- map[string]any{
 		"method": "UNSUBSCRIBE",
 		"params": streams,

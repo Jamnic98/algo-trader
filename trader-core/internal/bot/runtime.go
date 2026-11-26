@@ -147,6 +147,22 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	intervalDur := interval.Duration()
 	b.MaxCandles = max(int(lookback/intervalDur), 1)
 
+	// risk management: parse limits, start the per-run tracker, wire the
+	// kill-switch to detach + notify
+	limits, err := b.RiskLimits()
+	if err != nil {
+		return fmt.Errorf("invalid risk config: %w", err)
+	}
+	b.Risk = engine.NewRiskState(limits)
+	b.OnKillSwitch = func(reason string) {
+		if rt.Messenger != nil {
+			rt.Messenger.Notify(fmt.Sprintf("bot %s (%s %s) kill switch: %s", b.ID, b.Exchange, b.Symbol(), reason))
+		}
+		if err := rt.DetachBot(b); err != nil {
+			b.Logger.Warn("detach after kill switch failed: %v", err)
+		}
+	}
+
 	// Subscribe BEFORE fetching history so no closed candle is missed in the gap;
 	// afterwards drop stream candles already covered by the fetched history.
 	rt.Dispatcher.Subscribe(b.Symbol(), interval, b)

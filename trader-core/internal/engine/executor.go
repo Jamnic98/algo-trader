@@ -11,3 +11,9 @@ type ExecutionEngine interface {
 type FeeRater interface {
 	FeeRate() decimal.Decimal
 }
+
+// AccountSnapshotter is implemented by executors that can expose their
+// account ledger (balance, positions, cost basis) — used by risk management.
+type AccountSnapshotter interface {
+	Snapshot() AccountSnapshot
+}
