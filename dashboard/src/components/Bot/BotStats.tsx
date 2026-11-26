@@ -15,6 +15,7 @@ import type { NameType, ValueType } from 'recharts/types/component/DefaultToolti
 import { getBotFills, getPrice } from 'api'
 import type { Bot, Fill } from 'types'
 import { BarLoader } from 'components/Loaders'
+import { deriveSymbol, EXCHANGE_CONFIG } from 'utils'
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -137,7 +138,12 @@ const Card = ({
 
 // ─── chart tooltip ───────────────────────────────────────────────────────────
 
-const ChartTooltip = ({ active, payload, label }: TooltipContentProps<ValueType, NameType>) => {
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+  quote = 'USDT',
+}: TooltipContentProps<ValueType, NameType> & { quote?: string }) => {
   if (!active || !payload?.length) return null
   const val = (payload[0].value ?? 0) as number
   return (
@@ -145,7 +151,7 @@ const ChartTooltip = ({ active, payload, label }: TooltipContentProps<ValueType,
       <div className="text-content-secondary mb-1">{label as string}</div>
       <div className={val >= 0 ? 'text-green-400' : 'text-red-400'}>
         {val >= 0 ? '+' : ''}
-        {fmt(val)} USDT
+        {fmt(val)} {quote}
       </div>
     </div>
   )
@@ -158,12 +164,13 @@ const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
   const [currentPrice, setCurrentPrice] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
-  const symbol = `${bot.base}${bot.quote ?? 'USDT'}`
+  const quote = bot.quote ?? EXCHANGE_CONFIG[bot.exchange]?.defaultQuote ?? 'USDT'
+  const symbol = deriveSymbol(bot.exchange, bot.assetType, bot.base, bot.quote)
 
   useEffect(() => {
     let cancelled = false
 
-    Promise.all([getBotFills(bot.id, 1, 500), getPrice(symbol)])
+    Promise.all([getBotFills(bot.id, 1, 500), getPrice(symbol, bot.exchange)])
       .then(([tradesRes, price]) => {
         if (cancelled) return
         setFills(tradesRes.data)
@@ -187,14 +194,10 @@ const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
   }
 
   const s = deriveStats(fills, currentPrice)
-  const quote = bot.quote ?? 'USDT'
 
   const unrealisedColor = s.unrealisedPnl > 0 ? 'green' : s.unrealisedPnl < 0 ? 'red' : 'neutral'
   const realisedColor = s.netPnl > 0 ? 'green' : s.netPnl < 0 ? 'red' : 'neutral'
   const chartColor = s.netPnl >= 0 ? '#4ade80' : '#f87171'
-
-  if (!fills.length)
-    return <div className="text-content-secondary text-sm font-mono">No fills yet.</div>
 
   return (
     <div className="flex flex-col gap-4 w-full select-none">
@@ -255,7 +258,7 @@ const BotStats = ({ bot, tick }: { bot: Bot; tick: number }) => {
               />
               <ReferenceLine y={0} stroke="rgba(255,255,255,0.12)" strokeDasharray="4 4" />
               <Tooltip<ValueType, NameType>
-                content={(props) => <ChartTooltip {...props} />}
+                content={(props) => <ChartTooltip {...props} quote={quote} />}
                 cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
               />
               <Line

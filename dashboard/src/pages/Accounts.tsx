@@ -90,7 +90,7 @@ const Accounts = () => {
   const handleSyncLive = async () => {
     try {
       await syncLiveAccount()
-      showAlert({ type: 'success', title: 'Live account synced from Binance' })
+      showAlert({ type: 'success', title: 'Live account synced from the exchange' })
       await reload()
     } catch (err) {
       showAlert({ type: 'error', title: `Sync failed: ${(err as Error).message}` })
@@ -109,9 +109,9 @@ const Accounts = () => {
       {/* Live account */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <SectionLabel>Live (Binance)</SectionLabel>
+          <SectionLabel>Live account</SectionLabel>
           <button onClick={handleSyncLive} className={btnCls}>
-            Sync from Binance
+            Sync live
           </button>
         </div>
         <div className="bg-surface-secondary border border-table-border rounded-lg px-5 py-4 flex flex-col gap-2">
