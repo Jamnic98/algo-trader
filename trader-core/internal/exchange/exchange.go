@@ -169,3 +169,23 @@ func SymbolFor(exchangeName, base, quote, assetType string) string {
 	}
 	return m(base, quote, assetType)
 }
+
+// quoteAssets maps venue -> its quote/cash asset ("USDT", "USD", ...).
+var quoteAssets = map[string]string{}
+
+// RegisterQuoteAsset registers the venue's quote (cash) asset.
+func RegisterQuoteAsset(name, asset string) {
+	mu.Lock()
+	defer mu.Unlock()
+	quoteAssets[strings.ToLower(name)] = asset
+}
+
+// QuoteAssetFor returns the venue's quote asset, defaulting to USDT.
+func QuoteAssetFor(name string) string {
+	mu.RLock()
+	defer mu.RUnlock()
+	if a, ok := quoteAssets[strings.ToLower(name)]; ok {
+		return a
+	}
+	return "USDT"
+}

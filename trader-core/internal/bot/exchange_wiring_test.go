@@ -225,7 +225,7 @@ func TestNewBotLiveUsesExchangeBroker(t *testing.T) {
 		t.Fatalf("placer = %T, want the fakevenue broker", le.Placer)
 	}
 	// live ledger synced from the venue balances with the bot's quote asset
-	snap := rt.Accounts.Live().Snapshot()
+	snap := rt.Accounts.Live("fakevenue").Snapshot()
 	if snap.Balance.Cmp(decimal.NewFromInt(100)) != 0 {
 		t.Fatalf("live balance = %s, want 100 USD", snap.Balance.String())
 	}
@@ -243,6 +243,52 @@ func TestNewBotLiveUnknownExchange(t *testing.T) {
 	cfg := BotConfig{ID: "b1", Mode: BotModeLive, Exchange: "nope", Quote: "USD"}
 	if _, err := rt.newBot(cfg, nil); err == nil {
 		t.Fatal("expected error for unknown exchange")
+	}
+}
+
+// TestNewBotLiveDefaultQuoteFromExchange: when cfg.Quote is empty, the live
+// ledger for cfg.Exchange is synced using that venue's registered quote asset,
+// and the bot trades on the per-exchange ledger (not the binance one).
+func TestNewBotLiveDefaultQuoteFromExchange(t *testing.T) {
+	exchange.RegisterQuoteAsset("fakeusd", "USD")
+	br := &fakeStreamBroker{} // balances: USD 100, BTC 0.5
+	rt := &Runtime{
+		Accounts:   engine.NewAccountManager(nil, engine.NewLiveAccount("0", "0.001")),
+		BotFactory: &BotFactory{},
+		Brokers:    map[string]exchange.Broker{"fakeusd": br},
+	}
+
+	cfg := BotConfig{ID: "b2", Mode: BotModeLive, Exchange: "fakeusd"} // Quote empty
+	b, err := rt.newBot(cfg, nil)
+	if err != nil {
+		t.Fatalf("newBot: %v", err)
+	}
+	le, ok := b.Engine.(*engine.LiveExecutor)
+	if !ok {
+		t.Fatalf("engine = %T, want *engine.LiveExecutor", b.Engine)
+	}
+	// the executor's live account must be the fakeusd ledger, synced with USD quote
+	snap := le.Account.Snapshot()
+	if snap.Balance.Cmp(decimal.NewFromInt(100)) != 0 || snap.Positions["BTC"].Cmp(decimal.NewFromFloat(0.5)) != 0 {
+		t.Fatalf("live ledger = %+v, want USD 100 + 0.5 BTC", snap)
+	}
+	if le.Account != rt.Accounts.Live("fakeusd") {
+		t.Fatal("executor account is not the per-exchange ledger")
+	}
+	// binance back-compat ledger is separate and untouched
+	if got := rt.Accounts.Live("").Snapshot().Balance.String(); got != "0" {
+		t.Fatalf("live:binance balance = %s, want 0 (untouched)", got)
+	}
+	// listing shows both live ledgers
+	list := rt.Accounts.List()
+	found := map[string]bool{}
+	for _, a := range list {
+		if a.Type == engine.AccountTypeLive {
+			found[a.Name] = true
+		}
+	}
+	if !found["live:binance"] || !found["live:fakeusd"] {
+		t.Fatalf("live ledgers = %v, want live:binance and live:fakeusd", found)
 	}
 }
 

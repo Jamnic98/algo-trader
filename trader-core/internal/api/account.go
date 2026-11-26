@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"trader-core/internal/binance"
 	"trader-core/internal/bot"
 	"trader-core/internal/engine"
+	"trader-core/internal/exchange"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -20,9 +20,8 @@ type AccountResponse struct {
 }
 
 var (
-	accounts  *engine.AccountManager
-	account   engine.Account // default paper account (back-compat for old routes)
-	liveQuote = "USDT"
+	accounts *engine.AccountManager
+	account  engine.Account // default paper account (back-compat for old routes)
 )
 
 func InitAccountAPI(rt *bot.Runtime) {
@@ -213,45 +212,99 @@ func topUpPaperAccountHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, info)
 }
 
-// getLiveAccountHandler returns the live ledger merged with fresh Binance balances.
+// getLiveAccountHandler returns the live ledger for ?exchange= (default
+// binance), enriched with fresh balances from that venue (best effort).
 func getLiveAccountHandler(c *gin.Context) {
-	if accounts == nil || accounts.Live() == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no live account configured"})
+	if accounts == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "account manager not initialised"})
 		return
 	}
-	info, err := accounts.Get("live")
+	exchangeName := c.DefaultQuery("exchange", "binance")
+	info, err := accounts.Get("live:" + exchangeName)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
+		// no ledger yet: create an empty one if the venue is registered
+		// (enrichment below fills it with fresh balances); unknown venue -> 404
+		if runtime == nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		if _, berr := runtime.BrokerFor(exchangeName); berr != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		acc := accounts.Live(exchangeName)
+		snap := acc.Snapshot()
+		info = engine.AccountInfo{
+			Name: "live:" + exchangeName, Type: engine.AccountTypeLive,
+			Balance: snap.Balance.String(), Fee: acc.Fee.String(),
+			Positions: positionsToString(snap.Positions),
+		}
 	}
 
-	// enrich with real balances from Binance (best effort)
-	balances, berr := binance.FetchAccount()
-	if berr == nil {
-		enriched := map[string]string{}
-		for asset, amt := range balances {
-			enriched[asset] = amt.String()
+	// enrich with real balances from that venue (best effort)
+	if runtime != nil {
+		if br, berr := runtime.BrokerFor(exchangeName); berr == nil {
+			if balances, ferr := br.Balances(); ferr == nil {
+				enriched := map[string]string{}
+				for asset, amt := range balances {
+					enriched[asset] = amt.String()
+				}
+				c.JSON(http.StatusOK, gin.H{"account": info, "exchange": exchangeName, "exchange_balances": enriched})
+				return
+			} else {
+				c.JSON(http.StatusOK, gin.H{"account": info, "exchange": exchangeName, "exchange_balances": nil, "exchange_error": ferr.Error()})
+				return
+			}
 		}
-		info.Positions["_exchange_balances"] = "" // placeholder removed below
-		delete(info.Positions, "_exchange_balances")
-		c.JSON(http.StatusOK, gin.H{"account": info, "exchange_balances": enriched})
-		return
 	}
-	c.JSON(http.StatusOK, gin.H{"account": info, "exchange_balances": nil, "exchange_error": berr.Error()})
+	c.JSON(http.StatusOK, gin.H{"account": info, "exchange": exchangeName, "exchange_balances": nil})
 }
 
-// syncLiveAccountHandler pulls real Binance balances into the live ledger.
+// syncLiveAccountHandler pulls real venue balances into the per-exchange live
+// ledgers. ?exchange=alpaca syncs only that venue; no param syncs all
+// registered brokers.
 func syncLiveAccountHandler(c *gin.Context) {
-	if accounts == nil || accounts.Live() == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no live account configured"})
+	if accounts == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "account manager not initialised"})
 		return
 	}
-	balances, err := binance.FetchAccount()
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "binance account fetch failed: " + err.Error()})
+	if runtime == nil || len(runtime.Brokers) == 0 {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "no brokers registered"})
 		return
 	}
-	accounts.SyncLive(balances, liveQuote)
-	info, _ := accounts.Get("live")
-	c.JSON(http.StatusOK, gin.H{"account": info})
+
+	exchangeName := c.Query("exchange")
+	syncOne := func(name string) (engine.AccountInfo, error) {
+		br, err := runtime.BrokerFor(name)
+		if err != nil {
+			return engine.AccountInfo{}, err
+		}
+		balances, err := br.Balances()
+		if err != nil {
+			return engine.AccountInfo{}, fmt.Errorf("%s account fetch failed: %w", name, err)
+		}
+		accounts.SyncLive(name, balances, exchange.QuoteAssetFor(name))
+		return accounts.Get("live:" + name)
+	}
+
+	if exchangeName != "" {
+		info, err := syncOne(exchangeName)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"account": info})
+		return
+	}
+
+	synced := map[string]engine.AccountInfo{}
+	errs := map[string]string{}
+	for name := range runtime.Brokers {
+		if info, err := syncOne(name); err != nil {
+			errs[name] = err.Error()
+		} else {
+			synced[name] = info
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"accounts": synced, "errors": errs})
 }

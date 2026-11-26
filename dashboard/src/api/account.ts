@@ -6,6 +6,7 @@ import type {
   CreatePaperAccountRequest,
   LiveAccountResponse,
   ResetPaperAccountRequest,
+  SyncLiveResponse,
   TopUpAccountRequest,
 } from 'types'
 
@@ -49,8 +50,13 @@ export const topUpPaperAccount = async (
     body: JSON.stringify(data),
   })
 
-export const getLiveAccount = async (): Promise<LiveAccountResponse> =>
-  api.fetchJson<LiveAccountResponse>(`${accountEndpoint}/live`)
+export const getLiveAccount = async (exchange?: string): Promise<LiveAccountResponse> =>
+  api.fetchJson<LiveAccountResponse>(
+    `${accountEndpoint}/live${exchange ? `?exchange=${encodeURIComponent(exchange)}` : ''}`
+  )
 
-export const syncLiveAccount = async (): Promise<{ account: AccountInfo }> =>
-  api.fetchJson(`${accountEndpoint}/live/sync`, { method: 'POST' })
+export const syncLiveAccount = async (exchange?: string): Promise<SyncLiveResponse> =>
+  api.fetchJson<SyncLiveResponse>(
+    `${accountEndpoint}/live/sync${exchange ? `?exchange=${encodeURIComponent(exchange)}` : ''}`,
+    { method: 'POST' }
+  )

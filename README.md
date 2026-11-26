@@ -99,8 +99,13 @@ Response: `{stopped, flattened, errors}`.
   from the last seen close; Binance via a client `OnReconnect` hook), so bots
   never trade on a stale window after a reconnect.
 - **Paper positions are persisted** (`accounts.positions` jsonb) and restored on
-  boot, so an open position survives a restart and can still be sold. Live
-  accounts are rehydrated from the venue via `SyncLive`.
+  boot, so an open position survives a restart and can still be sold. Each
+  exchange gets its own live ledger (`live:binance`, `live:alpaca`, …) with the
+  venue's quote asset (`QuoteAssetFor`: USDT/USD), rehydrated via
+  `SyncLive(exchange, balances, quote)` at boot, on live-bot attach, and via
+  `POST /api/account/live/sync` (`?exchange=` for one venue, no param for all);
+  `GET /api/account/live?exchange=` reads one ledger (`live` alone still means
+  Binance for back-compat).
 - **Live-order safety:** every order carries a client order id (`botID-nanos`);
   on a transport error or 5xx the broker reconciles by that id
   (Binance `origClientOrderId`, Alpaca `client_order_id`) and returns the fill if

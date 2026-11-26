@@ -17,7 +17,6 @@ import (
 	"trader-core/internal/monitoring"
 	"trader-core/setup"
 
-	"github.com/shopspring/decimal"
 )
 
 func main() {
@@ -87,22 +86,18 @@ func main() {
 		placer = broker // a Broker satisfies engine.OrderPlacer
 	}
 
-	// account manager: default paper account + live ledger synced from the broker
+	// account manager: default paper account + one live ledger per exchange,
+	// each synced from that venue's real balances
 	liveAccount := engine.NewLiveAccount("0", "0.001")
-	var balances map[string]decimal.Decimal
-	if broker != nil {
-		if b, err := broker.Balances(); err != nil {
-			log.Println("could not fetch exchange balances (live ledger starts at 0):", err)
-		} else {
-			balances = b
-			if usdt, ok := b["USDT"]; ok {
-				log.Println("live USDT balance:", usdt.String())
-			}
-		}
-	}
 	accountManager := engine.NewAccountManager(db, liveAccount)
-	if balances != nil {
-		accountManager.SyncLive(balances, "USDT")
+	for name, br := range brokers {
+		bals, err := br.Balances()
+		if err != nil {
+			log.Printf("could not fetch %s balances (live:%s starts at 0): %v", name, name, err)
+			continue
+		}
+		accountManager.SyncLive(name, bals, exchange.QuoteAssetFor(name))
+		log.Printf("live:%s synced (%s balance: %s)", name, exchange.QuoteAssetFor(name), bals[exchange.QuoteAssetFor(name)].String())
 	}
 	account, err := accountManager.Paper(engine.DefaultPaperName) // "default": 10000 USDT paper
 	if err != nil {

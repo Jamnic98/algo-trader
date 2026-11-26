@@ -96,3 +96,14 @@ func TestKnown(t *testing.T) {
 		t.Fatal("Known = true for unknown venue")
 	}
 }
+
+func TestQuoteAssetRegistry(t *testing.T) {
+	// unregistered venue falls back to USDT
+	if got := QuoteAssetFor("definitely-not-registered"); got != "USDT" {
+		t.Fatalf("QuoteAssetFor(unknown) = %q, want USDT", got)
+	}
+	RegisterQuoteAsset("quotex", "USD")
+	if got := QuoteAssetFor("QUOTEX"); got != "USD" { // case-insensitive
+		t.Fatalf("QuoteAssetFor(QUOTEX) = %q, want USD", got)
+	}
+}

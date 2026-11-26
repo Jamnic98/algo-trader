@@ -56,13 +56,19 @@ func TestManagerCreateListGetPaper(t *testing.T) {
 	for _, i := range infos {
 		names[i.Name] = true
 	}
-	if !names["alpha"] || !names["default"] || !names["live"] {
+	if !names["alpha"] || !names["default"] || !names["live:binance"] {
 		t.Fatalf("list = %+v", infos)
 	}
 
 	info, err := m.Get("alpha")
 	if err != nil || info.Type != AccountTypePaper || info.Balance != "5000" {
 		t.Fatalf("Get(alpha) = %+v, %v", info, err)
+	}
+
+	// back-compat: Get("live") resolves to the default exchange's ledger
+	liveInfo, err := m.Get("live")
+	if err != nil || liveInfo.Name != "live:binance" || liveInfo.Type != AccountTypeLive {
+		t.Fatalf("Get(live) = %+v, %v", liveInfo, err)
 	}
 }
 
@@ -96,7 +102,7 @@ func TestManagerTopUpAndReset(t *testing.T) {
 
 func TestManagerSyncLive(t *testing.T) {
 	m := newTestManager()
-	m.SyncLive(map[string]decimal.Decimal{
+	m.SyncLive("binance", map[string]decimal.Decimal{
 		"USDT": decimal.NewFromFloat(2500.5),
 		"BTC":  decimal.NewFromFloat(0.25),
 		"XRP":  decimal.Zero,
@@ -187,5 +193,83 @@ func TestManagerPersistsPositionsAcrossReload(t *testing.T) {
 	// and the restored account can actually sell
 	if _, err := NewPaperExecutor(acc2).ExecuteFill(Order{BotID: "b", Symbol: "BTCUSDT", Signal: "SELL", Price: decimal.NewFromInt(110), Qty: decimal.NewFromInt(2)}); err != nil {
 		t.Fatalf("sell after reload: %v", err)
+	}
+}
+
+// TestManagerPerExchangeLive: each exchange gets an independent live ledger
+// ("live:binance", "live:alpaca", ...), "live" stays back-compat for binance.
+func TestManagerPerExchangeLive(t *testing.T) {
+	m := newTestManager() // seeds live["binance"]
+
+	m.SyncLive("binance", map[string]decimal.Decimal{
+		"USDT": decimal.NewFromFloat(2500.5),
+		"BTC":  decimal.NewFromFloat(0.25),
+	}, "USDT")
+	m.SyncLive("alpaca", map[string]decimal.Decimal{
+		"USD":  decimal.NewFromInt(10000),
+		"AAPL": decimal.NewFromInt(10),
+		"BTC":  decimal.Zero, // zero balances are dropped
+	}, "USD")
+
+	// List shows one live entry per exchange
+	list := m.List()
+	names := map[string]AccountInfo{}
+	for _, a := range list {
+		names[a.Name] = a
+	}
+	bin, ok := names["live:binance"]
+	if !ok || bin.Type != AccountTypeLive || bin.Balance != "2500.5" || bin.Positions["BTC"] != "0.25" {
+		t.Fatalf("live:binance = %+v", bin)
+	}
+	alp, ok := names["live:alpaca"]
+	if !ok || alp.Type != AccountTypeLive || alp.Balance != "10000" || alp.Positions["AAPL"] != "10" {
+		t.Fatalf("live:alpaca = %+v", alp)
+	}
+	if _, ok := alp.Positions["USD"]; ok {
+		t.Fatal("quote asset USD should not be a position on alpaca")
+	}
+	if _, ok := alp.Positions["BTC"]; ok {
+		t.Fatal("zero-balance BTC should not be a position on alpaca")
+	}
+
+	// "live" back-compat -> binance
+	info, err := m.Get("live")
+	if err != nil || info.Name != "live:binance" || info.Balance != "2500.5" {
+		t.Fatalf("Get(live) = %+v, %v", info, err)
+	}
+	// explicit per-exchange get
+	info, err = m.Get("live:alpaca")
+	if err != nil || info.Balance != "10000" {
+		t.Fatalf("Get(live:alpaca) = %+v, %v", info, err)
+	}
+	// case-insensitive exchange suffix
+	if _, err := m.Get("live:ALPACA"); err != nil {
+		t.Fatalf("Get(live:ALPACA): %v", err)
+	}
+	// unknown exchange -> error
+	if _, err := m.Get("live:ghost"); err == nil {
+		t.Fatal("expected error for unknown live exchange")
+	}
+
+	// Live("") defaults to binance; Live is case-insensitive and creates on demand
+	if m.Live("").Snapshot().Balance.String() != "2500.5" {
+		t.Fatal("Live(\"\") should return the binance ledger")
+	}
+	if m.Live("Alpaca").Snapshot().Balance.String() != "10000" {
+		t.Fatal("Live(\"Alpaca\") should return the alpaca ledger")
+	}
+	m.Live("kraken") // created empty on demand
+	exs := m.LiveExchanges()
+	if len(exs) != 3 || exs[0] != "alpaca" || exs[1] != "binance" || exs[2] != "kraken" {
+		t.Fatalf("LiveExchanges = %v, want [alpaca binance kraken]", exs)
+	}
+
+	// syncing one exchange must not disturb the other
+	m.SyncLive("alpaca", map[string]decimal.Decimal{"USD": decimal.NewFromInt(1)}, "USD")
+	if b := m.Live("binance").Snapshot(); b.Balance.String() != "2500.5" || b.Positions["BTC"].String() != "0.25" {
+		t.Fatalf("binance ledger disturbed by alpaca sync: %+v", b)
+	}
+	if a := m.Live("alpaca").Snapshot(); a.Balance.String() != "1" || len(a.Positions) != 0 {
+		t.Fatalf("alpaca after resync = %+v", a)
 	}
 }

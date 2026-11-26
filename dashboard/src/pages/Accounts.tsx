@@ -10,7 +10,8 @@ import {
   topUpPaperAccount,
 } from 'api'
 import { useAlert } from 'hooks'
-import type { AccountInfo, LiveAccountResponse } from 'types'
+import type { AccountInfo, Exchange, LiveAccountResponse, SyncLiveAllResponse } from 'types'
+import { EXCHANGE_CONFIG, getExchangeLabel } from 'utils/constants'
 
 const inputCls =
   'border border-border bg-surface-secondary text-content-primary px-3 py-1.5 rounded text-sm focus:outline-none focus:border-accent transition-colors'
@@ -22,7 +23,8 @@ const Accounts = () => {
   const { showAlert } = useAlert()
 
   const [accounts, setAccounts] = useState<AccountInfo[] | null>(null)
-  const [live, setLive] = useState<LiveAccountResponse | null>(null)
+  // per-exchange live enrichment (fresh venue balances / errors), keyed by exchange
+  const [live, setLive] = useState<Record<string, LiveAccountResponse>>({})
   const [loading, setLoading] = useState(true)
 
   // new paper account form
@@ -36,9 +38,26 @@ const Accounts = () => {
 
   const reload = useCallback(async () => {
     try {
-      const [accs, liveAcc] = await Promise.all([listAccounts(), getLiveAccount()])
+      const accs = await listAccounts()
       setAccounts(accs)
-      setLive(liveAcc)
+      // enrich each live ledger (live:<exchange>) with that venue's fresh balances
+      const liveExs = accs
+        .filter((a) => a.type === 'live' && a.name.startsWith('live:'))
+        .map((a) => a.name.slice('live:'.length))
+      const entries = await Promise.all(
+        liveExs.map(async (ex) => {
+          try {
+            return [ex, await getLiveAccount(ex)] as const
+          } catch {
+            return [ex, null] as const
+          }
+        })
+      )
+      setLive(
+        Object.fromEntries(
+          entries.filter((e): e is readonly [string, LiveAccountResponse] => e[1] !== null)
+        )
+      )
     } catch (err) {
       console.error(err)
       showAlert({ type: 'error', title: 'Failed to load accounts' })
@@ -89,8 +108,17 @@ const Accounts = () => {
 
   const handleSyncLive = async () => {
     try {
-      await syncLiveAccount()
-      showAlert({ type: 'success', title: 'Live account synced from the exchange' })
+      const res = await syncLiveAccount() // no param = sync all registered exchanges
+      const errors = (res as SyncLiveAllResponse).errors ?? {}
+      const failed = Object.entries(errors)
+      if (failed.length > 0) {
+        showAlert({
+          type: 'error',
+          title: `Synced with errors: ${failed.map(([ex, e]) => `${ex} (${e})`).join(', ')}`,
+        })
+      } else {
+        showAlert({ type: 'success', title: 'Live ledgers synced from all exchanges' })
+      }
       await reload()
     } catch (err) {
       showAlert({ type: 'error', title: `Sync failed: ${(err as Error).message}` })
@@ -100,52 +128,76 @@ const Accounts = () => {
   if (loading) return <BarLoader fullscreen />
 
   const paper = accounts?.filter((a) => a.type === 'paper') ?? []
-  const liveAccount = accounts?.find((a) => a.type === 'live')
+  const liveAccounts = accounts?.filter((a) => a.type === 'live') ?? []
 
   return (
     <div className="space-y-8">
       <Heading title="Accounts" />
 
-      {/* Live account */}
+      {/* Live accounts — one ledger per exchange (live:binance, live:alpaca, ...) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <SectionLabel>Live account</SectionLabel>
+          <SectionLabel>Live accounts</SectionLabel>
           <button onClick={handleSyncLive} className={btnCls}>
-            Sync live
+            Sync all exchanges
           </button>
         </div>
-        <div className="bg-surface-secondary border border-table-border rounded-lg px-5 py-4 flex flex-col gap-2">
-          <div className="flex gap-8">
-            <div>
-              <span className="text-content-secondary text-[11px] font-mono uppercase tracking-widest">
-                Ledger balance
-              </span>
-              <p className="text-lg font-semibold text-accent font-mono">
-                {liveAccount?.balance ?? '—'} USDT
-              </p>
-            </div>
-            <div>
-              <span className="text-content-secondary text-[11px] font-mono uppercase tracking-widest">
-                Ledger positions
-              </span>
-              <p className="text-sm font-mono text-content-primary">
-                {Object.keys(liveAccount?.positions ?? {}).length
-                  ? Object.entries(liveAccount!.positions)
-                      .map(([s, q]) => `${s} ${q}`)
-                      .join(', ')
-                  : 'none'}
-              </p>
-            </div>
-          </div>
-          {live?.exchange_balances && (
-            <div className="text-xs text-content-secondary font-mono">
-              exchange: {Object.entries(live.exchange_balances).map(([a, v]) => `${a} ${v}`).join(', ')}
-            </div>
-          )}
-          {live?.exchange_error && (
-            <div className="text-xs text-red-400 font-mono">
-              exchange fetch failed: {live.exchange_error} (set BINANCE_API_KEY/BINANCE_SECRET_KEY)
-            </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {liveAccounts.map((a) => {
+            const ex = a.name.startsWith('live:') ? a.name.slice('live:'.length) : 'binance'
+            const quote = EXCHANGE_CONFIG[ex as Exchange]?.defaultQuote ?? 'USDT'
+            const enrichment = live[ex]
+            return (
+              <div
+                key={a.name}
+                className="bg-surface-secondary border border-table-border rounded-lg px-5 py-4 flex flex-col gap-2"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono uppercase tracking-widest text-content-primary">
+                    {getExchangeLabel(ex)}
+                  </span>
+                  <span className="text-[10px] font-mono text-content-secondary">{a.name}</span>
+                </div>
+                <div className="flex gap-8">
+                  <div>
+                    <span className="text-content-secondary text-[11px] font-mono uppercase tracking-widest">
+                      Ledger balance
+                    </span>
+                    <p className="text-lg font-semibold text-accent font-mono">
+                      {a.balance} {quote}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-content-secondary text-[11px] font-mono uppercase tracking-widest">
+                      Ledger positions
+                    </span>
+                    <p className="text-sm font-mono text-content-primary">
+                      {Object.keys(a.positions).length
+                        ? Object.entries(a.positions)
+                            .map(([s, q]) => `${s} ${q}`)
+                            .join(', ')
+                        : 'none'}
+                    </p>
+                  </div>
+                </div>
+                {enrichment?.exchange_balances && (
+                  <div className="text-xs text-content-secondary font-mono">
+                    exchange:{' '}
+                    {Object.entries(enrichment.exchange_balances)
+                      .map(([asset, v]) => `${asset} ${v}`)
+                      .join(', ')}
+                  </div>
+                )}
+                {enrichment?.exchange_error && (
+                  <div className="text-xs text-red-400 font-mono">
+                    exchange fetch failed: {enrichment.exchange_error} (check the venue API keys)
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          {liveAccounts.length === 0 && (
+            <p className="text-sm text-content-secondary">No live ledgers yet.</p>
           )}
         </div>
       </div>

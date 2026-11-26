@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	"trader-core/internal/db/models"
@@ -29,17 +30,24 @@ type AccountInfo struct {
 }
 
 // AccountManager owns all trading accounts: any number of paper accounts
-// (persisted to the DB so they survive restarts) plus one live account whose
-// ledger mirrors the real Binance balances.
+// (persisted to the DB so they survive restarts) plus one live ledger per
+// exchange ("live:binance", "live:alpaca", ...), each mirroring that venue's
+// real balances.
 type AccountManager struct {
 	mu    sync.RWMutex
 	db    *gorm.DB // nil = in-memory only (tests)
 	paper map[string]*PaperAccount
-	live  *LiveAccount
+	live  map[string]*LiveAccount // exchange name (lowercase) -> ledger
 }
 
+// DefaultLiveExchange is the venue used for the back-compat "live" name.
+const DefaultLiveExchange = "binance"
+
 func NewAccountManager(db *gorm.DB, live *LiveAccount) *AccountManager {
-	m := &AccountManager{db: db, paper: map[string]*PaperAccount{}, live: live}
+	m := &AccountManager{db: db, paper: map[string]*PaperAccount{}, live: map[string]*LiveAccount{}}
+	if live != nil {
+		m.live[DefaultLiveExchange] = live
+	}
 	if db != nil {
 		var rows []models.Account
 		if err := db.Where("type = ?", AccountTypePaper).Find(&rows).Error; err == nil {
@@ -165,43 +173,69 @@ func (m *AccountManager) TopUp(name string, amount decimal.Decimal) error {
 	return nil
 }
 
-func (m *AccountManager) Live() *LiveAccount { return m.live }
+// Live returns the live ledger for an exchange ("" = default binance),
+// creating an empty one on first use.
+func (m *AccountManager) Live(exchangeName string) *LiveAccount {
+	if exchangeName == "" {
+		exchangeName = DefaultLiveExchange
+	}
+	exchangeName = strings.ToLower(exchangeName)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if acc, ok := m.live[exchangeName]; ok {
+		return acc
+	}
+	acc := NewLiveAccount("0", "0.001")
+	m.live[exchangeName] = acc
+	return acc
+}
 
-// SyncLive refreshes the live ledger from real Binance balances: quote asset
-// becomes the cash balance, every other non-zero asset becomes a position.
-func (m *AccountManager) SyncLive(balances map[string]decimal.Decimal, quote string) {
-	if m.live == nil {
-		return
+// LiveExchanges returns the exchange names that have a live ledger.
+func (m *AccountManager) LiveExchanges() []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]string, 0, len(m.live))
+	for name := range m.live {
+		out = append(out, name)
 	}
-	m.live.mu.Lock()
-	defer m.live.mu.Unlock()
+	sort.Strings(out)
+	return out
+}
+
+// SyncLive refreshes the live ledger for one exchange from real venue balances:
+// quote asset becomes the cash balance, every other non-zero asset becomes a position.
+func (m *AccountManager) SyncLive(exchangeName string, balances map[string]decimal.Decimal, quote string) {
+	acc := m.Live(exchangeName)
+	acc.mu.Lock()
+	defer acc.mu.Unlock()
 	if q, ok := balances[quote]; ok {
-		m.live.balance = q
+		acc.balance = q
 	}
-	m.live.Positions = make(map[string]decimal.Decimal)
+	acc.Positions = make(map[string]decimal.Decimal)
+	acc.costBasis = make(map[string]decimal.Decimal)
 	for asset, amt := range balances {
 		if asset != quote && amt.GreaterThan(decimal.Zero) {
-			m.live.Positions[asset] = amt
+			acc.Positions[asset] = amt
 		}
 	}
 }
 
-// List returns all accounts (paper + live), sorted by name.
+// List returns all accounts (paper + one live entry per exchange), sorted by name.
 func (m *AccountManager) List() []AccountInfo {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	out := make([]AccountInfo, 0, len(m.paper)+1)
+	out := make([]AccountInfo, 0, len(m.paper)+len(m.live))
 	for name, acc := range m.paper {
 		out = append(out, paperInfo(name, acc))
 	}
-	if m.live != nil {
-		snap := m.live.Snapshot()
+	for ex, acc := range m.live {
+		snap := acc.Snapshot()
 		out = append(out, AccountInfo{
-			Name:      "live",
+			Name:      "live:" + ex,
 			Type:      AccountTypeLive,
 			Balance:   snap.Balance.String(),
-			Fee:       m.live.Fee.String(),
+			Fee:       acc.Fee.String(),
 			Positions: positionsToString(snap.Positions),
 		})
 	}
@@ -209,18 +243,24 @@ func (m *AccountManager) List() []AccountInfo {
 	return out
 }
 
-// Get returns one account by name ("live" for the live account).
+// Get returns one account by name: "live" (back-compat = live:binance),
+// "live:<exchange>", or a paper account name.
 func (m *AccountManager) Get(name string) (AccountInfo, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if name == "live" || name == AccountTypeLive {
-		if m.live == nil {
-			return AccountInfo{}, fmt.Errorf("no live account configured")
+		name = "live:" + DefaultLiveExchange
+	}
+	if strings.HasPrefix(name, "live:") {
+		ex := strings.ToLower(name[len("live:"):])
+		acc, ok := m.live[ex]
+		if !ok {
+			return AccountInfo{}, fmt.Errorf("no live account for exchange %q", ex)
 		}
-		snap := m.live.Snapshot()
+		snap := acc.Snapshot()
 		return AccountInfo{
-			Name: "live", Type: AccountTypeLive,
-			Balance: snap.Balance.String(), Fee: m.live.Fee.String(),
+			Name: name, Type: AccountTypeLive,
+			Balance: snap.Balance.String(), Fee: acc.Fee.String(),
 			Positions: positionsToString(snap.Positions),
 		}, nil
 	}

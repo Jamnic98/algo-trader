@@ -42,20 +42,26 @@ func (r *Runtime) BrokerFor(exchangeName string) (exchange.Broker, error) {
 func (r *Runtime) newBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, error) {
 	switch cfg.Mode {
 	case BotModeLive:
-		// live bots place real orders on their own exchange; the live ledger
-		// is synced from that venue's balances (quote = cfg.Quote, e.g. USDT/USD)
+		// live bots place real orders on their own exchange; the per-exchange
+		// live ledger is synced from that venue's balances
 		br, err := r.BrokerFor(cfg.Exchange)
 		if err != nil {
 			return nil, err
 		}
+		quote := strings.ToUpper(cfg.Quote)
+		if quote == "" {
+			quote = exchange.QuoteAssetFor(cfg.Exchange)
+		}
+		var liveAcc *engine.LiveAccount
 		if r.Accounts != nil {
-			if bals, berr := br.Balances(); berr == nil {
-				r.Accounts.SyncLive(bals, strings.ToUpper(cfg.Quote))
-			} else {
+			bals, berr := br.Balances()
+			if berr != nil {
 				return nil, fmt.Errorf("fetching %s balances: %w", cfg.Exchange, berr)
 			}
+			r.Accounts.SyncLive(cfg.Exchange, bals, quote)
+			liveAcc = r.Accounts.Live(cfg.Exchange)
 		}
-		return r.BotFactory.NewLiveBot(cfg, strategy, br)
+		return r.BotFactory.NewLiveBotFor(cfg, strategy, br, liveAcc)
 	default:
 		// each paper bot trades on its own account (cfg.AccountName, default "default")
 		acc, err := r.Accounts.Paper(cfg.AccountName)

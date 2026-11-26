@@ -18,6 +18,7 @@ func init() {
 	exchange.RegisterSymbolMapper("binance", func(base, quote, _ string) string {
 		return NormalizeSymbol(base + quote)
 	})
+	exchange.RegisterQuoteAsset("binance", "USDT")
 }
 
 // Broker adapts the existing Binance REST/WS code to exchange.Broker.
