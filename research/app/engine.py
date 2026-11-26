@@ -58,6 +58,14 @@ class PaperAccount:
     def equity(self, symbol: str, price: Decimal) -> Decimal:
         return self.balance + self.positions.get(symbol, ZERO) * price
 
+    def equity_at(self, prices: dict[str, Decimal]) -> Decimal:
+        """Total equity across all open positions, marked at the given prices."""
+        total = self.balance
+        for sym, qty in self.positions.items():
+            if qty > 0 and sym in prices:
+                total += qty * prices[sym]
+        return total
+
 
 def run_backtest(
     candles: list[Candle],
@@ -66,80 +74,134 @@ def run_backtest(
     initial_balance: Decimal,
     fee_rate: Decimal,
     quantity: str | None = None,
+    slippage_bps: Decimal = Decimal(0),
 ) -> dict:
-    """Replay candles through the strategy against a paper account.
+    """Single-symbol back-compat wrapper around run_portfolio."""
+    return run_portfolio(
+        {symbol: candles},
+        {symbol: strategy},
+        initial_balance,
+        fee_rate,
+        quantity=quantity,
+        slippage_bps=slippage_bps,
+    )
 
+
+def run_portfolio(
+    symbol_candles: dict[str, list[Candle]],
+    strategies: dict[str, Strategy],
+    initial_balance: Decimal,
+    fee_rate: Decimal,
+    quantity: str | None = None,
+    slippage_bps: Decimal = Decimal(0),
+) -> dict:
+    """Replay candles of one or more symbols against a shared paper account.
+
+    `strategies` maps symbol -> Strategy instance. Strategies keep internal
+    state (position flags, prev candle), so each symbol MUST get its own
+    instance — exactly like running the strategy once per symbol in isolation.
+    (run_backtest wraps the single-symbol case.)
+
+    Fills execute at the candle close adjusted by adverse slippage:
+    BUY at close * (1 + bps/10000), SELL at close * (1 - bps/10000).
     Buy sizing: strategy-decided qty, else the request's fixed `quantity`,
-    else all-in (balance / (price * (1 + fee))). Sell sizing: strategy-decided
-    qty, else the full open position.
+    else all-in split evenly across symbols
+    (balance / (n_symbols * fill_price * (1 + fee))). Sell sizing:
+    strategy-decided qty, else the full open position of that symbol.
     """
     account = PaperAccount.new(initial_balance, fee_rate)
     fixed_qty = Decimal(quantity) if quantity else None
+    slip = slippage_bps / Decimal(10000)
+    n_symbols = max(1, len(symbol_candles))
+
+    # merged timeline: (open_time, symbol, candle), all symbols interleaved
+    events: list[tuple[int, str, Candle]] = []
+    for sym, candles in symbol_candles.items():
+        for c in candles:
+            events.append((c.open_time, sym, c))
+    events.sort(key=lambda e: (e[0], e[1]))
 
     trades: list[TradeOut] = []
     equity_curve: list[EquityPoint] = []
     realized_pnl: list[Decimal] = []
+    last_close: dict[str, Decimal] = {}
 
-    for c in candles:
-        ctx = CandleContext(
-            candle=c,
-            fee_rate=fee_rate,
-            avg_entry=account.avg_entry.get(symbol, ZERO),
-        )
-        decision = strategy.on_candle(ctx)
+    i = 0
+    while i < len(events):
+        t = events[i][0]
+        # process every symbol's candle at this timestamp, then mark equity once
+        while i < len(events) and events[i][0] == t:
+            _, sym, c = events[i]
+            last_close[sym] = c.close
+            ctx = CandleContext(
+                candle=c,
+                fee_rate=fee_rate,
+                avg_entry=account.avg_entry.get(sym, ZERO),
+                symbol=sym,
+            )
+            decision = strategies[sym].on_candle(ctx)
 
-        if decision.signal == Signal.BUY:
-            price = c.close
-            qty = decision.quantity or fixed_qty
-            if qty is None:
-                qty = account.balance / (price * (ONE + fee_rate))
-            if qty > 0:
-                try:
-                    fee = account.apply("BUY", symbol, price, qty)
-                except InsufficientFunds:
-                    fee = None
-                if fee is not None:
-                    trades.append(
-                        TradeOut(
-                            time=c.open_time,
-                            side="BUY",
-                            price=str(price),
-                            qty=str(qty),
-                            fee=str(fee),
-                            balance=str(account.balance),
-                        )
+            if decision.signal == Signal.BUY:
+                fill = c.close * (ONE + slip)
+                qty = decision.quantity or fixed_qty
+                if qty is None:
+                    qty = account.balance / (
+                        Decimal(n_symbols) * fill * (ONE + fee_rate)
                     )
-        elif decision.signal == Signal.SELL:
-            qty = decision.quantity or account.positions.get(symbol, ZERO)
-            if qty > 0:
-                price = c.close
-                entry = account.avg_entry.get(symbol, price)
-                fee = price * qty * fee_rate
-                pnl = (price - entry) * qty - fee
-                try:
-                    account.apply("SELL", symbol, price, qty)
-                except InsufficientFunds:
-                    pass
-                else:
-                    realized_pnl.append(pnl)
-                    trades.append(
-                        TradeOut(
-                            time=c.open_time,
-                            side="SELL",
-                            price=str(price),
-                            qty=str(qty),
-                            fee=str(fee),
-                            balance=str(account.balance),
-                            pnl=str(pnl),
+                if qty > 0:
+                    try:
+                        fee = account.apply("BUY", sym, fill, qty)
+                    except InsufficientFunds:
+                        fee = None
+                    if fee is not None:
+                        trades.append(
+                            TradeOut(
+                                time=t,
+                                symbol=sym,
+                                side="BUY",
+                                price=str(fill),
+                                qty=str(qty),
+                                fee=str(fee),
+                                balance=str(account.balance),
+                            )
                         )
-                    )
+            elif decision.signal == Signal.SELL:
+                qty = decision.quantity or account.positions.get(sym, ZERO)
+                if qty > 0:
+                    fill = c.close * (ONE - slip)
+                    entry = account.avg_entry.get(sym, fill)
+                    try:
+                        fee = account.apply("SELL", sym, fill, qty)
+                    except InsufficientFunds:
+                        pass
+                    else:
+                        pnl = (fill - entry) * qty - fee
+                        realized_pnl.append(pnl)
+                        trades.append(
+                            TradeOut(
+                                time=t,
+                                symbol=sym,
+                                side="SELL",
+                                price=str(fill),
+                                qty=str(qty),
+                                fee=str(fee),
+                                balance=str(account.balance),
+                                pnl=str(pnl),
+                            )
+                        )
+            i += 1
 
         equity_curve.append(
-            EquityPoint(time=c.open_time, equity=str(account.equity(symbol, c.close)))
+            EquityPoint(time=t, equity=str(account.equity_at(last_close)))
         )
 
     stats = _compute_stats(equity_curve, initial_balance, realized_pnl, len(trades))
-    return {"stats": stats, "equity_curve": equity_curve, "trades": trades}
+    return {
+        "stats": stats,
+        "equity_curve": equity_curve,
+        "trades": trades,
+        "symbols": sorted(symbol_candles),
+    }
 
 
 ONE = Decimal(1)

@@ -53,7 +53,7 @@ func TestPostBacktest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, body, err := postBacktest(context.Background(), server.URL+"/", map[string]any{
+	status, body, err := postBacktest(context.Background(), server.URL+"/", "/backtest", map[string]any{
 		"strategy_slug":   "simple",
 		"symbol":          "BTCUSDT",
 		"interval":        "1h",
@@ -92,7 +92,7 @@ func TestPostBacktestUpstreamError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	status, body, err := postBacktest(context.Background(), server.URL, map[string]any{})
+	status, body, err := postBacktest(context.Background(), server.URL, "/backtest", map[string]any{})
 	if err != nil {
 		t.Fatalf("postBacktest error: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestPostBacktestUnreachable(t *testing.T) {
 	url := server.URL
 	server.Close() // immediately unreachable
 
-	_, _, err := postBacktest(context.Background(), url, map[string]any{})
+	_, _, err := postBacktest(context.Background(), url, "/backtest", map[string]any{})
 	if err == nil {
 		t.Fatal("expected error for unreachable backtester")
 	}

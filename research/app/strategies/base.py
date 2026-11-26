@@ -24,6 +24,7 @@ class CandleContext:
     candle: Candle
     fee_rate: Decimal
     avg_entry: Decimal = field(default_factory=lambda: Decimal(0))  # 0 if no position
+    symbol: str = ""  # which symbol this candle belongs to (multi-symbol runs)
 
 
 class Strategy(Protocol):
