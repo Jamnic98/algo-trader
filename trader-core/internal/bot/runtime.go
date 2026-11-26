@@ -27,8 +27,8 @@ type Runtime struct {
 	Brokers       map[string]exchange.Broker // venue name -> broker, for market data + live orders
 }
 
-// brokerFor returns the broker for a venue name ("" = default "binance").
-func (r *Runtime) brokerFor(exchangeName string) (exchange.Broker, error) {
+// BrokerFor returns the broker for a venue name ("" = default "binance").
+func (r *Runtime) BrokerFor(exchangeName string) (exchange.Broker, error) {
 	if exchangeName == "" {
 		exchangeName = "binance"
 	}
@@ -44,7 +44,7 @@ func (r *Runtime) newBot(cfg BotConfig, strategy strategies.Strategy) (*Bot, err
 	case BotModeLive:
 		// live bots place real orders on their own exchange; the live ledger
 		// is synced from that venue's balances (quote = cfg.Quote, e.g. USDT/USD)
-		br, err := r.brokerFor(cfg.Exchange)
+		br, err := r.BrokerFor(cfg.Exchange)
 		if err != nil {
 			return nil, err
 		}
@@ -147,19 +147,25 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	intervalDur := interval.Duration()
 	b.MaxCandles = max(int(lookback/intervalDur), 1)
 
-	candles, err := rt.MarketManager.FetchCandles(b.Exchange, b.Symbol(), interval, b.MaxCandles+1)
-	if err != nil {
-		return fmt.Errorf("failed to fetch historical candles: %w", err)
-	}
-	b.Logger.Info("fetched %d candles", len(candles))
-	b.Candles = candles
-
-	// Subscribe to OHLC_Candle stream
+	// Subscribe BEFORE fetching history so no closed candle is missed in the gap;
+	// afterwards drop stream candles already covered by the fetched history.
 	rt.Dispatcher.Subscribe(b.Symbol(), interval, b)
 	b.Logger.Info("subscribed to %s_%s", b.Symbol(), interval.String())
 	if err := rt.MarketManager.Subscribe(b.Exchange, b.Symbol(), interval); err != nil {
 		rt.Dispatcher.Unsubscribe(b.Symbol(), interval, b)
 		return fmt.Errorf("failed to subscribe market stream: %w", err)
+	}
+
+	candles, err := rt.MarketManager.FetchCandles(b.Exchange, b.Symbol(), interval, b.MaxCandles+1)
+	if err != nil {
+		rt.Dispatcher.Unsubscribe(b.Symbol(), interval, b)
+		rt.MarketManager.Unsubscribe(b.Exchange, b.Symbol(), interval)
+		return fmt.Errorf("failed to fetch historical candles: %w", err)
+	}
+	b.Logger.Info("fetched %d candles", len(candles))
+	b.Candles = candles
+	if n := len(candles); n > 0 {
+		drainCandles(b.CandleCh, candles[n-1].CloseTime)
 	}
 
 	// Run the bot
@@ -170,6 +176,25 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 	b.Status = BotRunning
 	b.Logger.Info("started")
 	return nil
+}
+
+// drainCandles removes buffered candles with CloseTime <= lastClose (already
+// covered by fetched history) and requeues any newer ones, preserving order.
+func drainCandles(ch chan models.Candle, lastClose int64) {
+	var keep []models.Candle
+	for {
+		select {
+		case c := <-ch:
+			if c.CloseTime > lastClose {
+				keep = append(keep, c)
+			}
+		default:
+			for _, c := range keep {
+				ch <- c
+			}
+			return
+		}
+	}
 }
 
 func (rt *Runtime) DetachBot(b *Bot) error {

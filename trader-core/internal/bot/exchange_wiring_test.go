@@ -43,6 +43,9 @@ func (f *fakeStreamBroker) Balances() (map[string]decimal.Decimal, error) {
 		"BTC": decimal.NewFromFloat(0.5),
 	}, nil
 }
+func (f *fakeStreamBroker) Price(symbol string) (decimal.Decimal, error) {
+	return decimal.NewFromInt(42), nil
+}
 func (f *fakeStreamBroker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
 	return decimal.NewFromInt(1), qty, decimal.Zero, nil
 }

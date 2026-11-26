@@ -260,3 +260,108 @@ func TestStreamKlinesEmitsClosedBars(t *testing.T) {
 		t.Fatalf("emitted klines = %+v", got)
 	}
 }
+
+
+func TestPlaceMarketOrderPollsUntilFilled(t *testing.T) {
+	polls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v2/orders":
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":         "ord-9",
+				"status":     "accepted",
+				"filled_qty": "0",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/v2/orders/ord-9":
+			polls++
+			if polls < 2 {
+				_ = json.NewEncoder(w).Encode(map[string]any{"id": "ord-9", "status": "accepted", "filled_qty": "0"})
+				return
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id":               "ord-9",
+				"status":           "filled",
+				"filled_qty":       "2",
+				"filled_avg_price": "187.42",
+			})
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer server.Close()
+
+	b := testBroker(server)
+	avg, qty, fee, err := b.placeMarketOrder("AAPL", "BUY", decimal.NewFromInt(2), 5*time.Millisecond, 2*time.Second)
+	if err != nil {
+		t.Fatalf("placeMarketOrder: %v", err)
+	}
+	if polls < 2 {
+		t.Fatalf("expected polling, got %d polls", polls)
+	}
+	if !avg.Equal(decimal.NewFromFloat(187.42)) || !qty.Equal(decimal.NewFromInt(2)) || !fee.IsZero() {
+		t.Fatalf("avg=%s qty=%s fee=%s", avg, qty, fee)
+	}
+}
+
+func TestPlaceMarketOrderCanceledAfterAccept(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/v2/orders" {
+			w.WriteHeader(http.StatusCreated)
+			_ = json.NewEncoder(w).Encode(map[string]any{"id": "ord-10", "status": "accepted", "filled_qty": "0"})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"id": "ord-10", "status": "canceled", "filled_qty": "0"})
+	}))
+	defer server.Close()
+
+	b := testBroker(server)
+	_, _, _, err := b.placeMarketOrder("AAPL", "BUY", decimal.NewFromInt(1), 5*time.Millisecond, time.Second)
+	if err == nil || !strings.Contains(err.Error(), "not filled") {
+		t.Fatalf("expected not-filled error, got %v", err)
+	}
+}
+
+func TestPriceStocks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v2/stocks/AAPL/trades/latest" {
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+		if r.URL.Query().Get("feed") != "iex" {
+			t.Errorf("feed = %q", r.URL.Query().Get("feed"))
+		}
+		if r.Header.Get("APCA-API-KEY-ID") != "k" {
+			t.Errorf("missing auth header")
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"trade": map[string]any{"p": 187.42}, "symbol": "AAPL"})
+	}))
+	defer server.Close()
+
+	b := testBroker(server)
+	p, err := b.Price("aapl")
+	if err != nil {
+		t.Fatalf("Price: %v", err)
+	}
+	if !p.Equal(decimal.NewFromFloat(187.42)) {
+		t.Fatalf("price = %s", p)
+	}
+}
+
+func TestPriceCrypto(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.EscapedPath() != "/v1beta3/crypto/us/BTC%2FUSD/trades/latest" {
+			t.Errorf("unexpected path %s", r.URL.EscapedPath())
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"trade": map[string]any{"p": 50123.5}, "symbol": "BTC/USD"})
+	}))
+	defer server.Close()
+
+	b := testBroker(server)
+	p, err := b.Price("btc/usd")
+	if err != nil {
+		t.Fatalf("Price: %v", err)
+	}
+	if !p.Equal(decimal.NewFromFloat(50123.5)) {
+		t.Fatalf("price = %s", p)
+	}
+}

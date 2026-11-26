@@ -110,3 +110,25 @@ func TestPaperAccountSnapshotIsACopy(t *testing.T) {
 		t.Fatal("snapshot leaked into account balance")
 	}
 }
+
+
+func TestFeeRater(t *testing.T) {
+	acc := NewPaperAccount("1000", "0.0025")
+	pe := NewPaperExecutor(acc)
+	fr, ok := interface{}(pe).(FeeRater)
+	if !ok {
+		t.Fatal("PaperExecutor does not implement FeeRater")
+	}
+	if !fr.FeeRate().Equal(decimal.NewFromFloat(0.0025)) {
+		t.Fatalf("fee = %s", fr.FeeRate())
+	}
+
+	le := NewLiveExecutor(NewLiveAccount("0", "0.004"), nil)
+	fr2, ok := interface{}(le).(FeeRater)
+	if !ok {
+		t.Fatal("LiveExecutor does not implement FeeRater")
+	}
+	if !fr2.FeeRate().Equal(decimal.NewFromFloat(0.004)) {
+		t.Fatalf("live fee = %s", fr2.FeeRate())
+	}
+}

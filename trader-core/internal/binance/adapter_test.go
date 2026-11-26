@@ -93,3 +93,24 @@ func TestBrokerStreamKlinesContextCancel(t *testing.T) {
 		t.Fatal("expected ctx error")
 	}
 }
+
+
+func TestBrokerPrice(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v3/ticker/price" || r.URL.Query().Get("symbol") != "BTCUSDT" {
+			t.Errorf("unexpected %s?%s", r.URL.Path, r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"symbol":"BTCUSDT","price":"50123.50"}`))
+	}))
+	defer server.Close()
+	withServer(t, server)
+
+	b := NewBroker(exchange.Config{})
+	p, err := b.Price("btc/usdt")
+	if err != nil {
+		t.Fatalf("Price: %v", err)
+	}
+	if !p.Equal(decimal.NewFromFloat(50123.50)) {
+		t.Fatalf("price = %s", p)
+	}
+}

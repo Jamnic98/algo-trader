@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -89,8 +91,94 @@ func (b *Broker) Balances() (map[string]decimal.Decimal, error) {
 	return out, nil
 }
 
-// PlaceMarketOrder places a market order. Alpaca is commission-free, so fee is 0.
+// Price returns the latest trade price: stocks via /v2/stocks/{sym}/trades/latest
+// (iex feed), crypto via /v1beta3/crypto/us/{sym}/trades/latest.
+func (b *Broker) Price(symbol string) (decimal.Decimal, error) {
+	if err := b.requireCreds(); err != nil {
+		return decimal.Zero, err
+	}
+	symbol = NormalizeSymbol(symbol)
+
+	path := "/v2/stocks/" + url.PathEscape(symbol) + "/trades/latest"
+	params := url.Values{"feed": {"iex"}}
+	if IsCryptoSymbol(symbol) {
+		path = "/v1beta3/crypto/us/" + url.PathEscape(symbol) + "/trades/latest"
+		params = nil
+	}
+
+	req, err := b.newRequest(http.MethodGet, b.cfg.DataURL+path+"?"+params.Encode(), nil)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	resp, err := b.client.Do(req)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return decimal.Zero, fmt.Errorf("alpaca latest trade bad status: %s, body: %s", resp.Status, body)
+	}
+	var latest struct {
+		Trade struct {
+			P json.Number `json:"p"`
+		} `json:"trade"`
+	}
+	if err := json.Unmarshal(body, &latest); err != nil {
+		return decimal.Zero, fmt.Errorf("decode latest trade: %w", err)
+	}
+	return decimal.NewFromString(latest.Trade.P.String())
+}
+
+// order is the subset of /v2/orders fields we need.
+type order struct {
+	ID             string  `json:"id"`
+	Status         string  `json:"status"`
+	FilledQty      string  `json:"filled_qty"`
+	FilledAvgPrice *string `json:"filled_avg_price"`
+	RejectReason   string  `json:"reject_reason"`
+}
+
+// terminalOrder reports whether an order status is final.
+func terminalOrder(status string) bool {
+	switch status {
+	case "filled", "canceled", "expired", "rejected", "done_for_day":
+		return true
+	}
+	return false
+}
+
+// getOrder fetches the current state of an order.
+func (b *Broker) getOrder(id string) (order, error) {
+	var o order
+	req, err := b.newRequest(http.MethodGet, b.cfg.BaseURL+"/v2/orders/"+url.PathEscape(id), nil)
+	if err != nil {
+		return o, err
+	}
+	resp, err := b.client.Do(req)
+	if err != nil {
+		return o, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return o, fmt.Errorf("alpaca get order bad status: %s, body: %s", resp.Status, body)
+	}
+	if err := json.Unmarshal(body, &o); err != nil {
+		return o, fmt.Errorf("decode order: %w", err)
+	}
+	return o, nil
+}
+
+// PlaceMarketOrder places a market order and waits until it reaches a terminal
+// state (Alpaca accepts market orders asynchronously, so the POST alone often
+// returns status "accepted" with filled_qty 0). Alpaca is commission-free, so
+// fee is 0. Polls at pollInterval up to pollTimeout.
 func (b *Broker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+	return b.placeMarketOrder(symbol, side, qty, 500*time.Millisecond, 15*time.Second)
+}
+
+func (b *Broker) placeMarketOrder(symbol string, side string, qty decimal.Decimal, pollInterval, pollTimeout time.Duration) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
 	if err := b.requireCreds(); err != nil {
 		return decimal.Zero, decimal.Zero, decimal.Zero, err
 	}
@@ -113,36 +201,43 @@ func (b *Broker) PlaceMarketOrder(symbol string, side string, qty decimal.Decima
 	if err != nil {
 		return decimal.Zero, decimal.Zero, decimal.Zero, err
 	}
-	defer resp.Body.Close()
-
 	respBody, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("alpaca order bad status: %s, body: %s", resp.Status, respBody)
 	}
 
-	var order struct {
-		ID             string  `json:"id"`
-		Status         string  `json:"status"`
-		FilledQty      string  `json:"filled_qty"`
-		FilledAvgPrice *string `json:"filled_avg_price"`
-		RejectReason   string  `json:"reject_reason"`
-	}
-	if err := json.Unmarshal(respBody, &order); err != nil {
+	var o order
+	if err := json.Unmarshal(respBody, &o); err != nil {
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("decode order: %w", err)
 	}
 
-	if order.Status == "rejected" || order.RejectReason != "" {
-		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("alpaca order rejected: %s", order.RejectReason)
+	// poll until the order reaches a terminal state
+	deadline := time.Now().Add(pollTimeout)
+	for !terminalOrder(o.Status) {
+		if time.Now().After(deadline) {
+			return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("order %s not terminal after %s (status %s)", o.ID, pollTimeout, o.Status)
+		}
+		time.Sleep(pollInterval)
+		next, err := b.getOrder(o.ID)
+		if err != nil {
+			return decimal.Zero, decimal.Zero, decimal.Zero, err
+		}
+		o = next
 	}
 
-	filledQty, err := decimal.NewFromString(order.FilledQty)
+	if o.Status == "rejected" || o.RejectReason != "" {
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("alpaca order rejected: %s", o.RejectReason)
+	}
+
+	filledQty, err := decimal.NewFromString(o.FilledQty)
 	if err != nil || filledQty.LessThanOrEqual(decimal.Zero) {
-		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("order not filled (status %s)", order.Status)
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("order %s not filled (status %s)", o.ID, o.Status)
 	}
-	if order.FilledAvgPrice == nil {
-		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("no filled_avg_price on order %s", order.ID)
+	if o.FilledAvgPrice == nil {
+		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("no filled_avg_price on order %s", o.ID)
 	}
-	avgPrice, err := decimal.NewFromString(*order.FilledAvgPrice)
+	avgPrice, err := decimal.NewFromString(*o.FilledAvgPrice)
 	if err != nil {
 		return decimal.Zero, decimal.Zero, decimal.Zero, err
 	}

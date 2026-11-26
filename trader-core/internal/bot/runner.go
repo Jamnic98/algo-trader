@@ -48,10 +48,13 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				continue
 			}
 
+			feeRate := decimal.NewFromFloat32(0.001)
+			if fr, ok := b.Engine.(engine.FeeRater); ok {
+				feeRate = fr.FeeRate()
+			}
 			decision := b.ActiveStrategy.OnCandle(strategies.CandleContext{
-				Candle: candle,
-				// TODO: remove hardcoded fee value
-				FeeRate: decimal.NewFromFloat32(0.001),
+				Candle:  candle,
+				FeeRate: feeRate,
 			})
 
 			if decision.Reason != "" {
@@ -61,13 +64,6 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			}
 
 			if decision.Signal == strategies.Hold {
-				continue
-			}
-
-			if decision.Signal == strategies.Hold {
-				if decision.Reason != "" {
-					b.Logger.Info("hold — %s", decision.Reason)
-				}
 				continue
 			}
 
@@ -112,8 +108,9 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			}
 
 			if err := db.DB.Create(&fill).Error; err != nil {
-				log.Println("Failed to insert fill into DB")
-				return
+				// don't kill the runner — the fill still happened locally; log and carry on
+				log.Println("failed to insert fill into DB:", err)
+				b.Logger.Warn("failed to persist fill: %v", err)
 			}
 
 			// broadcast to SSE subscribers

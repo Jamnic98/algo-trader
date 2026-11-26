@@ -2,6 +2,7 @@ package binance
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -69,7 +70,8 @@ func (c *Client) StartWithReconnect(onFatal func(string)) error {
 					if onFatal != nil {
 						onFatal("CRITICAL: Binance WS could not reconnect after max attempts")
 					}
-					c.cancel()
+					// do NOT cancel the client ctx here: StartWithRetry relies on
+					// being able to re-dial after a fatal disconnect.
 					return
 				}
 				log.Printf("WARNING: Binance WS disconnected, attempt %d/%d", reconnectAttempts, maxReconnects)
@@ -88,7 +90,8 @@ func (c *Client) StartWithReconnect(onFatal func(string)) error {
 }
 
 func (c *Client) run() error {
-	conn, _, err := websocket.DefaultDialer.Dial(c.url, nil)
+	// dial the current package URL so tests/adapters can repoint between retries
+	conn, _, err := websocket.DefaultDialer.Dial(binanceWSURL, nil)
 	if err != nil {
 		c.connected.Store(false)
 		return err
@@ -194,6 +197,52 @@ func (c *Client) writeLoop() {
 // Messages channel
 func (c *Client) Messages() <-chan []byte {
 	return c.recv
+}
+
+// StartWithRetry connects and keeps reconnecting until ctx is cancelled.
+// Neither an initial dial failure nor a later fatal disconnect is fatal for
+// the caller: notify is invoked and the connect is retried after retryDelay.
+// Use this in long-running servers where market data must not take the API down.
+func (c *Client) StartWithRetry(ctx context.Context, retryDelay time.Duration, notify func(string)) {
+	for {
+		fatal := make(chan string, 1)
+		err := c.StartWithReconnect(func(msg string) {
+			if notify != nil {
+				notify(msg)
+			}
+			select {
+			case fatal <- msg:
+			default:
+			}
+		})
+		if err != nil {
+			if notify != nil {
+				notify(fmt.Sprintf("binance ws connect failed: %v", err))
+			}
+			if !sleepOrDone(ctx, retryDelay) {
+				return
+			}
+			continue
+		}
+		// connected; wait for shutdown or a fatal disconnect, then redial
+		select {
+		case <-ctx.Done():
+			return
+		case <-fatal:
+			if !sleepOrDone(ctx, retryDelay) {
+				return
+			}
+		}
+	}
+}
+
+func sleepOrDone(ctx context.Context, d time.Duration) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(d):
+		return true
+	}
 }
 
 // Subscribe/Unsubscribe unchanged

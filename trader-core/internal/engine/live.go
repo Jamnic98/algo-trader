@@ -50,6 +50,9 @@ func NewLiveExecutor(account *LiveAccount, placer OrderPlacer) *LiveExecutor {
 	return &LiveExecutor{Account: account, Placer: placer}
 }
 
+// FeeRate returns the live account's fallback fee rate.
+func (le *LiveExecutor) FeeRate() decimal.Decimal { return le.Account.Fee }
+
 func (le *LiveExecutor) ExecuteFill(order Order) (*Fill, error) {
 	if le.Placer == nil {
 		return nil, fmt.Errorf("live executor has no order placer configured")

@@ -68,6 +68,9 @@ func NewPaperExecutor(account *PaperAccount) *PaperExecutor {
 	return &PaperExecutor{Account: account}
 }
 
+// FeeRate returns the paper account's fee rate.
+func (pe *PaperExecutor) FeeRate() decimal.Decimal { return pe.Account.Fee }
+
 // Fill execution with paper trading engine
 func (pe *PaperExecutor) ExecuteFill(order Order) (*Fill, error) {
 	price := order.Price

@@ -102,6 +102,15 @@ func (b *Broker) Balances() (map[string]decimal.Decimal, error) {
 	return FetchAccount()
 }
 
+// Price returns the latest ticker price.
+func (b *Broker) Price(symbol string) (decimal.Decimal, error) {
+	p, err := FetchPrice(NormalizeSymbol(symbol))
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return decimal.NewFromString(p)
+}
+
 func (b *Broker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
 	if b.cfg.APIKey == "" || b.cfg.Secret == "" {
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("BINANCE_API_KEY / BINANCE_SECRET_KEY not set")
