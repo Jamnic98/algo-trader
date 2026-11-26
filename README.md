@@ -90,9 +90,12 @@ Response: `{stopped, flattened, errors}`.
 - **Paper positions are persisted** (`accounts.positions` jsonb) and restored on
   boot, so an open position survives a restart and can still be sold. Live
   accounts are rehydrated from the venue via `SyncLive`.
-- Known limitation for live trading: if the network drops mid-order, the venue
-  may fill while the local ledger records an error — use client order IDs /
-  order-status reconciliation before going live with real money.
+- **Live-order safety:** every order carries a client order id (`botID-nanos`);
+  on a transport error or 5xx the broker reconciles by that id
+  (Binance `origClientOrderId`, Alpaca `client_order_id`) and returns the fill if
+  it actually executed — a dropped response can't double-fill or drift the
+  ledger. Venue trading rules (`Broker.Filters`: lot size / tick / min notional)
+  are fetched on bot attach and validated client-side before each order.
 
 ## Run locally
 

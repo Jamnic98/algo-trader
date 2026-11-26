@@ -265,7 +265,7 @@ func TestSpotPlacerPlaceMarketOrder(t *testing.T) {
 	defer server.Close()
 	withServer(t, server)
 
-	avgPrice, executedQty, fee, err := SpotPlacer{}.PlaceMarketOrder("xrp/usdt", "BUY", decimal.NewFromFloat(10))
+	avgPrice, executedQty, fee, err := SpotPlacer{}.PlaceMarketOrder("xrp/usdt", "BUY", decimal.NewFromFloat(10), "test-order-id")
 	if err != nil {
 		t.Fatalf("PlaceMarketOrder: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestSpotPlacerBadStatus(t *testing.T) {
 	defer server.Close()
 	withServer(t, server)
 
-	_, _, _, err := SpotPlacer{}.PlaceMarketOrder("XRPUSDT", "BUY", decimal.NewFromInt(1))
+	_, _, _, err := SpotPlacer{}.PlaceMarketOrder("XRPUSDT", "BUY", decimal.NewFromInt(1), "test-order-id")
 	if err == nil || !strings.Contains(err.Error(), "-1100") {
 		t.Fatalf("expected -1100 error, got %v", err)
 	}
@@ -337,5 +337,94 @@ func TestFetchAccount(t *testing.T) {
 	}
 	if !balances["BTC"].Equal(decimal.NewFromFloat(0.5)) {
 		t.Errorf("BTC = %s", balances["BTC"])
+	}
+}
+
+
+func TestSpotPlacerSendsClientOrderID(t *testing.T) {
+	t.Setenv("BINANCE_API_KEY", "k")
+	t.Setenv("BINANCE_SECRET_KEY", "s")
+
+	var gotQuery url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"orderId": 1, "status": "FILLED", "executedQty": "1", "cummulativeQuoteQty": "10",
+			"fills": []map[string]string{{"price": "10", "qty": "1", "commission": "0.01"}},
+		})
+	}))
+	defer server.Close()
+	withServer(t, server)
+
+	if _, _, _, err := (SpotPlacer{}).PlaceMarketOrder("BTCUSDT", "BUY", decimal.NewFromInt(1), "bot1-123"); err != nil {
+		t.Fatalf("PlaceMarketOrder: %v", err)
+	}
+	if gotQuery.Get("newClientOrderId") != "bot1-123" {
+		t.Fatalf("newClientOrderId = %q, want bot1-123", gotQuery.Get("newClientOrderId"))
+	}
+}
+
+// TestSpotPlacerReconcilesAfterServerError: a 500 on POST must trigger a
+// lookup by origClientOrderId; if the order actually filled, return the fill
+// instead of an error.
+func TestSpotPlacerReconcilesAfterServerError(t *testing.T) {
+	t.Setenv("BINANCE_API_KEY", "k")
+	t.Setenv("BINANCE_SECRET_KEY", "s")
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/api/v3/order" {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"code":-1003,"msg":"too many requests"}`))
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v3/order" {
+			if r.URL.Query().Get("origClientOrderId") != "bot1-999" {
+				t.Errorf("origClientOrderId = %q", r.URL.Query().Get("origClientOrderId"))
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"status": "FILLED", "executedQty": "2", "cummulativeQuoteQty": "100",
+				"fills": []map[string]string{{"price": "50", "qty": "2", "commission": "0.1"}},
+			})
+			return
+		}
+		t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+	}))
+	defer server.Close()
+	withServer(t, server)
+
+	avg, qty, fee, err := SpotPlacer{}.PlaceMarketOrder("BTCUSDT", "BUY", decimal.NewFromInt(2), "bot1-999")
+	if err != nil {
+		t.Fatalf("expected reconciliation to succeed, got err: %v", err)
+	}
+	if !avg.Equal(decimal.NewFromInt(50)) || !qty.Equal(decimal.NewFromInt(2)) || !fee.Equal(decimal.NewFromFloat(0.1)) {
+		t.Fatalf("avg=%s qty=%s fee=%s", avg, qty, fee)
+	}
+}
+
+func TestFiltersForSymbol(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v3/exchangeInfo" || r.URL.Query().Get("symbol") != "BTCUSDT" {
+			t.Errorf("unexpected %s?%s", r.URL.Path, r.URL.RawQuery)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"symbols": []map[string]any{{
+				"symbol": "BTCUSDT",
+				"filters": []map[string]string{
+					{"filterType": "LOT_SIZE", "minQty": "0.00001000", "maxQty": "9000", "stepSize": "0.00001000"},
+					{"filterType": "PRICE_FILTER", "tickSize": "0.01000000"},
+					{"filterType": "MIN_NOTIONAL", "minNotional": "10.00000000"},
+				},
+			}},
+		})
+	}))
+	defer server.Close()
+	withServer(t, server)
+
+	f, err := filtersForSymbol("btc/usdt")
+	if err != nil {
+		t.Fatalf("filtersForSymbol: %v", err)
+	}
+	if f.MinQty.String() != "0.00001" || f.StepQty.String() != "0.00001" || f.TickSize.String() != "0.01" || f.MinNotional.String() != "10" {
+		t.Fatalf("filters = %+v", f)
 	}
 }

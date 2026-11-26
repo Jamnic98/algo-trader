@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"trader-core/internal/db"
@@ -82,11 +83,20 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			}
 
 			order := engine.Order{
-				BotID:  b.ID,
-				Symbol: b.Symbol(),
-				Signal: strategies.Signal(decision.Signal),
-				Price:  candle.Close,
-				Qty:    quantity,
+				BotID:         b.ID,
+				Symbol:        b.Symbol(),
+				Signal:        strategies.Signal(decision.Signal),
+				Price:         candle.Close,
+				Qty:           quantity,
+				ClientOrderID: b.ID + "-" + strconv.FormatInt(time.Now().UnixNano(), 10),
+			}
+
+			// venue trading rules (lot size / tick / min notional) before anything else
+			if b.Filters != nil {
+				if err := engine.ValidateOrder(*b.Filters, order); err != nil {
+					b.Logger.Warn("order rejected by venue filters: %v", err)
+					continue
+				}
 			}
 
 			// --- risk management ---

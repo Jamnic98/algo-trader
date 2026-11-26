@@ -111,9 +111,14 @@ func (b *Broker) Price(symbol string) (decimal.Decimal, error) {
 	return decimal.NewFromString(p)
 }
 
-func (b *Broker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+func (b *Broker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal, clientOrderID string) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
 	if b.cfg.APIKey == "" || b.cfg.Secret == "" {
 		return decimal.Zero, decimal.Zero, decimal.Zero, fmt.Errorf("BINANCE_API_KEY / BINANCE_SECRET_KEY not set")
 	}
-	return SpotPlacer{}.PlaceMarketOrder(symbol, side, qty)
+	return SpotPlacer{}.PlaceMarketOrder(symbol, side, qty, clientOrderID)
+}
+
+// Filters returns the Binance trading rules for the symbol (exchangeInfo).
+func (b *Broker) Filters(symbol string) (engine.SymbolFilters, error) {
+	return filtersForSymbol(symbol)
 }

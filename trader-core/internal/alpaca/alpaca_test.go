@@ -171,7 +171,7 @@ func TestBalancesRequireCreds(t *testing.T) {
 	if _, err := b.Balances(); err == nil {
 		t.Fatal("expected creds error")
 	}
-	if _, _, _, err := b.PlaceMarketOrder("AAPL", "BUY", decimal.NewFromInt(1)); err == nil {
+	if _, _, _, err := b.PlaceMarketOrder("AAPL", "BUY", decimal.NewFromInt(1), "test-order-id"); err == nil {
 		t.Fatal("expected creds error")
 	}
 }
@@ -197,7 +197,7 @@ func TestPlaceMarketOrder(t *testing.T) {
 	defer server.Close()
 
 	b := testBroker(server)
-	avg, qty, fee, err := b.PlaceMarketOrder("aapl", "BUY", decimal.NewFromInt(2))
+	avg, qty, fee, err := b.PlaceMarketOrder("aapl", "BUY", decimal.NewFromInt(2), "test-order-id")
 	if err != nil {
 		t.Fatalf("PlaceMarketOrder: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestPlaceMarketOrderRejected(t *testing.T) {
 	defer server.Close()
 
 	b := testBroker(server)
-	_, _, _, err := b.PlaceMarketOrder("AAPL", "BUY", decimal.NewFromInt(1000000))
+	_, _, _, err := b.PlaceMarketOrder("AAPL", "BUY", decimal.NewFromInt(1000000), "test-order-id")
 	if err == nil || !strings.Contains(err.Error(), "insufficient buying power") {
 		t.Fatalf("expected reject error, got %v", err)
 	}
@@ -292,7 +292,7 @@ func TestPlaceMarketOrderPollsUntilFilled(t *testing.T) {
 	defer server.Close()
 
 	b := testBroker(server)
-	avg, qty, fee, err := b.placeMarketOrder("AAPL", "BUY", decimal.NewFromInt(2), 5*time.Millisecond, 2*time.Second)
+	avg, qty, fee, err := b.placeMarketOrder("AAPL", "BUY", decimal.NewFromInt(2), "test-order-id", 5*time.Millisecond, 2*time.Second)
 	if err != nil {
 		t.Fatalf("placeMarketOrder: %v", err)
 	}
@@ -316,7 +316,7 @@ func TestPlaceMarketOrderCanceledAfterAccept(t *testing.T) {
 	defer server.Close()
 
 	b := testBroker(server)
-	_, _, _, err := b.placeMarketOrder("AAPL", "BUY", decimal.NewFromInt(1), 5*time.Millisecond, time.Second)
+	_, _, _, err := b.placeMarketOrder("AAPL", "BUY", decimal.NewFromInt(1), "test-order-id", 5*time.Millisecond, time.Second)
 	if err == nil || !strings.Contains(err.Error(), "not filled") {
 		t.Fatalf("expected not-filled error, got %v", err)
 	}
@@ -363,5 +363,94 @@ func TestPriceCrypto(t *testing.T) {
 	}
 	if !p.Equal(decimal.NewFromFloat(50123.5)) {
 		t.Fatalf("price = %s", p)
+	}
+}
+
+
+func TestPlaceMarketOrderSendsClientOrderID(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]string
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body["client_order_id"] != "bot1-42" {
+			t.Errorf("client_order_id = %q, want bot1-42", body["client_order_id"])
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"id": "ord-c", "status": "filled", "filled_qty": "1", "filled_avg_price": "100",
+		})
+	}))
+	defer server.Close()
+
+	b := testBroker(server)
+	if _, _, _, err := b.PlaceMarketOrder("AAPL", "BUY", decimal.NewFromInt(1), "bot1-42"); err != nil {
+		t.Fatalf("PlaceMarketOrder: %v", err)
+	}
+}
+
+// TestPlaceMarketOrderReconcilesAfterServerError: a 500 on POST must trigger a
+// lookup by client_order_id; a filled order is returned instead of an error.
+func TestPlaceMarketOrderReconcilesAfterServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/v2/orders" {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"message":"server error"}`))
+			return
+		}
+		if r.Method == http.MethodGet && r.URL.Path == "/v2/orders:by_client_order_id" {
+			if r.URL.Query().Get("client_order_id") != "bot1-77" {
+				t.Errorf("client_order_id = %q", r.URL.Query().Get("client_order_id"))
+			}
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"id": "ord-r", "status": "filled", "filled_qty": "3", "filled_avg_price": "99.5",
+			})
+			return
+		}
+		t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+	}))
+	defer server.Close()
+
+	b := testBroker(server)
+	avg, qty, _, err := b.PlaceMarketOrder("AAPL", "BUY", decimal.NewFromInt(3), "bot1-77")
+	if err != nil {
+		t.Fatalf("expected reconciliation, got err: %v", err)
+	}
+	if !avg.Equal(decimal.NewFromFloat(99.5)) || !qty.Equal(decimal.NewFromInt(3)) {
+		t.Fatalf("avg=%s qty=%s", avg, qty)
+	}
+}
+
+func TestFiltersStocks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v2/assets/AAPL" {
+			t.Errorf("unexpected path %s", r.URL.Path)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"symbol": "AAPL", "min_order_size": "1", "min_trade_increment": "0.0001", "price_increment": "0.01",
+		})
+	}))
+	defer server.Close()
+
+	b := testBroker(server)
+	f, err := b.Filters("aapl")
+	if err != nil {
+		t.Fatalf("Filters: %v", err)
+	}
+	if !f.MinQty.Equal(decimal.NewFromInt(1)) || !f.StepQty.Equal(decimal.NewFromFloat(0.0001)) || !f.TickSize.Equal(decimal.NewFromFloat(0.01)) || !f.MinNotional.Equal(decimal.NewFromInt(1)) {
+		t.Fatalf("filters = %+v", f)
+	}
+}
+
+func TestFiltersCryptoMinNotional(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("crypto filters should not call the assets API, got %s", r.URL.Path)
+	}))
+	defer server.Close()
+
+	b := testBroker(server)
+	f, err := b.Filters("BTC/USD")
+	if err != nil {
+		t.Fatalf("Filters: %v", err)
+	}
+	if !f.MinNotional.Equal(decimal.NewFromInt(1)) {
+		t.Fatalf("crypto min notional = %s, want 1", f.MinNotional)
 	}
 }

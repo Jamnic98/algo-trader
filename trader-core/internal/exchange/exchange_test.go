@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"trader-core/internal/engine"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -22,8 +24,11 @@ func (f fakeBroker) Balances() (map[string]decimal.Decimal, error) {
 func (f fakeBroker) Price(symbol string) (decimal.Decimal, error) {
 	return decimal.NewFromInt(42), nil
 }
-func (f fakeBroker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+func (f fakeBroker) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal, clientOrderID string) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
 	return decimal.NewFromInt(1), qty, decimal.Zero, nil
+}
+func (f fakeBroker) Filters(symbol string) (engine.SymbolFilters, error) {
+	return engine.SymbolFilters{}, nil
 }
 
 func TestRegistryRegisterAndNew(t *testing.T) {

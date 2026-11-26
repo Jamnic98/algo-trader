@@ -18,10 +18,11 @@ type fakePlacer struct {
 	gotSymbol string
 	gotSide   string
 	gotQty    decimal.Decimal
+	gotID     string
 }
 
-func (f *fakePlacer) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
-	f.gotSymbol, f.gotSide, f.gotQty = symbol, side, qty
+func (f *fakePlacer) PlaceMarketOrder(symbol string, side string, qty decimal.Decimal, clientOrderID string) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+	f.gotSymbol, f.gotSide, f.gotQty, f.gotID = symbol, side, qty, clientOrderID
 	if f.err != nil {
 		return decimal.Zero, decimal.Zero, decimal.Zero, f.err
 	}
@@ -29,7 +30,7 @@ func (f *fakePlacer) PlaceMarketOrder(symbol string, side string, qty decimal.De
 }
 
 func liveOrder(side strategies.Signal, qty int64) Order {
-	return Order{BotID: "b1", Symbol: "BTCUSDT", Signal: side, Price: decimal.NewFromInt(100), Qty: decimal.NewFromInt(qty)}
+	return Order{BotID: "b1", Symbol: "BTCUSDT", Signal: side, Price: decimal.NewFromInt(100), Qty: decimal.NewFromInt(qty), ClientOrderID: "b1-test-id"}
 }
 
 func TestLiveExecutorPlacesRealOrderAndRecordsFill(t *testing.T) {
@@ -43,6 +44,9 @@ func TestLiveExecutorPlacesRealOrderAndRecordsFill(t *testing.T) {
 	}
 	if placer.gotSymbol != "BTCUSDT" || placer.gotSide != "BUY" || !placer.gotQty.Equal(decimal.NewFromInt(2)) {
 		t.Fatalf("placer got %s %s %s", placer.gotSymbol, placer.gotSide, placer.gotQty)
+	}
+	if placer.gotID != "b1-test-id" {
+		t.Fatalf("clientOrderID not forwarded: %q", placer.gotID)
 	}
 	if !fill.Price.Equal(decimal.NewFromInt(100)) || !fill.Fee.Equal(decimal.NewFromFloat(0.2)) {
 		t.Fatalf("fill = %+v", fill)

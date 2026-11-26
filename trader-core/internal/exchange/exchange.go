@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"trader-core/internal/engine"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -42,8 +44,13 @@ type Broker interface {
 	// Price returns the latest trade price for the symbol.
 	Price(symbol string) (decimal.Decimal, error)
 
+	// Filters returns the venue's trading rules for the symbol (lot size,
+	// tick size, min notional) so orders can be validated client-side.
+	Filters(symbol string) (engine.SymbolFilters, error)
+
 	// PlaceMarketOrder places a market order; returns avg price, executed qty, fee.
-	PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error)
+	// clientOrderID is the idempotency key (reconciled on transport errors).
+	PlaceMarketOrder(symbol string, side string, qty decimal.Decimal, clientOrderID string) (avgPrice, executedQty, fee decimal.Decimal, err error)
 }
 
 // TickStreamer is an optional extension for brokers whose WS delivers every

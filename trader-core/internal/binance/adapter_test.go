@@ -53,7 +53,7 @@ func TestBrokerBalancesAndOrdersRequireCreds(t *testing.T) {
 	if _, err := b.Balances(); err == nil {
 		t.Fatal("expected error without credentials")
 	}
-	if _, _, _, err := b.PlaceMarketOrder("BTCUSDT", "BUY", decimal.NewFromInt(1)); err == nil {
+	if _, _, _, err := b.PlaceMarketOrder("BTCUSDT", "BUY", decimal.NewFromInt(1), "test-order-id"); err == nil {
 		t.Fatal("expected error without credentials")
 	}
 }
