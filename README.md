@@ -51,6 +51,21 @@ python3 scripts/ml_example_service.py   # model endpoint on 127.0.0.1:8001
    (`GET /api/v3/klines`, paginated), replays them through a paper account and returns
    stats, equity curve and trades.
 
+Backtest extras (`POST /api/backtests` → `/backtest` on the research service):
+
+- **Slippage**: `slippage_bps` (basis points) applies adverse slippage to every fill —
+  BUY at close × (1 + bps/10⁴), SELL at close × (1 − bps/10⁴).
+- **Multi-symbol**: pass `symbols: ["BTCUSDT", "ETHUSDT"]` (instead of `symbol`) for a
+  portfolio run on one shared paper account; each symbol gets its own strategy instance
+  (strategies keep state), all-in sizing splits the balance evenly across symbols, and
+  trades/equity are marked per timestamp across all symbols.
+- **Parameter sweeps**: `POST /api/backtests/sweep` (`/backtest/sweep`) takes the same
+  fields plus `param_grid` (cartesian product of param → values, capped by `max_combos`,
+  default 200), fetches market data once, runs every combination, and returns per-combo
+  stats sorted by `sort_by` (`total_return_pct` | `sharpe` | `profit_factor` |
+  `max_drawdown_pct` | `num_trades`). Overrides apply to the strategy's top-level config.
+  The dashboard's backtest panel has a sweep section with a JSON grid editor.
+
 ## Risk management & panic
 
 Every bot carries a `risk` JSON object (stored on the bot's `risk` jsonb column;

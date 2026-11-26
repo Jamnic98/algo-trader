@@ -165,3 +165,84 @@ def test_backtest_fixed_quantity_sell_closes_position() -> None:
     assert all(t.qty == "1" for t in result["trades"])
     # pnl = (100-90)*1 - sell fee 0.1 = 9.9
     assert Decimal(result["trades"][1].pnl) == Decimal("9.9")
+
+
+def test_backtest_slippage_worsens_fills() -> None:
+    closes = ["100", "90", "100", "110"]
+    base = run_backtest(
+        make_candles(closes),
+        build_primitive("simple", {}),
+        "BTCUSDT",
+        Decimal(1000),
+        FEE,
+    )
+    slip = run_backtest(
+        make_candles(closes),
+        build_primitive("simple", {}),
+        "BTCUSDT",
+        Decimal(1000),
+        FEE,
+        slippage_bps=Decimal(50),  # 0.5%
+    )
+    # no slippage: fills exactly at close
+    assert Decimal(base["trades"][0].price) == Decimal("90")
+    assert Decimal(base["trades"][1].price) == Decimal("100")
+    # with slippage: buy pays more, sell receives less
+    assert Decimal(slip["trades"][0].price) == Decimal("90") * Decimal("1.005")
+    assert Decimal(slip["trades"][1].price) == Decimal("100") * Decimal("0.995")
+    # and the run performs worse
+    assert Decimal(slip["stats"].final_balance) < Decimal(base["stats"].final_balance)
+
+
+def test_run_portfolio_multi_symbol_shared_account() -> None:
+    from app.engine import run_portfolio
+
+    start = 1_700_000_000_000
+    btc = make_candles(["100", "90", "100"], start=start)
+    eth = make_candles(["10", "9", "10"], start=start)
+    # one strategy instance per symbol (strategies keep internal state)
+    strats = {s: build_primitive("simple", {}) for s in ("BTCUSDT", "ETHUSDT")}
+    res = run_portfolio({"BTCUSDT": btc, "ETHUSDT": eth}, strats, Decimal(1000), FEE)
+
+    assert res["symbols"] == ["BTCUSDT", "ETHUSDT"]
+    buys = [t for t in res["trades"] if t.side == "BUY"]
+    sells = [t for t in res["trades"] if t.side == "SELL"]
+    # both symbols traded independently despite sharing the cash account
+    assert {t.symbol for t in buys} == {"BTCUSDT", "ETHUSDT"}
+    assert {t.symbol for t in sells} == {"BTCUSDT", "ETHUSDT"}
+    # one equity point per timestamp, not per symbol-candle
+    assert len(res["equity_curve"]) == 3
+    # all-in sizing splits the balance across the 2 symbols, and the run profits
+    assert Decimal(res["stats"].final_balance) > Decimal(1000)
+
+
+def test_run_portfolio_requires_per_symbol_instances() -> None:
+    # strategies keep internal state, so sharing one instance across symbols
+    # would corrupt signals — the engine requires a per-symbol mapping and
+    # run_backtest is the single-symbol convenience wrapper.
+    from app.engine import run_portfolio
+
+    start = 1_700_000_000_000
+    candles = make_candles(["100", "90", "100"], start=start)
+    res = run_portfolio(
+        {"AAA": candles, "BBB": make_candles(["10", "9", "10"], start=start)},
+        {"AAA": build_primitive("simple", {}), "BBB": build_primitive("simple", {})},
+        Decimal(1000),
+        FEE,
+    )
+    buys = [t for t in res["trades"] if t.side == "BUY"]
+    assert {t.symbol for t in buys} == {"AAA", "BBB"}
+
+
+def test_run_portfolio_multi_symbol_slippage() -> None:
+    from app.engine import run_portfolio
+
+    start = 1_700_000_000_000
+    candles = make_candles(["100", "90", "100"], start=start)
+    strats = {"AAA": build_primitive("simple", {})}
+    res = run_portfolio(
+        {"AAA": candles}, strats, Decimal(1000), FEE, slippage_bps=Decimal(100)
+    )
+    # 1% slippage: buy at 90 * 1.01
+    buy = next(t for t in res["trades"] if t.side == "BUY")
+    assert Decimal(buy.price) == Decimal("90") * Decimal("1.01")
