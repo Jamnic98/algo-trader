@@ -41,3 +41,26 @@ func TestHealthEndpointUnauthenticated(t *testing.T) {
 		t.Fatalf("GET /api/metrics with key = %d, want 200; body: %s", w3.Code, w3.Body.String())
 	}
 }
+
+func TestAPIFailsClosedWithoutKey(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	// SERVER_API_KEY unset -> ApiKey "" -> /api must reject (500), /health stays open
+	r := InitServer(Config{ApiKey: "", Env: "test"})
+
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/metrics", nil))
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("GET /api/metrics without configured key = %d, want 500 (fail closed)", w.Code)
+	}
+	// even a query param must not open it
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/api/metrics?api_key=", nil))
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("GET /api/metrics?api_key= = %d, want 500", w.Code)
+	}
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/health", nil))
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /health = %d, want 200 (health stays public)", w.Code)
+	}
+}
