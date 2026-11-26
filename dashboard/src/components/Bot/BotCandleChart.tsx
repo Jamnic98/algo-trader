@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { BarLoader, CandlestickChart } from 'components'
 import type { Bot, OHLCVCandle } from 'types'
 import { useAlert } from 'hooks'
-import { INTERVAL_TO_HOURS } from 'utils'
+import { displaySymbol, INTERVAL_TO_HOURS } from 'utils'
 
 // const candleCache = new Map<string, OHLCVCandle[]>()
 
@@ -114,7 +114,7 @@ const BotCandleChart = ({ bot }: BotCandleChartProps) => {
     <CandlestickChart
       data={candles}
       newCandle={latestTick}
-      symbol={`${base}/${quote}`}
+      symbol={displaySymbol(bot.assetType, base, quote)}
       height={400}
       initialPrice={candles ? candles[0]?.close : 0}
       intervalMinutes={Math.round((INTERVAL_TO_HOURS[bot.interval] ?? 1) * 60)}

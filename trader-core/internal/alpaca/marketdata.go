@@ -152,6 +152,12 @@ func (b *Broker) Klines(symbol, interval string, startMs, endMs int64, limit int
 // StreamKlines subscribes to Alpaca bar updates over websocket. A bar is
 // emitted once the *next* bar for the symbol arrives (i.e. it is closed).
 func (b *Broker) StreamKlines(ctx context.Context, symbol, interval string, onKline func(exchange.Kline)) error {
+	return b.StreamKlineEvents(ctx, symbol, interval, onKline, nil)
+}
+
+// StreamKlineEvents implements exchange.TickStreamer: every incoming bar update
+// fires onTick (in-progress bar); a bar fires onKline once the next bar arrives.
+func (b *Broker) StreamKlineEvents(ctx context.Context, symbol, interval string, onKline, onTick func(exchange.Kline)) error {
 	symbol = NormalizeSymbol(symbol)
 	wsURL := b.cfg.WSURL
 	if IsCryptoSymbol(symbol) && wsURL == defaultWSStocks {
@@ -206,10 +212,12 @@ func (b *Broker) StreamKlines(ctx context.Context, symbol, interval string, onKl
 				continue
 			}
 			if last != nil && last.T != rb.T {
-				k, err := last.kline()
-				if err == nil {
+				if k, err := last.kline(); err == nil && onKline != nil {
 					onKline(k)
 				}
+			}
+			if k, err := rb.kline(); err == nil && onTick != nil {
+				onTick(k)
 			}
 			last = &rb
 		}

@@ -5,7 +5,8 @@ export default defineConfig({
   root: ".",
   plugins: [tsconfigPaths()],
   esbuild: {
-    tsconfigRaw: "{}",
+    // keep the automatic JSX runtime so component tests don't need `import React`
+    tsconfigRaw: '{"compilerOptions":{"jsx":"react-jsx"}}',
   },
   test: {
     globals: true,
