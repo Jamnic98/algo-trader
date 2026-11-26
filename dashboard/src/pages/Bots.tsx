@@ -33,6 +33,13 @@ const defaultFormData: CreateBot = {
   maxCandles: 200,
   quantity: '0.001',
   strategy_slug: 'simple',
+  risk: {
+    max_position_pct: '100',
+    max_daily_loss_pct: '0',
+    max_drawdown_pct: '0',
+    cooldown_losses: 0,
+    cooldown_minutes: 0,
+  },
 }
 
 type ValidationResult = { valid: true } | { valid: false; error: string }
@@ -71,6 +78,17 @@ const Bots = () => {
   // Handle form input change
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
+
+    // nested risk.* fields (pct fields stay strings, cooldown fields are ints)
+    if (name.startsWith('risk.')) {
+      const key = name.slice('risk.'.length)
+      const numeric = key.startsWith('cooldown')
+      setForm((prev) => ({
+        ...prev,
+        risk: { ...prev.risk, [key]: numeric ? Number(value) : value },
+      }))
+      return
+    }
 
     setForm((prev) => {
       const next = { ...prev, [name]: value }
