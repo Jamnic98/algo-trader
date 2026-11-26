@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { createBot } from './bots'
+import { createBot, panicBots } from './bots'
 import type { CreateBot } from 'types'
 
 const baseReq: CreateBot = {
@@ -70,5 +70,31 @@ describe('createBot', () => {
     const [, options] = fetchMock.mock.calls[0] as [string, RequestInit]
     const body = JSON.parse(options.body as string)
     expect('risk' in body).toBe(false)
+  })
+})
+
+
+describe('panicBots', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('POSTs /bots/panic with the flatten flag', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ stopped: ['b1'], flattened: ['BTCUSDT'], errors: [] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const res = await panicBots(true)
+
+    expect(res.stopped).toEqual(['b1'])
+    expect(res.flattened).toEqual(['BTCUSDT'])
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toContain('/bots/panic')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(options.body as string)).toEqual({ flatten: true })
+    expect((options.headers as Record<string, string>).Authorization).toMatch(/^ApiKey /)
   })
 })

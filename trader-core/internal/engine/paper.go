@@ -63,6 +63,19 @@ func NewPaperAccount(startBalance, fee string) *PaperAccount {
 	}
 }
 
+// RestorePositions loads persisted positions/cost basis after a restart
+// (no OnChange — we're rehydrating, not mutating).
+func (a *PaperAccount) RestorePositions(positions, costBasis map[string]decimal.Decimal) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if positions != nil {
+		a.Positions = positions
+	}
+	if costBasis != nil {
+		a.costBasis = costBasis
+	}
+}
+
 type PaperExecutor struct {
 	Account *PaperAccount
 }
@@ -109,45 +122,54 @@ func (pe *PaperExecutor) ExecuteFill(order Order) (*Fill, error) {
 
 func (a *PaperAccount) ApplyFill(f *Fill) error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 
 	// initialize position if missing
 	if _, ok := a.Positions[f.Symbol]; !ok {
 		a.Positions[f.Symbol] = decimal.NewFromInt(0)
 	}
 
+	var err error
 	switch f.Signal {
 	case "BUY":
 		totalCost := f.Price.Mul(f.Qty).Add(f.Fee)
 		if a.balance.LessThan(totalCost) {
-			return fmt.Errorf("not enough cash")
+			err = fmt.Errorf("not enough cash")
+		} else {
+			a.balance = a.balance.Sub(totalCost)
+			a.Positions[f.Symbol] = a.Positions[f.Symbol].Add(f.Qty)
+			a.costBasis[f.Symbol] = a.costBasis[f.Symbol].Add(f.Price.Mul(f.Qty))
 		}
-		a.balance = a.balance.Sub(totalCost)
-		a.Positions[f.Symbol] = a.Positions[f.Symbol].Add(f.Qty)
-		a.costBasis[f.Symbol] = a.costBasis[f.Symbol].Add(f.Price.Mul(f.Qty))
 
 	case "SELL":
 		if a.Positions[f.Symbol].LessThan(f.Qty) {
-			return fmt.Errorf("not enough asset")
+			err = fmt.Errorf("not enough asset")
+		} else {
+			qtyBefore := a.Positions[f.Symbol]
+			avgEntry := decimal.Zero
+			if qtyBefore.GreaterThan(decimal.Zero) {
+				avgEntry = a.costBasis[f.Symbol].Div(qtyBefore)
+			}
+			f.Pnl = f.Price.Sub(avgEntry).Mul(f.Qty) // realized pnl, ex-fee
+			a.Positions[f.Symbol] = qtyBefore.Sub(f.Qty)
+			a.costBasis[f.Symbol] = a.costBasis[f.Symbol].Sub(avgEntry.Mul(f.Qty))
+			if a.Positions[f.Symbol].LessThanOrEqual(decimal.Zero) {
+				a.Positions[f.Symbol] = decimal.Zero
+				a.costBasis[f.Symbol] = decimal.Zero
+			}
+			a.balance = a.balance.Add(f.Price.Mul(f.Qty).Sub(f.Fee))
 		}
-		qtyBefore := a.Positions[f.Symbol]
-		avgEntry := decimal.Zero
-		if qtyBefore.GreaterThan(decimal.Zero) {
-			avgEntry = a.costBasis[f.Symbol].Div(qtyBefore)
-		}
-		f.Pnl = f.Price.Sub(avgEntry).Mul(f.Qty) // realized pnl, ex-fee
-		a.Positions[f.Symbol] = qtyBefore.Sub(f.Qty)
-		a.costBasis[f.Symbol] = a.costBasis[f.Symbol].Sub(avgEntry.Mul(f.Qty))
-		if a.Positions[f.Symbol].LessThanOrEqual(decimal.Zero) {
-			a.Positions[f.Symbol] = decimal.Zero
-			a.costBasis[f.Symbol] = decimal.Zero
-		}
-		a.balance = a.balance.Add(f.Price.Mul(f.Qty).Sub(f.Fee))
 
 	default:
-		return fmt.Errorf("invalid side")
+		err = fmt.Errorf("invalid side")
 	}
 
+	// unlock BEFORE notifyChange: OnChange (persist) takes RLock via Snapshot,
+	// which would deadlock if called with the write lock held
+	a.mu.Unlock()
+
+	if err != nil {
+		return err
+	}
 	a.notifyChange()
 	return nil
 }

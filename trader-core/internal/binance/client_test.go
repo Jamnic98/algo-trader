@@ -78,3 +78,55 @@ func TestStartWithRetryConnectsAfterFailures(t *testing.T) {
 		t.Fatal("StartWithRetry did not return after ctx cancel")
 	}
 }
+
+
+// TestSubscribeReplayedOnConnect: streams subscribed before/while the socket
+// is down must be replayed when (re)connecting, otherwise bots silently stop
+// receiving candles after a WS reconnect.
+func TestSubscribeReplayedOnConnect(t *testing.T) {
+	orig := binanceWSURL
+	t.Cleanup(func() { binanceWSURL = orig })
+
+	subscribed := make(chan string, 10)
+	upgrader := websocket.Upgrader{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		for {
+			var msg map[string]any
+			if err := conn.ReadJSON(&msg); err != nil {
+				return
+			}
+			if msg["method"] == "SUBSCRIBE" {
+				for _, p := range msg["params"].([]any) {
+					subscribed <- p.(string)
+				}
+			}
+		}
+	}))
+	defer srv.Close()
+	binanceWSURL = "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c := NewClient(ctx)
+
+	// subscribe BEFORE connecting — must be replayed by run()
+	c.Subscribe("btcusdt@kline_1m")
+
+	if err := c.run(); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	select {
+	case s := <-subscribed:
+		if s != "btcusdt@kline_1m" {
+			t.Fatalf("replayed sub = %q", s)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("subscription was not replayed on connect")
+	}
+}

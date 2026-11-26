@@ -149,3 +149,43 @@ func TestManagerPersistsPaperAcrossReload(t *testing.T) {
 		t.Fatalf("balance after reload = %s, want 800", got)
 	}
 }
+
+
+// TestManagerPersistsPositionsAcrossReload: open paper positions must survive
+// a restart, otherwise a bot holding a position can't sell after reboot.
+func TestManagerPersistsPositionsAcrossReload(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN not set")
+	}
+	if err := db.ConnectTestDatabase(dsn, "engine_itest"); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	db.Migrate(&models.Account{})
+	db.DB.Exec("DELETE FROM accounts WHERE name LIKE 'mgr_pos_%'")
+
+	m := NewAccountManager(db.DB, NewLiveAccount("0", "0.001"))
+	acc, err := m.CreatePaper("mgr_pos_test", "10000", "0.001")
+	if err != nil {
+		t.Fatalf("CreatePaper: %v", err)
+	}
+	pe := NewPaperExecutor(acc)
+	if _, err := pe.ExecuteFill(Order{BotID: "b", Symbol: "BTCUSDT", Signal: "BUY", Price: decimal.NewFromInt(100), Qty: decimal.NewFromInt(2)}); err != nil {
+		t.Fatalf("buy: %v", err)
+	}
+
+	// simulate restart
+	m2 := NewAccountManager(db.DB, NewLiveAccount("0", "0.001"))
+	acc2, err := m2.Paper("mgr_pos_test")
+	if err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	snap := acc2.Snapshot()
+	if !snap.Positions["BTCUSDT"].Equal(decimal.NewFromInt(2)) {
+		t.Fatalf("position after reload = %v, want 2 BTCUSDT", snap.Positions)
+	}
+	// and the restored account can actually sell
+	if _, err := NewPaperExecutor(acc2).ExecuteFill(Order{BotID: "b", Symbol: "BTCUSDT", Signal: "SELL", Price: decimal.NewFromInt(110), Qty: decimal.NewFromInt(2)}); err != nil {
+		t.Fatalf("sell after reload: %v", err)
+	}
+}

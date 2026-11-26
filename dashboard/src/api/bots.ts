@@ -33,6 +33,21 @@ export const detachBot = async (id: string): Promise<Bot> =>
 export const deleteBot = async (id: string) =>
   await api.fetchVoid(`${botsEndpoint}/${id}`, { method: 'DELETE' })
 
+export type PanicResult = {
+  stopped: string[]
+  flattened: string[]
+  errors: string[]
+}
+
+// panicBots stops all running bots; with flatten it also market-sells every
+// open position (real orders for live bots).
+export const panicBots = async (flatten: boolean): Promise<PanicResult> =>
+  api.fetchJson<PanicResult>(`${botsEndpoint}/panic`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ flatten }),
+  })
+
 export const getBotFills = async (id: string, page = 1, limit = 15) =>
   await api.fetchJson<{ data: Fill[]; pagination: Pagination }>(
     `${botsEndpoint}/${id}/fills?page=${page}&limit=${limit}`,
