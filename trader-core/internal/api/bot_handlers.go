@@ -56,7 +56,53 @@ func RegisterBotRoutes(rg *gin.RouterGroup) {
 	rg.POST("", createBotHandler)
 	rg.POST("/:id/start", startBotHandler)
 	rg.POST("/:id/stop", stopBotHandler)
+	rg.POST("/panic", panicHandler)
 	rg.DELETE("/:id", deleteBotHandler)
+}
+
+// panicHandler stops all running bots and optionally flattens their positions.
+// Body (optional): {"flatten": true} — sells every open position at the last
+// candle close (real market SELLs for live bots).
+func panicHandler(c *gin.Context) {
+	var req struct {
+		Flatten bool `json:"flatten"`
+	}
+	_ = c.ShouldBindJSON(&req) // empty body is fine
+
+	activeBotsMu.RLock()
+	bots := make([]*bot.Bot, 0, len(activeBots))
+	for _, b := range activeBots {
+		bots = append(bots, b)
+	}
+	activeBotsMu.RUnlock()
+
+	stopped := []string{}
+	flattened := []string{}
+	errs := []string{}
+
+	for _, b := range bots {
+		// flatten BEFORE stopping: detach clears the candle history needed for pricing
+		if req.Flatten {
+			fl, err := bot.Flatten(b)
+			flattened = append(flattened, fl...)
+			if err != nil {
+				errs = append(errs, fmt.Sprintf("flatten %s: %v", b.ID, err))
+			}
+		}
+		if b.Status == bot.BotRunning {
+			if err := runtime.DetachBot(b); err != nil {
+				errs = append(errs, fmt.Sprintf("stop %s: %v", b.ID, err))
+			} else {
+				stopped = append(stopped, b.ID)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"stopped":   stopped,
+		"flattened": flattened,
+		"errors":    errs,
+	})
 }
 
 func getBotByIDHandler(c *gin.Context) {

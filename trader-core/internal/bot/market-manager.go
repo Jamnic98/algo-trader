@@ -61,8 +61,10 @@ func (m *MarketDataManager) Subscribe(exchangeName, symbol string, interval engi
 
 	if m.refCount[key] == 0 {
 		if exchangeName == "binance" {
-			stream := strings.ToLower(symbol) + "@kline_" + interval.String()
-			m.client.Subscribe(stream)
+			if m.client != nil {
+				stream := strings.ToLower(symbol) + "@kline_" + interval.String()
+				m.client.Subscribe(stream)
+			}
 		} else {
 			br, ok := m.brokers[strings.ToLower(exchangeName)]
 			if !ok {
@@ -123,8 +125,10 @@ func (m *MarketDataManager) Unsubscribe(exchangeName, symbol string, interval en
 		delete(m.refCount, key)
 		delete(m.lastClose, key)
 		if exchangeName == "binance" {
-			stream := strings.ToLower(symbol) + "@kline_" + interval.String()
-			m.client.Unsubscribe(stream)
+			if m.client != nil {
+				stream := strings.ToLower(symbol) + "@kline_" + interval.String()
+				m.client.Unsubscribe(stream)
+			}
 		} else if cancel, ok := m.streams[key]; ok {
 			cancel()
 			delete(m.streams, key)
@@ -153,11 +157,17 @@ func (m *MarketDataManager) Run(ctx context.Context) {
 		m.running.Store(false)
 	}()
 
+	// nil client (tests / non-binance-only setups) -> nil channel blocks forever
+	var msgs <-chan []byte
+	if m.client != nil {
+		msgs = m.client.Messages()
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case msg := <-m.client.Messages():
+		case msg := <-msgs:
 			// closed candle
 			if candle, key, ok := engine.ParseKline(msg); ok {
 				m.mu.Lock()

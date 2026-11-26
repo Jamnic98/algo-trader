@@ -10,10 +10,11 @@ import (
 )
 
 type PaperAccount struct {
-	balance   decimal.Decimal            // total available funds
-	Fee       decimal.Decimal            // fee rate, e.g. 0.001
-	Positions map[string]decimal.Decimal // symbol -> qty
-	mu        sync.RWMutex               // thread-safety
+	balance    decimal.Decimal            // total available funds
+	Fee        decimal.Decimal            // fee rate, e.g. 0.001
+	Positions  map[string]decimal.Decimal // symbol -> qty
+	costBasis  map[string]decimal.Decimal // symbol -> quote spent (avg entry base)
+	mu         sync.RWMutex               // thread-safety
 
 	// OnChange is called after every ledger mutation (fills, reset, top-up)
 	// so an AccountManager can persist the balance.
@@ -42,6 +43,7 @@ func (a *PaperAccount) Reset(balance, fee decimal.Decimal) {
 	a.balance = balance
 	a.Fee = fee
 	a.Positions = make(map[string]decimal.Decimal)
+	a.costBasis = make(map[string]decimal.Decimal)
 	a.mu.Unlock()
 	a.notifyChange()
 }
@@ -57,6 +59,7 @@ func NewPaperAccount(startBalance, fee string) *PaperAccount {
 		balance:   decimal.RequireFromString(startBalance),
 		Fee:       decimal.RequireFromString(fee),
 		Positions: make(map[string]decimal.Decimal),
+		costBasis: make(map[string]decimal.Decimal),
 	}
 }
 
@@ -70,6 +73,9 @@ func NewPaperExecutor(account *PaperAccount) *PaperExecutor {
 
 // FeeRate returns the paper account's fee rate.
 func (pe *PaperExecutor) FeeRate() decimal.Decimal { return pe.Account.Fee }
+
+// Snapshot exposes the paper ledger (AccountSnapshotter).
+func (pe *PaperExecutor) Snapshot() AccountSnapshot { return pe.Account.Snapshot() }
 
 // Fill execution with paper trading engine
 func (pe *PaperExecutor) ExecuteFill(order Order) (*Fill, error) {
@@ -118,12 +124,24 @@ func (a *PaperAccount) ApplyFill(f *Fill) error {
 		}
 		a.balance = a.balance.Sub(totalCost)
 		a.Positions[f.Symbol] = a.Positions[f.Symbol].Add(f.Qty)
+		a.costBasis[f.Symbol] = a.costBasis[f.Symbol].Add(f.Price.Mul(f.Qty))
 
 	case "SELL":
 		if a.Positions[f.Symbol].LessThan(f.Qty) {
 			return fmt.Errorf("not enough asset")
 		}
-		a.Positions[f.Symbol] = a.Positions[f.Symbol].Sub(f.Qty)
+		qtyBefore := a.Positions[f.Symbol]
+		avgEntry := decimal.Zero
+		if qtyBefore.GreaterThan(decimal.Zero) {
+			avgEntry = a.costBasis[f.Symbol].Div(qtyBefore)
+		}
+		f.Pnl = f.Price.Sub(avgEntry).Mul(f.Qty) // realized pnl, ex-fee
+		a.Positions[f.Symbol] = qtyBefore.Sub(f.Qty)
+		a.costBasis[f.Symbol] = a.costBasis[f.Symbol].Sub(avgEntry.Mul(f.Qty))
+		if a.Positions[f.Symbol].LessThanOrEqual(decimal.Zero) {
+			a.Positions[f.Symbol] = decimal.Zero
+			a.costBasis[f.Symbol] = decimal.Zero
+		}
 		a.balance = a.balance.Add(f.Price.Mul(f.Qty).Sub(f.Fee))
 
 	default:
@@ -140,6 +158,8 @@ func (a *PaperAccount) Snapshot() AccountSnapshot {
 
 	positionsCopy := make(map[string]decimal.Decimal, len(a.Positions))
 	maps.Copy(positionsCopy, a.Positions)
+	costCopy := make(map[string]decimal.Decimal, len(a.costBasis))
+	maps.Copy(costCopy, a.costBasis)
 
-	return AccountSnapshot{a.balance, positionsCopy}
+	return AccountSnapshot{Balance: a.balance, Positions: positionsCopy, CostBasis: costCopy}
 }

@@ -51,6 +51,28 @@ python3 scripts/ml_example_service.py   # model endpoint on 127.0.0.1:8001
    (`GET /api/v3/klines`, paginated), replays them through a paper account and returns
    stats, equity curve and trades.
 
+## Risk management & panic
+
+Every bot carries a `risk` JSON object (stored on the bot, defaults when omitted):
+
+```json
+{
+  "max_position_pct": "25",     // cap a single BUY notional as % of account balance (default "100" = no cap)
+  "max_daily_loss_pct": "5",    // kill switch: equity drop vs day-start; "0" = off
+  "max_drawdown_pct": "10",     // kill switch: equity drawdown from running peak; "0" = off
+  "cooldown_losses": 3,         // consecutive losing SELLs before BUYs pause; 0 = off
+  "cooldown_minutes": 60        // pause length
+}
+```
+
+Sent as `"risk": {...}` in `POST /api/bots`. When a kill-switch trips, the bot is
+stopped (detached) and a Telegram alert is sent. Realized pnl per fill is tracked
+internally (cost basis per position) for the cooldown.
+
+`POST /api/panic` with optional body `{"flatten": true}` stops all running bots and,
+with `flatten`, market-sells every open position at the last candle close (real
+orders for live bots).
+
 ## Run locally
 
 ```bash

@@ -60,6 +60,7 @@ type CreateBotData struct {
 	Interval       string           `json:"interval"`
 	MaxCandles     int              `json:"maxCandles"`
 	Quantity       string           `json:"quantity"`
+	Risk           json.RawMessage  `json:"risk"` // engine.RiskLimits as JSON; empty = defaults
 }
 
 // BotConfig is the DB model for a bot.
@@ -77,7 +78,16 @@ type BotConfig struct {
 	MaxCandles     int            `gorm:"column:max_candles" json:"maxCandles"`
 	Lookback       string         `json:"lookback"`
 	Quantity       string         `json:"quantity"`
+	Risk           datatypes.JSON `gorm:"type:jsonb"         json:"risk"` // engine.RiskLimits
 	DeletedAt      gorm.DeletedAt `gorm:"index"              json:"-"`
+}
+
+// RiskLimits parses the stored risk config, falling back to defaults.
+func (c *BotConfig) RiskLimits() (engine.RiskLimits, error) {
+	if len(c.Risk) == 0 {
+		return engine.DefaultRiskLimits(), nil
+	}
+	return engine.ParseRiskLimits(c.Risk)
 }
 
 // ResolvedStrategy merges the strategy template defaults with bot-level overrides.
@@ -123,6 +133,19 @@ func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
 	if exchangeName == "" {
 		exchangeName = "binance"
 	}
+
+	// risk limits: defaults when empty, validated otherwise
+	risk := datatypes.JSON{}
+	if len(data.Risk) > 0 {
+		if _, err := engine.ParseRiskLimits(data.Risk); err != nil {
+			return BotConfig{}, err
+		}
+		risk = datatypes.JSON(data.Risk)
+	} else {
+		def, _ := json.Marshal(engine.DefaultRiskLimits())
+		risk = datatypes.JSON(def)
+	}
+
 	return BotConfig{
 		ID:             id,
 		Mode:           data.Mode,
@@ -137,6 +160,7 @@ func BuildBotConfig(id string, data CreateBotData) (BotConfig, error) {
 		MaxCandles:     data.MaxCandles,
 		Quantity:       data.Quantity,
 		Lookback:       lookback,
+		Risk:           risk,
 	}, nil
 }
 
@@ -161,6 +185,11 @@ type Bot struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	// Risk is the per-run risk tracker (created on attach); OnKillSwitch is
+	// invoked once when a kill-switch trips (detach + notify).
+	Risk         *engine.RiskState
+	OnKillSwitch func(reason string)
 }
 
 // Symbol returns the venue-native symbol for this bot's pair
