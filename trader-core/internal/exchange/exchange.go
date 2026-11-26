@@ -72,11 +72,17 @@ type Config struct {
 
 // ConfigFromEnv builds a Config from <NAME>_API_KEY / <NAME>_SECRET_KEY /
 // <NAME>_BASE_URL / <NAME>_WS_URL / <NAME>_PAPER (NAME uppercased, e.g. ALPACA_).
+// The secret also falls back to <NAME>_SECRET (Alpaca documents ALPACA_SECRET;
+// Binance uses BINANCE_SECRET_KEY).
 func ConfigFromEnv(name string) Config {
 	p := strings.ToUpper(name)
+	secret := os.Getenv(p + "_SECRET_KEY")
+	if secret == "" {
+		secret = os.Getenv(p + "_SECRET")
+	}
 	return Config{
 		APIKey:  os.Getenv(p + "_API_KEY"),
-		Secret:  os.Getenv(p + "_SECRET"),
+		Secret:  secret,
 		BaseURL: os.Getenv(p + "_BASE_URL"),
 		DataURL: os.Getenv(p + "_DATA_URL"),
 		WSURL:   os.Getenv(p + "_WS_URL"),

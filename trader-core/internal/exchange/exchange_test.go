@@ -74,6 +74,24 @@ func TestConfigFromEnv(t *testing.T) {
 	}
 }
 
+func TestConfigFromEnvSecretKeyName(t *testing.T) {
+	// Binance documents BINANCE_SECRET_KEY (not BINANCE_SECRET) — the broker
+	// fails closed on Balances/PlaceMarketOrder when the secret isn't picked up.
+	t.Setenv("BINANCE_API_KEY", "k")
+	t.Setenv("BINANCE_SECRET_KEY", "s")
+
+	cfg := ConfigFromEnv("binance")
+	if cfg.APIKey != "k" || cfg.Secret != "s" {
+		t.Fatalf("cfg = %+v, want secret from BINANCE_SECRET_KEY", cfg)
+	}
+
+	// <NAME>_SECRET_KEY wins over the legacy <NAME>_SECRET
+	t.Setenv("BINANCE_SECRET", "legacy")
+	if cfg := ConfigFromEnv("binance"); cfg.Secret != "s" {
+		t.Fatalf("cfg.Secret = %q, want BINANCE_SECRET_KEY to take precedence", cfg.Secret)
+	}
+}
+
 func TestSymbolMapperRegistry(t *testing.T) {
 	RegisterSymbolMapper("mapperx", func(base, quote, assetType string) string {
 		return base + "/" + quote + ":" + assetType
