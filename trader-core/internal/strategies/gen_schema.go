@@ -71,6 +71,25 @@ const generatedSchemaJSON = `{
       }
     },
     {
+      "name": "sentiment",
+      "display_name": "Sentiment (HTTP)",
+      "template": "http",
+      "params": [
+        { "key": "url", "label": "Sentiment service endpoint", "type": "string", "default": "http://127.0.0.1:8002/predict" },
+        { "key": "window", "label": "Candle window", "type": "number", "default": 20, "min": 2 },
+        { "key": "feed_url", "label": "News RSS/Atom feed", "type": "string", "default": "https://www.coindesk.com/arc/outboundfeeds/rss/" },
+        { "key": "threshold", "label": "Sentiment threshold", "type": "number", "default": 0.05, "min": 0 },
+        { "key": "max_items", "label": "Max headlines scored", "type": "number", "default": 25, "min": 1 },
+        { "key": "cache_seconds", "label": "Feed cache TTL (s)", "type": "number", "default": 300, "min": 0 },
+        { "key": "momentum_weight", "label": "Blend with price momentum (0-1)", "type": "number", "default": 0, "min": 0, "max": 1 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [],
+        "note": "http-template strategies are tested per-engine with mock servers; the sentiment service itself is tested in scripts/test_sentiment_service.py"
+      }
+    },
+    {
       "name": "smart_dca",
       "display_name": "Smart DCA",
       "template": "dca",
@@ -101,6 +120,15 @@ func init() {
 		{Key: "url", Label: "Model endpoint", Type: ParamTypeString, Default: "http://127.0.0.1:8001/predict"},
 		{Key: "window", Label: "Candle window", Type: ParamTypeNumber, Default: 20, Min: ptrFloat(2)},
 	}}, constructorFor("ml_example", "http"))
+	Register("sentiment", StrategySchema{Name: "sentiment", DisplayName: "Sentiment (HTTP)", Params: []ParamSchema{
+		{Key: "url", Label: "Sentiment service endpoint", Type: ParamTypeString, Default: "http://127.0.0.1:8002/predict"},
+		{Key: "window", Label: "Candle window", Type: ParamTypeNumber, Default: 20, Min: ptrFloat(2)},
+		{Key: "feed_url", Label: "News RSS/Atom feed", Type: ParamTypeString, Default: "https://www.coindesk.com/arc/outboundfeeds/rss/"},
+		{Key: "threshold", Label: "Sentiment threshold", Type: ParamTypeNumber, Default: 0.05, Min: ptrFloat(0)},
+		{Key: "max_items", Label: "Max headlines scored", Type: ParamTypeNumber, Default: 25, Min: ptrFloat(1)},
+		{Key: "cache_seconds", Label: "Feed cache TTL (s)", Type: ParamTypeNumber, Default: 300, Min: ptrFloat(0)},
+		{Key: "momentum_weight", Label: "Blend with price momentum (0-1)", Type: ParamTypeNumber, Default: 0, Min: ptrFloat(0), Max: ptrFloat(1)},
+	}}, constructorFor("sentiment", "http"))
 	Register("smart_dca", StrategySchema{Name: "smart_dca", DisplayName: "Smart DCA", Params: []ParamSchema{
 		{Key: "fixed_spend", Label: "Fixed Spend", Type: ParamTypeString, Default: "10.00", Min: ptrFloat(0.01)},
 		{Key: "take_profit", Label: "Take Profit Multiplier", Type: ParamTypeNumber, Default: 1.05, Min: ptrFloat(1.0)},

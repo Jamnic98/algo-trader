@@ -26,7 +26,14 @@ OUT_PATH = ROOT / "trader-core" / "internal" / "strategies" / "gen_schema.go"
 # research/app/strategies. Adding a new template = implement it in both
 # engines + allow it here; adding a new primitive on an existing template =
 # edit shared/strategies.json only and re-run this script.
-KNOWN_TEMPLATES = {"prev_close", "always_buy", "dca", "sma_cross", "http", "weighted_vote"}
+KNOWN_TEMPLATES = {
+    "prev_close",
+    "always_buy",
+    "dca",
+    "sma_cross",
+    "http",
+    "weighted_vote",
+}
 
 PARAM_TYPES = {
     "number": "ParamTypeNumber",
@@ -50,10 +57,14 @@ def validate(schema: dict[str, Any]) -> None:
             raise ValueError(f"{p['name']}: duplicate param keys {keys}")
         for param in p.get("params", []):
             if param["type"] not in PARAM_TYPES:
-                raise ValueError(f"{p['name']}.{param['key']}: bad type {param['type']!r}")
+                raise ValueError(
+                    f"{p['name']}.{param['key']}: bad type {param['type']!r}"
+                )
         for case in p.get("test", {}).get("cases", []):
             if len(case["candles"]) != len(case["expect"]):
-                raise ValueError(f"{p['name']}: candles/expect length mismatch in {case}")
+                raise ValueError(
+                    f"{p['name']}: candles/expect length mismatch in {case}"
+                )
         if p["template"] == "http":
             keys = [param["key"] for param in p.get("params", [])]
             if "url" not in keys:
@@ -111,16 +122,18 @@ def gen_go(schema_text: str, schema: dict[str, Any]) -> str:
     for p in schema["primitives"]:
         params = p.get("params", [])
         if params:
-            params_literal = "[]ParamSchema{\n" + "".join(
-                f"\t\t\t{go_param(param)},\n" for param in params
-            ) + "\t\t}"
+            params_literal = (
+                "[]ParamSchema{\n"
+                + "".join(f"\t\t\t{go_param(param)},\n" for param in params)
+                + "\t\t}"
+            )
         else:
             params_literal = "[]ParamSchema{}"
         lines.append(
             f'\tRegister({go_str(p["name"])}, StrategySchema{{'
             f'Name: {go_str(p["name"])}, '
             f'DisplayName: {go_str(p["display_name"])}, '
-            f'Params: {params_literal}, '
+            f"Params: {params_literal}, "
             f'}}, constructorFor({go_str(p["name"])}, {go_str(p["template"])}))'
         )
     lines.append("}")
@@ -149,7 +162,9 @@ def main() -> int:
         if OUT_PATH.exists() and OUT_PATH.read_text(encoding="utf-8") == content:
             print("gen_schema.go is up to date")
             return 0
-        print("ERROR: gen_schema.go is stale; run `python3 scripts/generate_strategies.py`")
+        print(
+            "ERROR: gen_schema.go is stale; run `python3 scripts/generate_strategies.py`"
+        )
         return 1
 
     OUT_PATH.write_text(content, encoding="utf-8")

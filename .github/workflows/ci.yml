@@ -118,7 +118,13 @@ jobs:
           ruff check .
           black --check .
           mypy .
+          ruff check ../scripts
+          black --check ../scripts
+          mypy ../scripts/sentiment_service.py
 
       - name: Run tests
         working-directory: research
         run: pytest -v
+
+      - name: Run scripts tests (sentiment service)
+        run: python -m pytest scripts/test_sentiment_service.py -q
