@@ -79,6 +79,16 @@ bot's stored `risk`.
 every open position at the last candle close (real orders for live bots).
 Response: `{stopped, flattened, errors}`.
 
+## Observability
+
+- `GET /health` — plain unauthenticated health check (load balancers / docker
+  healthchecks); the SSE variant stays at `/api/health/stream` (API key).
+- `GET /api/metrics` (API key) — ops snapshot: bots total/running, fills today,
+  account summaries.
+- Prod compose services run with `restart: unless-stopped`.
+- WS outages are reported to Telegram via the error channel (non-fatal, retried
+  in the background).
+
 ## Reliability: disconnects, reconnects, restarts
 
 - The Binance WS client **retries forever in the background** (`StartWithRetry`)

@@ -21,9 +21,15 @@ func InitServer(cfg Config) *gin.Engine {
 		}))
 	}
 
+	// plain unauthenticated health check for load balancers / docker healthchecks
+	engine.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok", "time": time.Now().UTC().Format(time.RFC3339)})
+	})
+
 	route := engine.Group("/api")
 	route.Use(api.APIKeyAuth(cfg.ApiKey))
 	{
+		api.RegisterMetricsRoutes(route.Group("/metrics"))
 		api.RegisterAccountRoutes(route.Group("/account"))
 		api.RegisterBotRoutes(route.Group("/bots"))
 		api.RegisterDiagnosticsRoutes(route.Group("/diagnostics"))
