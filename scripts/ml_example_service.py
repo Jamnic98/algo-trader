@@ -45,7 +45,9 @@ def predict(req: PredictRequest) -> PredictResponse:
     ret = closes[-1] / closes[-2] - 1.0
     score = W_RET * ret
     if score > THRESH:
-        return PredictResponse(signal="BUY", quantity="0.1", reason=f"score={score:.3f}")
+        return PredictResponse(
+            signal="BUY", quantity="0.1", reason=f"score={score:.3f}"
+        )
     if score < -THRESH:
         return PredictResponse(signal="SELL", reason=f"score={score:.3f}")
     return PredictResponse(signal="HOLD", reason=f"score={score:.3f}")

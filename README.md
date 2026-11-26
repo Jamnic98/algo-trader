@@ -40,6 +40,25 @@ python3 scripts/ml_example_service.py   # model endpoint on 127.0.0.1:8001
 # then backtest "ml_example" from the dashboard, or combine it into a composite
 ```
 
+### Sentiment strategy (built on the `http` template)
+
+`scripts/sentiment_service.py` is a ready-made external strategy: it scores
+recent headlines from an RSS/Atom feed (`feed_url`, default CoinDesk) with a
+small built-in lexicon, optionally blends in last-close momentum
+(`momentum_weight`), and maps the score to BUY/SELL/HOLD above `threshold`.
+Feeds are TTL-cached (`cache_seconds`) so per-candle calls don't hammer the
+source, and feed errors safely return HOLD. The seeded `sentiment` strategy
+uses the same `http` contract on :8002:
+
+```bash
+python3 scripts/sentiment_service.py    # serves http://127.0.0.1:8002
+```
+
+In docker compose a `sentiment` service runs it on :8002 and trader-core gets
+`SENTIMENT_URL=http://sentiment:8002/predict`, which is seeded into the
+strategy's `default_config` at boot (override with your own `SENTIMENT_URL`).
+Tests: `python -m pytest scripts/test_sentiment_service.py` (also run in CI).
+
 ## Strategy → backtest flow
 
 1. Create a strategy in the dashboard (`/strategies/create`) → `POST /api/strategies`

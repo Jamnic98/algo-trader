@@ -43,6 +43,7 @@ services:
       - .env.prod
     environment:
       - BACKTESTER_URL=http://research:8000
+      - SENTIMENT_URL=http://sentiment:8002/predict
     volumes:
       - ./logs:/app/logs
 
@@ -58,6 +59,24 @@ services:
       - app-network
     env_file:
       - .env.prod
+
+  # sentiment http-strategy service (scores a news RSS feed; see scripts/sentiment_service.py)
+  sentiment:
+    container_name: sentiment
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: research/Dockerfile.prod
+    expose:
+      - "8002"
+    networks:
+      - app-network
+    env_file:
+      - .env.prod
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8002
+    command: ["python3", "scripts/sentiment_service.py"]
 
 networks:
   app-network:

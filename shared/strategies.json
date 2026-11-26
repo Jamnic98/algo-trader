@@ -66,6 +66,25 @@
       }
     },
     {
+      "name": "sentiment",
+      "display_name": "Sentiment (HTTP)",
+      "template": "http",
+      "params": [
+        { "key": "url", "label": "Sentiment service endpoint", "type": "string", "default": "http://127.0.0.1:8002/predict" },
+        { "key": "window", "label": "Candle window", "type": "number", "default": 20, "min": 2 },
+        { "key": "feed_url", "label": "News RSS/Atom feed", "type": "string", "default": "https://www.coindesk.com/arc/outboundfeeds/rss/" },
+        { "key": "threshold", "label": "Sentiment threshold", "type": "number", "default": 0.05, "min": 0 },
+        { "key": "max_items", "label": "Max headlines scored", "type": "number", "default": 25, "min": 1 },
+        { "key": "cache_seconds", "label": "Feed cache TTL (s)", "type": "number", "default": 300, "min": 0 },
+        { "key": "momentum_weight", "label": "Blend with price momentum (0-1)", "type": "number", "default": 0, "min": 0, "max": 1 }
+      ],
+      "test": {
+        "fee_rate": "0.001",
+        "cases": [],
+        "note": "http-template strategies are tested per-engine with mock servers; the sentiment service itself is tested in scripts/test_sentiment_service.py"
+      }
+    },
+    {
       "name": "smart_dca",
       "display_name": "Smart DCA",
       "template": "dca",
