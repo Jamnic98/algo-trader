@@ -168,3 +168,23 @@ through to both).
 ```bash
 docker compose -f docker-compose.prod.yml up --build
 ```
+
+## Operations & security
+
+- **API auth fails closed**: `/api/*` requires `Authorization: ApiKey $SERVER_API_KEY`
+  (or `?api_key=` for legacy SSE clients; the request logger strips query strings
+  so the key never lands in logs). Comparison is constant-time. If
+  `SERVER_API_KEY` is **unset, every `/api` request is rejected with 500** — an
+  empty key never opens the API. `/health` stays public for load balancers.
+- **Deploy on merge**: `.github/workflows/deploy.yml` runs on every push to
+  `dev`/`main` (and manual dispatch) and SSH-deploys `docker-compose.prod.yml`.
+  It needs repo secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`,
+  `DEPLOY_PATH` (optional `DEPLOY_PORT`); without `DEPLOY_HOST` the step is
+  skipped. To deploy only from `main`, edit the `branches:` list.
+- **Secrets hygiene**: never commit keys — the repo was recreated once already to
+  purge leaked Binance keys; rotate any key that ever appeared in git history.
+  Keep `SERVER_API_KEY`, `BINANCE_*`, `ALPACA_*`, `DB_DSN`, `TELEGRAM_*` in
+  `.env.prod` only (git-ignored, passed via compose `env_file`).
+- **Observability**: `GET /health` (public) and `GET /api/metrics` (authed) for
+  load balancers/monitoring; all prod compose services have
+  `restart: unless-stopped`.

@@ -36,6 +36,10 @@ func GetConfig() Config {
 	}
 
 	apiKey := os.Getenv("SERVER_API_KEY")
+	if apiKey == "" {
+		// /api fails closed without a key (500 on every call), so warn loudly
+		log.Println("WARNING: SERVER_API_KEY is not set — all /api requests will be rejected (fail closed)")
+	}
 	dsn := os.Getenv("DB_DSN")
 	port := os.Getenv("TRADER_CORE_PORT")
 	telegramKey := os.Getenv("TELEGRAM_KEY")

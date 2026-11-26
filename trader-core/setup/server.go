@@ -9,8 +9,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// requestLogger logs like gin.Default but never writes the query string:
+// legacy clients may pass ?api_key=..., which must not land in logs.
+func requestLogger() gin.HandlerFunc {
+	return gin.LoggerWithConfig(gin.LoggerConfig{
+		Formatter: func(param gin.LogFormatterParams) string {
+			return fmt.Sprintf("[GIN] %v | %3d | %13v | %s  %s\n",
+				param.TimeStamp.Format("2006/01/02 - 15:04:05"),
+				param.StatusCode,
+				param.Latency,
+				param.Method,
+				param.Path, // path only — query may contain the API key
+			)
+		},
+	})
+}
+
 func InitServer(cfg Config) *gin.Engine {
-	engine := gin.Default()
+	engine := gin.New()
+	engine.Use(gin.Recovery(), requestLogger())
 
 	if cfg.Env == "local" {
 		engine.Use(cors.New(cors.Config{

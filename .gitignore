@@ -1,3 +1,6 @@
 .env*
 certs/
 /logs
+# Python
+__pycache__/
+*.pyc
