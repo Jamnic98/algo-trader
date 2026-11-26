@@ -26,7 +26,20 @@ type fakeStreamBroker struct {
 
 func (f *fakeStreamBroker) Name() string { return "fakevenue" }
 func (f *fakeStreamBroker) Klines(symbol, interval string, startMs, endMs int64, limit int) ([]exchange.Kline, error) {
-	return f.klines, nil
+	var out []exchange.Kline
+	for _, k := range f.klines {
+		if startMs > 0 && k.OpenTime < startMs {
+			continue
+		}
+		if endMs > 0 && k.OpenTime > endMs {
+			continue
+		}
+		out = append(out, k)
+		if limit > 0 && len(out) >= limit {
+			break
+		}
+	}
+	return out, nil
 }
 func (f *fakeStreamBroker) StreamKlines(ctx context.Context, symbol, interval string, onKline func(exchange.Kline)) error {
 	f.mu.Lock()
@@ -305,5 +318,65 @@ func TestMarketManagerBrokerTicks(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("no candle dispatched")
+	}
+}
+
+
+// TestBackfillFillsGapAfterReconnect: closed candles missed while a stream was
+// down are refetched (openTime > lastClose) and dispatched; the still-open bar
+// is skipped.
+func TestBackfillFillsGapAfterReconnect(t *testing.T) {
+	now := time.Now().UnixMilli()
+	br := &fakeStreamBroker{klines: []exchange.Kline{
+		{OpenTime: now - 120_000, CloseTime: now - 60_001, Close: decimal.NewFromInt(100)},
+		{OpenTime: now - 60_000, CloseTime: now - 1, Close: decimal.NewFromInt(101)},
+		{OpenTime: now, CloseTime: now + 60_000, Close: decimal.NewFromInt(102)}, // still open
+	}}
+	m := NewMarketDataManager(nil, NewDispatcher(), map[string]exchange.Broker{"fakevenue": br})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	m.ctx = ctx
+
+	interval, _ := engine.ParseInterval("1m")
+	b := &Bot{
+		BotConfig: BotConfig{ID: "b1", Exchange: "fakevenue", Base: "BTC", Quote: "USD", AssetType: "crypto"},
+		Logger:    NewBotLogger("b1"),
+		CandleCh:  make(chan models.Candle, 10),
+	}
+	m.dispatcher.Subscribe(b.Symbol(), interval, b)
+
+	key := streamKey("fakevenue", b.Symbol(), interval)
+	m.mu.Lock()
+	m.lastClose[key] = now - 180_000 // last seen close before the gap
+	m.mu.Unlock()
+
+	m.backfill("fakevenue", b.Symbol(), interval, key)
+
+	var got []int64
+	for {
+		select {
+		case c := <-b.CandleCh:
+			got = append(got, c.CloseTime)
+		default:
+			goto done
+		}
+	}
+done:
+	if len(got) != 2 {
+		t.Fatalf("dispatched %d candles, want 2 (open bar skipped): %v", len(got), got)
+	}
+	m.mu.Lock()
+	last := m.lastClose[key]
+	m.mu.Unlock()
+	if last != now-1 {
+		t.Fatalf("lastClose = %d, want %d", last, now-1)
+	}
+
+	// second backfill with nothing new -> no dispatch
+	m.backfill("fakevenue", b.Symbol(), interval, key)
+	select {
+	case c := <-b.CandleCh:
+		t.Fatalf("unexpected extra candle: %+v", c)
+	default:
 	}
 }

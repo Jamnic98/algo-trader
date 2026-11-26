@@ -76,7 +76,7 @@ func (m *MarketDataManager) Subscribe(exchangeName, symbol string, interval engi
 			}
 			sctx, cancel := context.WithCancel(ctx)
 			m.streams[key] = cancel
-			go m.stream(sctx, br, symbol, interval, key)
+			go m.stream(sctx, br, exchangeName, symbol, interval, key)
 		}
 	}
 	m.refCount[key]++
@@ -85,7 +85,7 @@ func (m *MarketDataManager) Subscribe(exchangeName, symbol string, interval engi
 
 // stream pumps klines from a broker into the dispatcher, reconnecting on error.
 // Brokers implementing exchange.TickStreamer also get in-progress bars as ticks.
-func (m *MarketDataManager) stream(ctx context.Context, br exchange.Broker, symbol string, interval engine.Interval, key string) {
+func (m *MarketDataManager) stream(ctx context.Context, br exchange.Broker, exchangeName, symbol string, interval engine.Interval, key string) {
 	dispatchKey := symbol + "_" + interval.String()
 	toCandle := func(k exchange.Kline) models.Candle {
 		return models.Candle{
@@ -106,6 +106,9 @@ func (m *MarketDataManager) stream(ctx context.Context, br exchange.Broker, symb
 	}
 
 	for {
+		// backfill any closed candles missed while the stream was down
+		m.backfill(exchangeName, symbol, interval, key)
+
 		var err error
 		if ts, ok := br.(exchange.TickStreamer); ok {
 			err = ts.StreamKlineEvents(ctx, symbol, interval.String(), onKline, func(k exchange.Kline) {
@@ -123,6 +126,59 @@ func (m *MarketDataManager) stream(ctx context.Context, br exchange.Broker, symb
 			return
 		case <-time.After(2 * time.Second):
 		}
+	}
+}
+
+// backfill dispatches closed candles with openTime after the last seen close,
+// filling the gap left while a stream was disconnected.
+func (m *MarketDataManager) backfill(exchangeName, symbol string, interval engine.Interval, key string) {
+	m.mu.Lock()
+	last := m.lastClose[key]
+	m.mu.Unlock()
+	if last <= 0 {
+		return
+	}
+
+	now := time.Now().UnixMilli()
+	var raw []exchange.Kline
+	var err error
+	if exchangeName == "binance" {
+		var rk []binance.RawKline
+		rk, err = binance.FetchKlinesRange(symbol, interval.String(), last+1, now)
+		for _, k := range rk {
+			raw = append(raw, exchange.Kline{
+				OpenTime: k.OpenTime, CloseTime: k.CloseTime,
+				Open: decimal.RequireFromString(k.Open), High: decimal.RequireFromString(k.High),
+				Low: decimal.RequireFromString(k.Low), Close: decimal.RequireFromString(k.Close),
+				Volume: decimal.RequireFromString(k.Volume),
+			})
+		}
+	} else {
+		m.mu.Lock()
+		br, ok := m.brokers[strings.ToLower(exchangeName)]
+		m.mu.Unlock()
+		if !ok {
+			return
+		}
+		raw, err = br.Klines(symbol, interval.String(), last+1, 0, 1000)
+	}
+	if err != nil {
+		log.Printf("backfill %s failed: %v", key, err)
+		return
+	}
+
+	dispatchKey := symbol + "_" + interval.String()
+	for _, k := range raw {
+		if k.CloseTime > now {
+			continue // still open
+		}
+		m.dispatcher.Dispatch(dispatchKey, models.Candle{
+			OpenTime: k.OpenTime, CloseTime: k.CloseTime,
+			Open: k.Open, High: k.High, Low: k.Low, Close: k.Close, Volume: k.Volume,
+		})
+		m.mu.Lock()
+		m.lastClose[key] = k.CloseTime
+		m.mu.Unlock()
 	}
 }
 
@@ -173,6 +229,28 @@ func (m *MarketDataManager) Run(ctx context.Context) {
 	var msgs <-chan []byte
 	if m.client != nil {
 		msgs = m.client.Messages()
+		// after a binance WS reconnect + resubscribe, backfill missed candles
+		m.client.OnReconnect = func() {
+			m.mu.Lock()
+			keys := make([]string, 0, len(m.refCount))
+			for k := range m.refCount {
+				keys = append(keys, k)
+			}
+			m.mu.Unlock()
+			for _, k := range keys {
+				parts := strings.SplitN(k, "|", 2)
+				if len(parts) != 2 || parts[0] != "binance" {
+					continue
+				}
+				si := strings.LastIndex(parts[1], "_")
+				if si < 0 {
+					continue
+				}
+				if interval, err := engine.ParseInterval(parts[1][si+1:]); err == nil {
+					m.backfill("binance", parts[1][:si], interval, k)
+				}
+			}
+		}
 	}
 
 	for {
