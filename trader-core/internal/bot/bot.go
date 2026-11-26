@@ -187,9 +187,11 @@ type Bot struct {
 	cancel context.CancelFunc
 
 	// Risk is the per-run risk tracker (created on attach); OnKillSwitch is
-	// invoked once when a kill-switch trips (detach + notify).
+	// invoked once when a kill-switch trips (detach + notify). OnError is
+	// invoked on runner errors (e.g. a failed fill) for alerting.
 	Risk         *engine.RiskState
 	OnKillSwitch func(reason string)
+	OnError      func(msg string)
 
 	// Filters are the venue's trading rules for the symbol, fetched on attach.
 	Filters *engine.SymbolFilters

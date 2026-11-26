@@ -78,6 +78,10 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 				quantity, err = decimal.NewFromString(b.Quantity)
 				if err != nil {
 					log.Println("invalid quantity:", err)
+					b.Logger.Error("invalid quantity %q: %v", b.Quantity, err)
+					if b.OnError != nil {
+						b.OnError(fmt.Sprintf("invalid quantity %q: %v", b.Quantity, err))
+					}
 					continue
 				}
 			}
@@ -130,6 +134,10 @@ func RunBotStrategy(ctx context.Context, b *Bot) {
 			f, err := b.Engine.ExecuteFill(order)
 			if err != nil {
 				log.Println("fill error:", err)
+				b.Logger.Error("fill error: %v", err)
+				if b.OnError != nil {
+					b.OnError(fmt.Sprintf("fill error: %v", err))
+				}
 				continue
 			}
 

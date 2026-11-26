@@ -31,6 +31,10 @@ type MarketDataManager struct {
 	streams   map[string]context.CancelFunc // broker stream key -> cancel
 	lastClose map[string]int64               // key -> last closed candle timestamp
 	running   atomic.Bool
+
+	// OnError, when set, is called when a broker stream drops (so the runtime
+	// can route the outage to the error channel / Telegram).
+	OnError func(string)
 }
 
 func NewMarketDataManager(client *binance.Client, dispatcher *Dispatcher, brokers map[string]exchange.Broker) *MarketDataManager {
@@ -121,6 +125,9 @@ func (m *MarketDataManager) stream(ctx context.Context, br exchange.Broker, exch
 			return
 		}
 		log.Printf("market stream %s ended: %v; reconnecting", key, err)
+		if m.OnError != nil {
+			m.OnError(fmt.Sprintf("market stream %s ended: %v; reconnecting", key, err))
+		}
 		select {
 		case <-ctx.Done():
 			return

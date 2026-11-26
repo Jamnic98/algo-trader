@@ -120,8 +120,15 @@ Response: `{stopped, flattened, errors}`.
 - `GET /api/metrics` (API key) — ops snapshot: bots total/running, fills today,
   account summaries.
 - Prod compose services run with `restart: unless-stopped`.
-- WS outages are reported to Telegram via the error channel (non-fatal, retried
-  in the background).
+- WS outages (Binance WS fatal disconnects and broker market-stream drops) are
+  reported to Telegram via the error channel (non-fatal, retried in the
+  background), as are kill-switch trips and bot fill errors.
+- Telegram alerts go to `TELEGRAM_CHAT_ID`; set the optional
+  `TELEGRAM_ERROR_CHAT_ID` to route errors/alerts (WS outages, kill switches,
+  fill errors) to a separate chat — it falls back to `TELEGRAM_CHAT_ID` when
+  unset. Send failures (bad token/chat, non-200 or `ok:false` responses) are
+  logged, never silent; sends use a 10s timeout so a hung Telegram API can't
+  stall alerting.
 
 ## Reliability: disconnects, reconnects, restarts
 

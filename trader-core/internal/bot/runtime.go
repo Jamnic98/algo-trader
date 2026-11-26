@@ -175,10 +175,15 @@ func (rt *Runtime) AttachBot(b *Bot) error {
 
 	b.OnKillSwitch = func(reason string) {
 		if rt.Messenger != nil {
-			rt.Messenger.Notify(fmt.Sprintf("bot %s (%s %s) kill switch: %s", b.ID, b.Exchange, b.Symbol(), reason))
+			rt.Messenger.NotifyError(fmt.Sprintf("bot %s (%s %s) kill switch: %s", b.ID, b.Exchange, b.Symbol(), reason))
 		}
 		if err := rt.DetachBot(b); err != nil {
 			b.Logger.Warn("detach after kill switch failed: %v", err)
+		}
+	}
+	b.OnError = func(msg string) {
+		if rt.Messenger != nil {
+			rt.Messenger.NotifyError(fmt.Sprintf("bot %s (%s %s): %s", b.ID, b.Exchange, b.Symbol(), msg))
 		}
 	}
 

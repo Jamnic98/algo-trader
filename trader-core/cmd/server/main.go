@@ -54,10 +54,12 @@ func main() {
 
 	// telegram messenger
 	messenger := &monitoring.Messenger{
-		BotToken: cfg.TelegramKey,
-		ChatID:   cfg.TelegramChatID,
-		Messages: make(chan string, 10),
-		Quit:     make(chan struct{}),
+		BotToken:      cfg.TelegramKey,
+		ChatID:        cfg.TelegramChatID,
+		ErrorChatID:   cfg.TelegramErrorChatID,
+		Messages:      make(chan string, 10),
+		ErrorMessages: make(chan string, 10),
+		Quit:          make(chan struct{}),
 	}
 	go messenger.Run()
 	defer close(messenger.Quit)
@@ -145,13 +147,22 @@ func main() {
 	})
 	log.Println("Binance websocket connecting (retries in background on failure)")
 
-	// forward errors to log and Telegram
+	// broker market-stream outages join the same error channel (log + Telegram error chat)
+	marketManager.OnError = func(msg string) {
+		select {
+		case runtime.Errors <- msg:
+		default:
+			log.Println(msg)
+		}
+	}
+
+	// forward errors to log and the Telegram error chat
 	go func() {
 		for {
 			select {
 			case err := <-runtime.Errors:
 				log.Println(err)
-				messenger.Notify(err)
+				messenger.NotifyError(err)
 			case <-ctx.Done():
 				return
 			}
