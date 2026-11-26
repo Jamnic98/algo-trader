@@ -1,6 +1,7 @@
 services:
   loadbalancer:
     container_name: algo-trader-loadbalancer
+    restart: unless-stopped
     image: nginx:1.27.5-alpine-slim
     ports:
       - "80:80"
@@ -17,6 +18,7 @@ services:
 
   dashboard:
     container_name: dashboard
+    restart: unless-stopped
     build:
       context: ./dashboard
       dockerfile: Dockerfile.prod
@@ -29,6 +31,7 @@ services:
 
   trader-core:
     container_name: trader-core
+    restart: unless-stopped
     build:
       context: .
       dockerfile: trader-core/Dockerfile.prod
@@ -45,6 +48,7 @@ services:
 
   research:
     container_name: research
+    restart: unless-stopped
     build:
       context: .
       dockerfile: research/Dockerfile.prod
