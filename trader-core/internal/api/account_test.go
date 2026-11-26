@@ -1,14 +1,18 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"trader-core/internal/bot"
 	"trader-core/internal/engine"
+	"trader-core/internal/exchange"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 )
 
 func setupAccountRouter(t *testing.T) *gin.Engine {
@@ -125,5 +129,83 @@ func TestLegacyAccountRoute(t *testing.T) {
 	w := doJSON(t, r, http.MethodGet, "/api/account", "")
 	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"balance":"10000"`) {
 		t.Fatalf("legacy: %d %s", w.Code, w.Body.String())
+	}
+}
+
+// fakeBalancesBroker is an exchange.Broker with fixed balances for live-sync tests.
+type fakeBalancesBroker struct{}
+
+func (fakeBalancesBroker) Name() string { return "fakebal" }
+func (fakeBalancesBroker) Klines(symbol, interval string, startMs, endMs int64, limit int) ([]exchange.Kline, error) {
+	return nil, nil
+}
+func (fakeBalancesBroker) StreamKlines(ctx context.Context, symbol, interval string, onKline func(exchange.Kline)) error {
+	return nil
+}
+func (fakeBalancesBroker) Balances() (map[string]decimal.Decimal, error) {
+	return map[string]decimal.Decimal{"USD": decimal.NewFromInt(5000), "AAPL": decimal.NewFromInt(3)}, nil
+}
+func (fakeBalancesBroker) Price(symbol string) (decimal.Decimal, error) { return decimal.NewFromInt(1), nil }
+func (fakeBalancesBroker) PlaceMarketOrder(symbol, side string, qty decimal.Decimal, clientOrderID string) (decimal.Decimal, decimal.Decimal, decimal.Decimal, error) {
+	return decimal.NewFromInt(1), qty, decimal.Zero, nil
+}
+func (fakeBalancesBroker) Filters(symbol string) (engine.SymbolFilters, error) {
+	return engine.SymbolFilters{}, nil
+}
+
+// TestLiveAccountPerExchangeAPI covers the per-exchange live ledger endpoints:
+// GET /live?exchange=, POST /live/sync?exchange=, and sync-all with no param.
+func TestLiveAccountPerExchangeAPI(t *testing.T) {
+	r := setupAccountRouter(t)
+	exchange.RegisterQuoteAsset("fakebal", "USD")
+	origRuntime := runtime
+	runtime = &bot.Runtime{Brokers: map[string]exchange.Broker{"fakebal": fakeBalancesBroker{}}}
+	t.Cleanup(func() { runtime = origRuntime })
+
+	// default (no param) = binance back-compat
+	w := doJSON(t, r, http.MethodGet, "/api/account/live", "")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"name":"live:binance"`) {
+		t.Fatalf("GET live default: %d %s", w.Code, w.Body.String())
+	}
+
+	// registered venue without a ledger yet -> 200, enriched with fresh balances
+	w = doJSON(t, r, http.MethodGet, "/api/account/live?exchange=fakebal", "")
+	if w.Code != http.StatusOK ||
+		!strings.Contains(w.Body.String(), `"exchange":"fakebal"`) ||
+		!strings.Contains(w.Body.String(), `"USD":"5000"`) {
+		t.Fatalf("GET live fakebal: %d %s", w.Code, w.Body.String())
+	}
+
+	// unknown venue -> 404
+	w = doJSON(t, r, http.MethodGet, "/api/account/live?exchange=ghost", "")
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("GET live ghost: %d %s", w.Code, w.Body.String())
+	}
+
+	// sync one venue only
+	w = doJSON(t, r, http.MethodPost, "/api/account/live/sync?exchange=fakebal", "")
+	if w.Code != http.StatusOK ||
+		!strings.Contains(w.Body.String(), `"name":"live:fakebal"`) ||
+		!strings.Contains(w.Body.String(), `"balance":"5000"`) ||
+		!strings.Contains(w.Body.String(), `"AAPL":"3"`) {
+		t.Fatalf("sync fakebal: %d %s", w.Code, w.Body.String())
+	}
+
+	// listing now shows both live ledgers
+	w = doJSON(t, r, http.MethodGet, "/api/account/all", "")
+	if !strings.Contains(w.Body.String(), `"live:binance"`) || !strings.Contains(w.Body.String(), `"live:fakebal"`) {
+		t.Fatalf("list missing live ledgers: %s", w.Body.String())
+	}
+
+	// get by name works for the per-exchange ledger
+	w = doJSON(t, r, http.MethodGet, "/api/account/live:fakebal", "")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"balance":"5000"`) {
+		t.Fatalf("get live:fakebal: %d %s", w.Code, w.Body.String())
+	}
+
+	// sync with no param syncs ALL registered brokers
+	w = doJSON(t, r, http.MethodPost, "/api/account/live/sync", "")
+	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"fakebal"`) || !strings.Contains(w.Body.String(), `"live:fakebal"`) {
+		t.Fatalf("sync all: %d %s", w.Code, w.Body.String())
 	}
 }

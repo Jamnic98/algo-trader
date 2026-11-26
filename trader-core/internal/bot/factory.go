@@ -49,10 +49,14 @@ func (f *BotFactory) NewPaperBot(cfg BotConfig, strategy strategies.Strategy) (*
 // NewLiveBot builds a bot whose fills are placed on the exchange via placer
 // (the broker for cfg.Exchange). Falls back to the factory default Placer when nil.
 func (f *BotFactory) NewLiveBot(cfg BotConfig, strategy strategies.Strategy, placer engine.OrderPlacer) (*Bot, error) {
+	return f.NewLiveBotFor(cfg, strategy, placer, f.LiveAccount)
+}
+
+// NewLiveBotFor is NewLiveBot with an explicit live account (per exchange).
+func (f *BotFactory) NewLiveBotFor(cfg BotConfig, strategy strategies.Strategy, placer engine.OrderPlacer, acc *engine.LiveAccount) (*Bot, error) {
 	if placer == nil {
 		placer = f.Placer
 	}
-	acc := f.LiveAccount
 	if acc == nil {
 		acc = engine.NewLiveAccount("0", "0.001")
 	}
