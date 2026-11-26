@@ -83,25 +83,37 @@ func (m *MarketDataManager) Subscribe(exchangeName, symbol string, interval engi
 	return nil
 }
 
-// stream pumps closed klines from a broker into the dispatcher, reconnecting on error.
+// stream pumps klines from a broker into the dispatcher, reconnecting on error.
+// Brokers implementing exchange.TickStreamer also get in-progress bars as ticks.
 func (m *MarketDataManager) stream(ctx context.Context, br exchange.Broker, symbol string, interval engine.Interval, key string) {
 	dispatchKey := symbol + "_" + interval.String()
+	toCandle := func(k exchange.Kline) models.Candle {
+		return models.Candle{
+			OpenTime:  k.OpenTime,
+			CloseTime: k.CloseTime,
+			Open:      k.Open,
+			High:      k.High,
+			Low:       k.Low,
+			Close:     k.Close,
+			Volume:    k.Volume,
+		}
+	}
+	onKline := func(k exchange.Kline) {
+		m.mu.Lock()
+		m.lastClose[key] = k.CloseTime
+		m.mu.Unlock()
+		m.dispatcher.Dispatch(dispatchKey, toCandle(k))
+	}
+
 	for {
-		err := br.StreamKlines(ctx, symbol, interval.String(), func(k exchange.Kline) {
-			candle := models.Candle{
-				OpenTime:  k.OpenTime,
-				CloseTime: k.CloseTime,
-				Open:      k.Open,
-				High:      k.High,
-				Low:       k.Low,
-				Close:     k.Close,
-				Volume:    k.Volume,
-			}
-			m.mu.Lock()
-			m.lastClose[key] = k.CloseTime
-			m.mu.Unlock()
-			m.dispatcher.Dispatch(dispatchKey, candle)
-		})
+		var err error
+		if ts, ok := br.(exchange.TickStreamer); ok {
+			err = ts.StreamKlineEvents(ctx, symbol, interval.String(), onKline, func(k exchange.Kline) {
+				m.dispatcher.DispatchTick(dispatchKey, toCandle(k))
+			})
+		} else {
+			err = br.StreamKlines(ctx, symbol, interval.String(), onKline)
+		}
 		if ctx.Err() != nil {
 			return
 		}

@@ -79,7 +79,7 @@ const BacktestPanel = ({ strategySlug }: { strategySlug: string }) => {
       <form onSubmit={handleRun} className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">Exchange</label>
-          <select value={exchange} onChange={handleExchangeChange} className={inputCls}>
+          <select name="exchange" value={exchange} onChange={handleExchangeChange} className={inputCls}>
             {AVAILABLE_EXCHANGES.map((ex) => (
               <option key={ex.name} value={ex.name}>
                 {ex.label}
@@ -90,6 +90,7 @@ const BacktestPanel = ({ strategySlug }: { strategySlug: string }) => {
         <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">Symbol</label>
           <input
+            name="symbol"
             value={symbol}
             onChange={(e) => setSymbol(e.target.value)}
             placeholder={exchangeConfig?.defaultSymbol ?? 'BTCUSDT'}
@@ -99,7 +100,7 @@ const BacktestPanel = ({ strategySlug }: { strategySlug: string }) => {
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-content-secondary text-xs uppercase tracking-wider">Interval</label>
-          <select value={interval} onChange={(e) => setInterval(e.target.value)} className={inputCls}>
+          <select name="interval" value={interval} onChange={(e) => setInterval(e.target.value)} className={inputCls}>
             {availableIntervals.map((i) => (
               <option key={i} value={i}>
                 {i}

@@ -6,7 +6,7 @@
     "useDefineForClassFields": true,
     "lib": ["DOM", "ESNext"],
     "module": "ESNext",
-    "types": ["vite/client"],
+    "types": ["vite/client", "@testing-library/jest-dom", "vitest/globals"],
     "skipLibCheck": true,
 
     /* Bundler mode */

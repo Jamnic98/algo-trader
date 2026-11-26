@@ -46,6 +46,13 @@ type Broker interface {
 	PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error)
 }
 
+// TickStreamer is an optional extension for brokers whose WS delivers every
+// bar update (not just closed bars): onTick fires for in-progress bars,
+// onKline for closed ones. Brokers without it still stream closed klines only.
+type TickStreamer interface {
+	StreamKlineEvents(ctx context.Context, symbol, interval string, onKline, onTick func(Kline)) error
+}
+
 // Config holds per-venue credentials/URLs, typically from env.
 type Config struct {
 	APIKey  string

@@ -229,3 +229,78 @@ func TestNewBotLiveUnknownExchange(t *testing.T) {
 		t.Fatal("expected error for unknown exchange")
 	}
 }
+
+
+// fakeTickBroker additionally implements exchange.TickStreamer.
+type fakeTickBroker struct {
+	fakeStreamBroker
+	onKline2 func(exchange.Kline)
+	onTick   func(exchange.Kline)
+}
+
+func (f *fakeTickBroker) StreamKlineEvents(ctx context.Context, symbol, interval string, onKline, onTick func(exchange.Kline)) error {
+	f.mu.Lock()
+	f.streams++
+	f.onKline2 = onKline
+	f.onTick = onTick
+	f.mu.Unlock()
+	<-ctx.Done()
+	f.cancelled.Store(true)
+	return ctx.Err()
+}
+
+// TestMarketManagerBrokerTicks: brokers implementing exchange.TickStreamer get
+// in-progress bars dispatched as ticks (the candles chart's live line).
+func TestMarketManagerBrokerTicks(t *testing.T) {
+	br := &fakeTickBroker{}
+	m := NewMarketDataManager(nil, NewDispatcher(), map[string]exchange.Broker{"tickvenue": br})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	m.ctx = ctx
+
+	interval, _ := engine.ParseInterval("1m")
+	b := &Bot{
+		BotConfig:       BotConfig{ID: "b1", Exchange: "tickvenue", Base: "BTC", Quote: "USD", AssetType: "crypto"},
+		Logger:          NewBotLogger("b1"),
+		CandleCh:        make(chan models.Candle, 10),
+		TickBroadcaster: &Broadcaster[models.Candle]{},
+	}
+	tickCh := b.TickBroadcaster.Subscribe()
+	defer b.TickBroadcaster.Unsubscribe(tickCh)
+	m.dispatcher.Subscribe(b.Symbol(), interval, b)
+
+	if err := m.Subscribe("tickvenue", b.Symbol(), interval); err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	waitFor(t, "tick stream to start", func() bool { return br.streamCount() == 1 })
+
+	k := exchange.Kline{OpenTime: 1, CloseTime: 2, Close: decimal.NewFromInt(100)}
+	br.mu.Lock()
+	onKline, onTick := br.onKline2, br.onTick
+	br.mu.Unlock()
+
+	onTick(k) // in-progress bar -> tick only
+	select {
+	case tick := <-tickCh:
+		if tick.Close.Cmp(decimal.NewFromInt(100)) != 0 {
+			t.Fatalf("tick close = %s", tick.Close.String())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no tick dispatched")
+	}
+	select {
+	case <-b.CandleCh:
+		t.Fatal("tick must not be dispatched as a closed candle")
+	default:
+	}
+
+	onKline(k) // closed bar -> candle
+	select {
+	case c := <-b.CandleCh:
+		if c.Close.Cmp(decimal.NewFromInt(100)) != 0 {
+			t.Fatalf("candle close = %s", c.Close.String())
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("no candle dispatched")
+	}
+}
