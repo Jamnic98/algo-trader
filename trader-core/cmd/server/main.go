@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -144,15 +143,12 @@ func main() {
 		}
 	}()
 
-	// connect to binance websocket
-	if err := binanceClient.StartWithReconnect(func(msg string) {
+	// connect to binance websocket; a dial failure must NOT take the API down
+	// (alpaca bots and REST keep working) — retry in the background instead
+	go binanceClient.StartWithRetry(ctx, 5*time.Second, func(msg string) {
 		runtime.Errors <- msg
-		cancel()
-	}); err != nil {
-		runtime.Errors <- fmt.Sprintf("failed to connect to Binance: %v", err)
-		return
-	}
-	log.Println("Binance websocket connected")
+	})
+	log.Println("Binance websocket connecting (retries in background on failure)")
 
 	// forward errors to log and Telegram
 	go func() {

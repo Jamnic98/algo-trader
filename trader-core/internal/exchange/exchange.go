@@ -39,6 +39,9 @@ type Broker interface {
 	// Balances returns free balances per asset.
 	Balances() (map[string]decimal.Decimal, error)
 
+	// Price returns the latest trade price for the symbol.
+	Price(symbol string) (decimal.Decimal, error)
+
 	// PlaceMarketOrder places a market order; returns avg price, executed qty, fee.
 	PlaceMarketOrder(symbol string, side string, qty decimal.Decimal) (avgPrice, executedQty, fee decimal.Decimal, err error)
 }
