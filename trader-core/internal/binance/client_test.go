@@ -130,3 +130,43 @@ func TestSubscribeReplayedOnConnect(t *testing.T) {
 		t.Fatal("subscription was not replayed on connect")
 	}
 }
+
+
+// TestOnReconnectCallbackFires: the reconnect hook (used for gap backfill)
+// must fire on every successful (re)connect.
+func TestOnReconnectCallbackFires(t *testing.T) {
+	orig := binanceWSURL
+	t.Cleanup(func() { binanceWSURL = orig })
+
+	upgrader := websocket.Upgrader{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}))
+	defer srv.Close()
+	binanceWSURL = "ws" + strings.TrimPrefix(srv.URL, "http")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	c := NewClient(ctx)
+
+	fired := make(chan struct{}, 1)
+	c.OnReconnect = func() { fired <- struct{}{} }
+
+	if err := c.run(); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	select {
+	case <-fired:
+	case <-time.After(2 * time.Second):
+		t.Fatal("OnReconnect did not fire on connect")
+	}
+}

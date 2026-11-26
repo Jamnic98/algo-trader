@@ -84,9 +84,10 @@ Response: `{stopped, flattened, errors}`.
 - The Binance WS client **retries forever in the background** (`StartWithRetry`)
   — a failed dial or fatal disconnect no longer kills the process, and the REST
   API / other venues keep working.
-- Subscriptions are **replayed on every (re)connect**, so running bots resume
-  receiving candles after a WS reconnect. (A few closed candles can be missed
-  during the gap itself; strategies just see a slightly stale window.)
+- Subscriptions are **replayed on every (re)connect**, and any closed candles
+  missed during the gap are **backfilled** (`Broker.Klines` / `FetchKlinesRange`
+  from the last seen close; Binance via a client `OnReconnect` hook), so bots
+  never trade on a stale window after a reconnect.
 - **Paper positions are persisted** (`accounts.positions` jsonb) and restored on
   boot, so an open position survives a restart and can still be sold. Live
   accounts are rehydrated from the venue via `SyncLive`.

@@ -23,6 +23,10 @@ type Client struct {
 	connected   atomic.Bool
 	started     atomic.Bool
 	lastMessage time.Time
+
+	// OnReconnect, if set, is called after every successful (re)connect and
+	// subscription replay — used to backfill candles missed during the gap.
+	OnReconnect func()
 }
 
 // var (not const) so tests/adapters can point it at a local server
@@ -120,6 +124,10 @@ func (c *Client) run() error {
 
 	c.connected.Store(true)
 	c.started.Store(true)
+
+	if c.OnReconnect != nil {
+		c.OnReconnect()
+	}
 
 	// Pong updates lastMessage
 	conn.SetPongHandler(func(appData string) error {
